@@ -1,0 +1,8 @@
+.DS_Store
+.hermes/
+__pycache__/
+*.pyc
+.env
+google_token.json
+google_client_secret.json
+assets/

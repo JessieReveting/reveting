@@ -1,0 +1,58 @@
+{
+  "appointment": {
+    "id": "apt_001",
+    "status": "confirmed",
+    "source": "Booking Widget",
+    "booked_by": "Willow West",
+    "calendar": "The David Daily Show",
+    "event_name": "The David Daily Show with Daniel Burrus",
+    "event_date": "2026-06-18",
+    "start_time": "10:45 AM EDT",
+    "end_time": "12:00 PM EDT",
+    "timezone": "America/New_York",
+    "location": "Streamyard URL TBD",
+    "guest": {
+      "first_name": "Daniel",
+      "last_name": "Burrus",
+      "email": "jennifer@burrus.com",
+      "phone": "+12623670949",
+      "linkedin_url": "https://www.linkedin.com/in/danielburrus/",
+      "company": "",
+      "title": "",
+      "headshot_url": "",
+      "pr_contact_name": "",
+      "pr_contact_email": "",
+      "linkedin_followers": 0,
+      "timezone": "America/Chicago",
+      "contact_source": "The David Daily Show",
+      "contact_type": "Lead"
+    },
+    "episode": {
+      "number": 1,
+      "title": "Betting on Certainty, Not Assumptions",
+      "description": "Leaders face a bind: markets are noisy, budgets are tight, and decisions cannot wait. Bet on assumptions and you burn capital. Wait for certainty and you lose compounding time.",
+      "topics": [
+        "Capital allocation using Hard Trends",
+        "Using AI to amplify human judgment",
+        "Preparing for quantum and exponential shifts"
+      ],
+      "areas_of_expertise": [
+        "Emerging Technologies",
+        "Quantum Technology",
+        "AI / ML"
+      ],
+      "comfortable_topics": [
+        "Quantum & Emerging Technologies",
+        "Leadership Philosophy",
+        "Human-Centered AI"
+      ],
+      "founder_support": "Strategic Advising",
+      "investor_accredited": false,
+      "investment_range": "$50K–$250K lifetime"
+    },
+    "calendar_description": "Thank you for submitting your topics. We will format them to fit the show and then we will email them and update this calendar description.",
+    "promote_instructions": "We will share a LinkedIn event url with you and ask you and your team to invite their LinkedIn connections to the event.",
+    "logistics": "Please plan to login to Stream Yard 15 minutes early at 10:45 AM ET. We will go live at 11:00 AM ET.",
+    "signature": "—\nDavid Goecke\nFounder, Go Technology Solutions\ngotech.ai"
+  }
+}

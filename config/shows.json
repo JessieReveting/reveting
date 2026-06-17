@@ -1,0 +1,66 @@
+{
+  "shows": {
+    "the-david-daily-show": {
+      "name": "The David Daily Show",
+      "slug": "tdds",
+      "host": "David Goecke",
+      "host_linkedin": "https://www.linkedin.com/in/davidgoecke/",
+      "producer_email": "ea@reveting.com",
+      "calendar": "The David Daily Show",
+      "timezone": "America/New_York",
+      "day_of_week": "Thursday",
+      "stream_time_et": "11:00 AM",
+      "preshow_time_et": "10:45 AM",
+      "duration_min": 60,
+      "primary_color": "#0D1B3E",
+      "accent_color": "#F5A623",
+      "channels": {
+        "linkedin": "https://www.linkedin.com/company/gotechai/",
+        "youtube": "",
+        "facebook": "",
+        "twitter": "",
+        "twitch": "",
+        "kick": ""
+      },
+      "podcast_links": {
+        "spotify": "",
+        "apple": "",
+        "youtube": ""
+      },
+      "min_linked_in_followers": 5000,
+      "content_pillars": "AI, Technology, Business Strategy, Leadership",
+      "signature_block": "—\nDavid Goecke\nFounder, Go Technology Solutions\ngotech.ai"
+    },
+    "beyond-the-cart": {
+      "name": "Beyond the Cart",
+      "slug": "btc",
+      "host": "Kyle Hamar",
+      "host_linkedin": "",
+      "producer_email": "ea@reveting.com",
+      "calendar": "",
+      "timezone": "America/New_York",
+      "day_of_week": "",
+      "stream_time_et": "",
+      "preshow_time_et": "",
+      "duration_min": 60,
+      "primary_color": "#0D1B3E",
+      "accent_color": "#1EA56B",
+      "channels": {
+        "linkedin": "",
+        "youtube": "",
+        "facebook": "",
+        "twitter": "",
+        "twitch": "",
+        "kick": ""
+      },
+      "podcast_links": {
+        "spotify": "",
+        "apple": "",
+        "youtube": ""
+      },
+      "min_linked_in_followers": 5000,
+      "content_pillars": "E-commerce, DTC, Retail",
+      "signature_block": ""
+    }
+  }
+}
