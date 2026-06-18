@@ -1,0 +1,36 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Go Technology Solutions//The David Daily Show//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-CALNAME:The David Daily Show
+X-WR-TIMEZONE:America/New_York
+BEGIN:VTIMEZONE
+TZID:America/New_York
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
+DTSTART:19700308T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
+DTSTART:19701101T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:20260618T120000
+DTEND;TZID=America/New_York:20260618T130000
+DTSTAMP:20260616T000000Z
+UID:tdds-ep001-postprod-20260618@reveting.com
+SUMMARY:Post-Production Handoff — Daniel Burrus Episode
+DESCRIPTION:Post-production handoff for The David Daily Show episode with Daniel Burrus.\n\nEpisode: Betting on Certainty, Not Assumptions\nRecording Date: June 18, 2026\n\nSLA: Clips delivered within 24 hours\nFull recording available immediately on LinkedIn/YouTube
+LOCATION:Google Drive
+STATUS:CONFIRMED
+ORGANIZER;CN=David Goecke:mailto:ea@reveting.com
+END:VEVENT
+END:VCALENDAR
