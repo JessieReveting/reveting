@@ -6,3 +6,5 @@ __pycache__/
 google_token.json
 google_client_secret.json
 assets/
+dashboards/
+data/
