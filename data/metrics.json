@@ -1,0 +1,17 @@
+{
+  "snapshots": [
+    {
+      "date": "2026-06-24",
+      "timestamp": "2026-06-24T19:42:14.751836+00:00",
+      "cash_balance": 1000.0,
+      "total_leads": 1,
+      "new_leads_today": 1,
+      "qualified_leads": 0,
+      "active_clients": 0,
+      "mrr": 0,
+      "arr": 0,
+      "pipeline_value": 500.0,
+      "days_to_1m": null
+    }
+  ]
+}

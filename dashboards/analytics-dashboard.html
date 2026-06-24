@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoTechSolutions — Analytics Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-primary: #0B0F1A;
+  --bg-secondary: #111827;
+  --bg-card: #1A2235;
+  --bg-card-hover: #1F2A40;
+  --accent: #F5A623;
+  --accent-light: #FFD080;
+  --accent-glow: rgba(245, 166, 35, 0.15);
+  --text-primary: #F9FAFB;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+  --green: #10B981;
+  --red: #EF4444;
+  --blue: #3B82F6;
+  --purple: #8B5CF6;
+  --cyan: #06B6D4;
+  --border: #1F2937;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-secondary); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Header */
+.header {
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-card) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 24px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.header-brand h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.header-brand .logo {
+  width: 40px;
+  height: 40px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--bg-primary);
+}
+.header-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.header-stat {
+  text-align: center;
+}
+.header-stat .label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.header-stat .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.header-stat .value.accent { color: var(--accent); }
+.header-stat .value.green { color: var(--green); }
+
+/* Grid Layout */
+.dashboard {
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+  max-width: 1920px;
+  margin: 0 auto;
+}
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card:hover {
+  border-color: rgba(245, 166, 35, 0.3);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+.card-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* Sizing */
+.col-3 { grid-column: span 3; }
+.col-4 { grid-column: span 4; }
+.col-5 { grid-column: span 5; }
+.col-6 { grid-column: span 6; }
+.col-8 { grid-column: span 8; }
+.col-9 { grid-column: span 9; }
+.col-12 { grid-column: span 12; }
+
+/* Financial Overview */
+.cash-balance {
+  font-size: 3rem;
+  font-weight: 800;
+  color: var(--accent);
+  margin: 8px 0;
+  letter-spacing: -0.02em;
+}
+.cash-balance .currency {
+  font-size: 1.5rem;
+  vertical-align: super;
+  opacity: 0.7;
+}
+.metric-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 16px;
+}
+.metric-item {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+.metric-item .m-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.metric-item .m-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 4px;
+}
+.metric-item .m-sub {
+  font-size: 0.7rem;
+  color: var(--green);
+  margin-top: 2px;
+}
+
+/* Funnel */
+.funnel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.funnel-stage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+.funnel-stage:hover {
+  border-color: var(--accent);
+}
+.funnel-stage .stage-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.funnel-stage .stage-count {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+.funnel-stage .stage-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.funnel-conversion {
+  font-size: 0.7rem;
+  color: var(--green);
+  padding: 2px 0;
+  text-align: center;
+}
+.funnel-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  width: 100%;
+}
+
+/* Clients */
+.client-list {
+  list-style: none;
+}
+.client-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.client-list li:last-child { border-bottom: none; }
+.client-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.client-service {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.client-revenue {
+  font-weight: 700;
+  color: var(--green);
+  font-size: 0.9rem;
+}
+
+/* YouTube */
+.episode-list {
+  list-style: none;
+}
+.episode-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 12px;
+}
+.episode-list li:last-child { border-bottom: none; }
+.episode-info {
+  flex: 1;
+  min-width: 0;
+}
+.episode-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.episode-views {
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.episode-rank {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent-glow);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Heatmap */
+.heatmap {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+.heatmap-day {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: var(--bg-secondary);
+  position: relative;
+  cursor: pointer;
+}
+.heatmap-day.published {
+  background: var(--accent);
+}
+.heatmap-day.partial {
+  background: rgba(245, 166, 35, 0.5);
+}
+.heatmap-day.today {
+  border: 2px solid var(--accent);
+}
+.heatmap-day:hover::after {
+  content: attr(data-date);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  z-index: 10;
+}
+.heatmap-labels {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  margin-bottom: 4px;
+}
+.heatmap-labels span {
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+.heatmap-legend .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+/* Growth Metrics */
+.growth-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.growth-item {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  text-align: center;
+}
+.growth-item .g-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.growth-item .g-value {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin-top: 4px;
+}
+.growth-item .g-value.positive { color: var(--green); }
+.growth-item .g-value.negative { color: var(--red); }
+
+/* Milestones */
+.milestone {
+  margin-bottom: 16px;
+}
+.milestone:last-child { margin-bottom: 0; }
+.milestone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.milestone-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.milestone-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.progress-bar {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-light) 100%);
+  transition: width 0.5s ease;
+}
+.progress-fill.complete {
+  background: linear-gradient(90deg, var(--green) 0%, #34D399 100%);
+}
+.milestone-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Activity Feed */
+.activity-feed {
+  max-height: 400px;
+  overflow-y: auto;
+}
+.activity-item {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+.activity-icon.lead { background: rgba(59, 130, 246, 0.2); color: var(--blue); }
+.activity-icon.client { background: rgba(139, 92, 246, 0.2); color: var(--purple); }
+.activity-icon.cash { background: rgba(16, 185, 129, 0.2); color: var(--green); }
+.activity-icon.content { background: rgba(245, 166, 35, 0.2); color: var(--accent); }
+.activity-text {
+  flex: 1;
+}
+.activity-text p {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+.activity-time {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Quick Actions */
+.quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.action-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+.action-btn .icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.action-btn .icon.lead { background: rgba(59, 130, 246, 0.2); }
+.action-btn .icon.client { background: rgba(139, 92, 246, 0.2); }
+.action-btn .icon.cash { background: rgba(16, 185, 129, 0.2); }
+.action-btn .icon.report { background: rgba(245, 166, 35, 0.2); }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+}
+.modal h3 {
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  color: var(--accent);
+}
+.modal label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  margin-top: 12px;
+}
+.modal input, .modal select {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+.modal input:focus, .modal select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+.modal-actions button {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border: none;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+.btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border) !important;
+}
+
+/* Retention Ring */
+.retention-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+.retention-circle {
+  width: 100px;
+  height: 100px;
+  position: relative;
+}
+.retention-circle svg {
+  transform: rotate(-90deg);
+}
+.retention-circle .center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.retention-circle .big-number {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--green);
+}
+.retention-circle .sub-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .col-3 { grid-column: span 6; }
+  .col-4 { grid-column: span 6; }
+  .col-5 { grid-column: span 12; }
+  .col-6 { grid-column: span 12; }
+  .col-8 { grid-column: span 12; }
+  .col-9 { grid-column: span 12; }
+}
+@media (max-width: 768px) {
+  .dashboard { padding: 16px; grid-template-columns: 1fr; }
+  .col-3, .col-4, .col-5, .col-6, .col-8, .col-9, .col-12 { grid-column: span 1; }
+  .header { padding: 16px; }
+  .header-stats { gap: 16px; }
+  .cash-balance { font-size: 2.2rem; }
+  .metric-row { grid-template-columns: 1fr; }
+  .growth-grid { grid-template-columns: 1fr; }
+  .quick-actions { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-brand">
+    <div class="logo">G</div>
+    <h1>GoTechSolutions</h1>
+  </div>
+  <div class="header-stats">
+    <div class="header-stat">
+      <div class="label">Today</div>
+      <div class="value" id="header-date">Jun 24, 2026</div>
+    </div>
+    <div class="header-stat">
+      <div class="label">Days Active</div>
+      <div class="value accent" id="header-days">0</div>
+    </div>
+    <div class="header-stat">
+      <div class="label">Days to $1M</div>
+      <div class="value green" id="header-countdown">—</div>
+    </div>
+    <div class="header-stat">
+      <div class="label">Cash</div>
+      <div class="value" id="header-cash">$1,000</div>
+    </div>
+  </div>
+</header>
+
+<!-- Dashboard Grid -->
+<div class="dashboard">
+
+  <!-- Financial Overview -->
+  <div class="card col-8">
+    <div class="card-header">
+      <span class="card-title">Financial Overview</span>
+      <span class="card-badge">Live</span>
+    </div>
+    <div class="cash-balance"><span class="currency">$</span><span id="cash-balance">1,000</span></div>
+    <div class="metric-row">
+      <div class="metric-item">
+        <div class="m-label">MRR</div>
+        <div class="m-value" id="mrr-value">$0</div>
+        <div class="m-sub" id="mrr-change">—</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">ARR</div>
+        <div class="m-value" id="arr-value">$0</div>
+        <div class="m-sub">Annual run rate</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">Pipeline Value</div>
+        <div class="m-value" id="pipeline-value">$500</div>
+        <div class="m-sub">Weighted opportunities</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">Revenue This Month</div>
+        <div class="m-value" id="rev-this">$0</div>
+        <div class="m-sub" id="rev-last">Last month: $0</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">Burn Rate</div>
+        <div class="m-value" id="burn-rate">$0/mo</div>
+        <div class="m-sub">Monthly expenses</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">Runway</div>
+        <div class="m-value" id="runway">∞</div>
+        <div class="m-sub">Months of cash left</div>
+      </div>
+    </div>
+    <div style="margin-top:16px; height:120px;">
+      <canvas id="cashTrendChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="card col-4">
+    <div class="card-header">
+      <span class="card-title">Quick Actions</span>
+    </div>
+    <div class="quick-actions">
+      <button class="action-btn" onclick="openModal('lead')">
+        <span class="icon lead">👤</span>
+        Add Lead
+      </button>
+      <button class="action-btn" onclick="openModal('client')">
+        <span class="icon client">🤝</span>
+        Add Client
+      </button>
+      <button class="action-btn" onclick="openModal('cash')">
+        <span class="icon cash">💰</span>
+        Add Cash
+      </button>
+      <button class="action-btn" onclick="generateReport()">
+        <span class="icon report">📊</span>
+        Generate Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Leads Funnel -->
+  <div class="card col-4">
+    <div class="card-header">
+      <span class="card-title">Leads Funnel</span>
+      <span class="card-badge" id="total-leads">1 total</span>
+    </div>
+    <div class="funnel" id="funnel-container">
+      <!-- Funnel stages rendered by JS -->
+    </div>
+  </div>
+
+  <!-- Growth Metrics -->
+  <div class="card col-4">
+    <div class="card-header">
+      <span class="card-title">Growth Metrics</span>
+    </div>
+    <div class="growth-grid">
+      <div class="growth-item">
+        <div class="g-label">Cash Growth</div>
+        <div class="g-value positive" id="growth-cash">+0%</div>
+      </div>
+      <div class="growth-item">
+        <div class="g-label">Lead Growth</div>
+        <div class="g-value positive" id="growth-leads">+0%</div>
+      </div>
+      <div class="growth-item">
+        <div class="g-label">Client Acq.</div>
+        <div class="g-value positive" id="growth-clients">+0%</div>
+      </div>
+      <div class="growth-item">
+        <div class="g-label">Revenue Growth</div>
+        <div class="g-value positive" id="growth-revenue">+0%</div>
+      </div>
+    </div>
+    <div style="margin-top:16px; height:100px;">
+      <canvas id="growthChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Clients -->
+  <div class="card col-4">
+    <div class="card-header">
+      <span class="card-title">Clients</span>
+      <span class="card-badge" id="active-clients">0 active</span>
+    </div>
+    <div class="retention-ring">
+      <div class="retention-circle">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#1F2937" stroke-width="8"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#10B981" stroke-width="8"
+            stroke-dasharray="264" stroke-dashoffset="264" stroke-linecap="round" id="retention-ring-fill"/>
+        </svg>
+        <div class="center">
+          <div class="big-number" id="retention-rate">100%</div>
+          <div class="sub-label">Retention</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:16px;">
+      <ul class="client-list" id="client-list">
+        <li><span class="client-name">No clients yet</span></li>
+      </ul>
+    </div>
+    <div style="margin-top:12px; height:100px;">
+      <canvas id="mrrByServiceChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Content & YouTube -->
+  <div class="card col-6">
+    <div class="card-header">
+      <span class="card-title">Content & YouTube</span>
+      <span class="card-badge" id="total-episodes">35 episodes</span>
+    </div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px;">
+      <div class="metric-item">
+        <div class="m-label">Total Episodes</div>
+        <div class="m-value" id="yt-total">35</div>
+      </div>
+      <div class="metric-item">
+        <div class="m-label">Views This Month (est.)</div>
+        <div class="m-value" id="yt-views">12.4K</div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div class="card-title" style="margin-bottom:8px;">Top 5 Episodes</div>
+      <ul class="episode-list" id="episode-list">
+        <!-- Rendered by JS -->
+      </ul>
+    </div>
+    <div>
+      <div class="card-title" style="margin-bottom:8px;">Upload Consistency</div>
+      <div class="heatmap-labels">
+        <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+      </div>
+      <div class="heatmap" id="heatmap">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="heatmap-legend">
+        <div class="swatch" style="background:var(--bg-secondary)"></div> None
+        <div class="swatch" style="background:rgba(245,166,35,0.5)"></div> Partial
+        <div class="swatch" style="background:var(--accent)"></div> Published
+      </div>
+    </div>
+  </div>
+
+  <!-- Goals & Milestones -->
+  <div class="card col-6">
+    <div class="card-header">
+      <span class="card-title">Goals & Milestones</span>
+      <span class="card-badge">Path to $1M</span>
+    </div>
+    <div id="milestones-container">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+
+  <!-- Activity Feed -->
+  <div class="card col-12">
+    <div class="card-header">
+      <span class="card-title">Activity Feed</span>
+      <span class="card-badge">Last 20 actions</span>
+    </div>
+    <div class="activity-feed" id="activity-feed">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+
+</div>
+
+<!-- Modals -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal">
+    <h3 id="modal-title">Add Lead</h3>
+    <div id="modal-fields">
+      <!-- Dynamic fields -->
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="submitModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// EMBEDDED DATA (from JSON files)
+// ============================================================
+const EMBEDDED_DATA = {
+  cash: {
+    balance: 1000.00,
+    transactions: [
+      { date: "2026-06-24T19:41:39.511673+00:00", amount: 500.00, balance: 1000.00, note: "Initial deposit from David", running_total: 1000.00 }
+    ],
+    starting_balance: 500,
+    start_date: "2026-06-24"
+  },
+  leads: {
+    leads: [
+      { id: "lead-0001", name: "Test Lead", email: "test@company.com", company: "", phone: "", source: "linkedin", interest: "ai-ops", estimated_value: 500.00, stage: "new", score: 80, created_at: "2026-06-24T19:41:46.835229+00:00", last_contact: null, notes: [] }
+    ],
+    stats: { total: 1, by_source: { linkedin: 1 } }
+  },
+  clients: {
+    clients: [],
+    stats: { total: 0, active: 0, retained: 0, churned: 0 }
+  },
+  metrics: {
+    snapshots: [
+      { date: "2026-06-24", timestamp: "2026-06-24T19:42:14.751836+00:00", cash_balance: 1000.00, total_leads: 1, new_leads_today: 1, qualified_leads: 0, active_clients: 0, mrr: 0, arr: 0, pipeline_value: 500.00, days_to_1m: null }
+    ]
+  },
+  youtube: {
+    episodes: [
+      { ep: "EP001", topic: "The David Daily Show - Episode 1", title: "The David Daily Show - Episode 1 | David Goecke EP001", url: "https://www.youtube.com/watch?v=G2vMcCnz2Cc", guest: null },
+      { ep: "EP002", topic: "The David Daily Show - Episode 2", title: "The David Daily Show - Episode 2 | David Goecke EP002", url: "https://www.youtube.com/watch?v=JPNCWd4VS7c", guest: null },
+      { ep: "EP003", topic: "The David Daily Show - Episode 3", title: "The David Daily Show - Episode 3 | David Goecke EP003", url: "https://www.youtube.com/watch?v=vA2g30pZ6lg", guest: null },
+      { ep: "EP004", topic: "A Daily Live News Show by David J. Goecke", title: "A Daily Live News Show by David J. Goecke | EP004", url: "https://www.youtube.com/watch?v=KPbIrGjahdA", guest: null },
+      { ep: "EP005", topic: "The David Daily Show - Episode 5", title: "The David Daily Show - Episode 5 | David Goecke EP005", url: "https://www.youtube.com/watch?v=h_aEeHh_xC4", guest: null },
+      { ep: "EP018", topic: "AI, Investing, and Faith with Neil Sahota", title: "AI, Investing, and Faith with Neil Sahota | David Goecke EP018", url: "https://www.youtube.com/watch?v=7SzTSiavwqg", guest: "Neil Sahota" },
+      { ep: "EP033", topic: "Quantum Flight, NVIDIA & Quantum-Ready Infrastructure", title: "Quantum Flight, NVIDIA & Quantum-Ready Infrastructure | David Goecke EP033", url: "https://www.youtube.com/watch?v=DixbxSO8JU8", guest: "Abishek Chopra" },
+      { ep: "EP034", topic: "Deondré Wyche", title: "Deondré Wyche | David Goecke EP034", url: "https://www.youtube.com/watch?v=r-uWujgz3AU", guest: "Deondré Wyche" },
+      { ep: "EP036", topic: "Scott Stevens", title: "Scott Stevens | David Goecke EP036", url: "https://www.youtube.com/watch?v=9ZKfX5iySXo", guest: "Scott Stevens" },
+      { ep: "EP037", topic: "Aaron McReynolds", title: "Aaron McReynolds | David Goecke EP037", url: "https://www.youtube.com/watch?v=XLr_EMce4Eg", guest: "Aaron McReynolds" }
+    ],
+    total_episodes: 35,
+    views_this_month: 12400,
+    top_episodes: [
+      { ep: "EP018", title: "AI, Investing, and Faith with Neil Sahota", views: 3200, guest: "Neil Sahota" },
+      { ep: "EP033", title: "Quantum Flight, NVIDIA & Quantum-Ready Infrastructure", views: 2800, guest: "Abishek Chopra" },
+      { ep: "EP034", title: "Deondré Wyche", views: 2100, guest: "Deondré Wyche" },
+      { ep: "EP036", title: "Scott Stevens", views: 1900, guest: "Scott Stevens" },
+      { ep: "EP037", title: "Aaron McReynolds", views: 1500, guest: "Aaron McReynolds" }
+    ]
+  }
+};
+
+// ============================================================
+// LOCAL STORAGE PERSISTENCE
+// ============================================================
+function loadData() {
+  const stored = localStorage.getItem('gotech_data');
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch(e) {
+      return JSON.parse(JSON.stringify(EMBEDDED_DATA));
+    }
+  }
+  return JSON.parse(JSON.stringify(EMBEDDED_DATA));
+}
+
+function saveData() {
+  localStorage.setItem('gotech_data', JSON.stringify(DATA));
+}
+
+let DATA = loadData();
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+const START_DATE = new Date('2026-06-24');
+const MILESTONES = [10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+const FUNNEL_STAGES = [
+  { key: 'new', label: 'New', icon: '🆕' },
+  { key: 'contacted', label: 'Contacted', icon: '📞' },
+  { key: 'qualified', label: 'Qualified', icon: '✅' },
+  { key: 'proposal', label: 'Proposal', icon: '📝' },
+  { key: 'won', label: 'Won', icon: '🏆' }
+];
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+function formatCurrency(n) {
+  if (n >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return '$' + (n/1000).toFixed(1) + 'K';
+  return '$' + n.toFixed(0);
+}
+
+function formatNumber(n) {
+  if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+  return n.toString();
+}
+
+function daysSince(date) {
+  const now = new Date();
+  const diff = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+  return Math.max(0, diff);
+}
+
+function formatDate(date) {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+// ============================================================
+// HEADER
+// ============================================================
+function renderHeader() {
+  const now = new Date();
+  document.getElementById('header-date').textContent = formatDate(now);
+  document.getElementById('header-days').textContent = daysSince(START_DATE);
+  
+  const cash = DATA.cash.balance;
+  const daysTo1M = cash > 0 ? Math.ceil((1000000 - cash) / (cash / Math.max(1, daysSince(START_DATE)))) : '—';
+  document.getElementById('header-countdown').textContent = typeof daysTo1M === 'number' ? daysTo1M + ' days' : daysTo1M;
+  document.getElementById('header-cash').textContent = formatCurrency(cash);
+}
+
+// ============================================================
+// FINANCIAL OVERVIEW
+// ============================================================
+function renderFinancials() {
+  const cash = DATA.cash.balance;
+  const snapshot = DATA.metrics.snapshots[DATA.metrics.snapshots.length - 1];
+  
+  document.getElementById('cash-balance').textContent = formatNumber(cash);
+  document.getElementById('mrr-value').textContent = formatCurrency(snapshot.mrr);
+  document.getElementById('arr-value').textContent = formatCurrency(snapshot.arr);
+  document.getElementById('pipeline-value').textContent = formatCurrency(snapshot.pipeline_value);
+  document.getElementById('rev-this').textContent = formatCurrency(snapshot.mrr);
+  document.getElementById('rev-last').textContent = 'Last month: $0';
+  document.getElementById('mrr-change').textContent = 'Starting out';
+  
+  const burnRate = 2000; // estimated monthly burn
+  document.getElementById('burn-rate').textContent = formatCurrency(burnRate) + '/mo';
+  
+  const runway = burnRate > 0 ? Math.floor(cash / burnRate) : 999;
+  document.getElementById('runway').textContent = runway === 999 ? '∞' : runway + ' mo';
+}
+
+// ============================================================
+// CASH TREND CHART
+// ============================================================
+let cashTrendChart;
+function renderCashTrend() {
+  const ctx = document.getElementById('cashTrendChart').getContext('2d');
+  
+  // Generate trend data from transactions
+  const labels = [];
+  const data = [];
+  const txns = DATA.cash.transactions;
+  
+  if (txns.length > 0) {
+    // Show last 30 days
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      labels.push(d.getDate().toString());
+      
+      // Find closest transaction
+      let balance = DATA.cash.starting_balance;
+      for (const txn of txns) {
+        if (new Date(txn.date) <= d) {
+          balance = txn.balance;
+        }
+      }
+      data.push(balance);
+    }
+  }
+  
+  if (cashTrendChart) cashTrendChart.destroy();
+  cashTrendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Cash Balance',
+        data,
+        borderColor: '#F5A623',
+        backgroundColor: 'rgba(245, 166, 35, 0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { 
+          display: true,
+          grid: { color: '#1F2937' },
+          ticks: { color: '#6B7280', font: { size: 10 }, callback: v => '$' + v }
+        }
+      }
+    }
+  });
+}
+
+// ============================================================
+// LEADS FUNNEL
+// ============================================================
+function renderFunnel() {
+  const container = document.getElementById('funnel-container');
+  const leads = DATA.leads.leads;
+  
+  document.getElementById('total-leads').textContent = leads.length + ' total';
+  
+  const stageCounts = {};
+  FUNNEL_STAGES.forEach(s => stageCounts[s.key] = 0);
+  leads.forEach(l => { if (stageCounts[l.stage] !== undefined) stageCounts[l.stage]++; });
+  
+  const maxCount = Math.max(...Object.values(stageCounts), 1);
+  
+  let html = '';
+  FUNNEL_STAGES.forEach((stage, i) => {
+    const count = stageCounts[stage.key];
+    const width = Math.max(40, (count / maxCount) * 100);
+    const conversion = i > 0 ? ((count / Math.max(1, stageCounts[FUNNEL_STAGES[i-1].key])) * 100).toFixed(0) : '—';
+    
+    html += `
+      <div class="funnel-stage" style="width:${width}%">
+        <span class="stage-name">${stage.icon} ${stage.label}</span>
+        <span class="stage-count">${count}</span>
+      </div>
+    `;
+    
+    if (i < FUNNEL_STAGES.length - 1 && count > 0) {
+      html += `<div class="funnel-conversion">↓ ${conversion}% conversion</div>`;
+    }
+  });
+  
+  container.innerHTML = html;
+}
+
+// ============================================================
+// GROWTH METRICS
+// ============================================================
+let growthChart;
+function renderGrowth() {
+  const snapshots = DATA.metrics.snapshots;
+  const latest = snapshots[snapshots.length - 1];
+  const previous = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;
+  
+  const calcGrowth = (curr, prev) => {
+    if (!prev || prev === 0) return 0;
+    return ((curr - prev) / prev * 100).toFixed(1);
+  };
+  
+  const cashGrowth = calcGrowth(latest.cash_balance, previous ? previous.cash_balance : 0);
+  const leadGrowth = calcGrowth(latest.total_leads, previous ? previous.total_leads : 0);
+  const clientGrowth = calcGrowth(latest.active_clients, previous ? previous.active_clients : 0);
+  const revGrowth = calcGrowth(latest.mrr, previous ? previous.mrr : 0);
+  
+  document.getElementById('growth-cash').textContent = (cashGrowth >= 0 ? '+' : '') + cashGrowth + '%';
+  document.getElementById('growth-cash').className = 'g-value ' + (cashGrowth >= 0 ? 'positive' : 'negative');
+  document.getElementById('growth-leads').textContent = (leadGrowth >= 0 ? '+' : '') + leadGrowth + '%';
+  document.getElementById('growth-leads').className = 'g-value ' + (leadGrowth >= 0 ? 'positive' : 'negative');
+  document.getElementById('growth-clients').textContent = (clientGrowth >= 0 ? '+' : '') + clientGrowth + '%';
+  document.getElementById('growth-clients').className = 'g-value ' + (clientGrowth >= 0 ? 'positive' : 'negative');
+  document.getElementById('growth-revenue').textContent = (revGrowth >= 0 ? '+' : '') + revGrowth + '%';
+  document.getElementById('growth-revenue').className = 'g-value ' + (revGrowth >= 0 ? 'positive' : 'negative');
+  
+  // Growth chart
+  const ctx = document.getElementById('growthChart').getContext('2d');
+  if (growthChart) growthChart.destroy();
+  growthChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Cash', 'Leads', 'Clients', 'Revenue'],
+      datasets: [{
+        data: [cashGrowth, leadGrowth, clientGrowth, revGrowth],
+        backgroundColor: [
+          cashGrowth >= 0 ? '#10B981' : '#EF4444',
+          leadGrowth >= 0 ? '#10B981' : '#EF4444',
+          clientGrowth >= 0 ? '#10B981' : '#EF4444',
+          revGrowth >= 0 ? '#10B981' : '#EF4444'
+        ],
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false },
+        y: { display: false }
+      }
+    }
+  });
+}
+
+// ============================================================
+// CLIENTS
+// ============================================================
+function renderClients() {
+  const clients = DATA.clients.clients;
+  const active = clients.filter(c => c.status === 'active');
+  
+  document.getElementById('active-clients').textContent = active.length + ' active';
+  
+  // Retention ring
+  const total = clients.length;
+  const retained = clients.filter(c => c.status === 'active').length;
+  const retentionRate = total > 0 ? Math.round((retained / total) * 100) : 100;
+  
+  document.getElementById('retention-rate').textContent = retentionRate + '%';
+  const circumference = 264;
+  const offset = circumference - (retentionRate / 100) * circumference;
+  document.getElementById('retention-ring-fill').style.strokeDashoffset = offset;
+  
+  // Client list
+  const list = document.getElementById('client-list');
+  if (clients.length === 0) {
+    list.innerHTML = '<li><span class="client-name" style="color:var(--text-muted)">No clients yet — add your first client!</span></li>';
+  } else {
+    list.innerHTML = clients.slice(0, 5).map(c => `
+      <li>
+        <div>
+          <div class="client-name">${c.name}</div>
+          <div class="client-service">${c.service || 'General'}</div>
+        </div>
+        <div class="client-revenue">${formatCurrency(c.mrr || 0)}/mo</div>
+      </li>
+    `).join('');
+  }
+  
+  // MRR by service chart
+  renderMrrByService();
+}
+
+let mrrServiceChart;
+function renderMrrByService() {
+  const ctx = document.getElementById('mrrByServiceChart').getContext('2d');
+  
+  // Aggregate MRR by service
+  const services = {};
+  DATA.clients.clients.forEach(c => {
+    const svc = c.service || 'General';
+    services[svc] = (services[svc] || 0) + (c.mrr || 0);
+  });
+  
+  const labels = Object.keys(services);
+  const data = Object.values(services);
+  
+  if (mrrServiceChart) mrrServiceChart.destroy();
+  
+  if (labels.length === 0) {
+    // Show placeholder
+    mrrServiceChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['No data'],
+        datasets: [{ data: [1], backgroundColor: ['#1F2937'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+  } else {
+    mrrServiceChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: ['#F5A623', '#10B981', '#3B82F6', '#8B5CF6', '#06B6D4', '#EF4444'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'right', labels: { color: '#9CA3AF', font: { size: 10 }, padding: 8 } } }
+      }
+    });
+  }
+}
+
+// ============================================================
+// CONTENT & YOUTUBE
+// ============================================================
+function renderContent() {
+  const yt = DATA.youtube;
+  
+  document.getElementById('total-episodes').textContent = yt.total_episodes + ' episodes';
+  document.getElementById('yt-total').textContent = yt.total_episodes;
+  document.getElementById('yt-views').textContent = formatNumber(yt.views_this_month);
+  
+  // Top 5 episodes
+  const list = document.getElementById('episode-list');
+  list.innerHTML = yt.top_episodes.map((ep, i) => `
+    <li>
+      <div class="episode-rank">${i + 1}</div>
+      <div class="episode-info">
+        <div class="episode-title">${ep.title}</div>
+      </div>
+      <div class="episode-views">${formatNumber(ep.views)}</div>
+    </li>
+  `).join('');
+  
+  // Heatmap
+  renderHeatmap();
+}
+
+function renderHeatmap() {
+  const container = document.getElementById('heatmap');
+  const today = new Date();
+  const startOfGrid = new Date(today);
+  startOfGrid.setDate(today.getDate() - 84); // 12 weeks
+  // Align to Monday
+  const dayOfWeek = startOfGrid.getDay();
+  startOfGrid.setDate(startOfGrid.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  
+  // Get published dates from episodes
+  const publishedDates = new Set();
+  DATA.youtube.episodes.forEach(ep => {
+    // Simulate publish dates based on episode number
+    const epNum = parseInt(ep.ep.replace('EP', ''));
+    const pubDate = new Date(START_DATE);
+    pubDate.setDate(pubDate.getDate() + epNum - 1);
+    publishedDates.add(pubDate.toISOString().split('T')[0]);
+  });
+  
+  let html = '';
+  for (let i = 0; i < 84; i++) {
+    const d = new Date(startOfGrid);
+    d.setDate(d.getDate() + i);
+    const dateStr = d.toISOString().split('T')[0];
+    const isPublished = publishedDates.has(dateStr);
+    const isToday = dateStr === today.toISOString().split('T')[0];
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
+    const monthDay = d.getDate();
+    
+    let cls = 'heatmap-day';
+    if (isPublished) cls += ' published';
+    if (isToday) cls += ' today';
+    
+    html += `<div class="${cls}" data-date="${dateStr} — ${dayName} ${monthDay}" title="${dateStr}"></div>`;
+  }
+  
+  container.innerHTML = html;
+}
+
+// ============================================================
+// GOALS & MILESTONES
+// ============================================================
+function renderMilestones() {
+  const container = document.getElementById('milestones-container');
+  const cash = DATA.cash.balance;
+  const dailyRate = cash / Math.max(1, daysSince(START_DATE));
+  
+  let html = '';
+  MILESTONES.forEach((milestone, i) => {
+    const progress = Math.min(100, (cash / milestone) * 100);
+    const remaining = milestone - cash;
+    const estDays = dailyRate > 0 ? Math.ceil(remaining / dailyRate) : '—';
+    const estDate = dailyRate > 0 ? new Date(Date.now() + estDays * 86400000) : null;
+    const isReached = cash >= milestone;
+    
+    html += `
+      <div class="milestone">
+        <div class="milestone-header">
+          <span class="milestone-name">${isReached ? '✅' : '🎯'} ${formatCurrency(milestone)}</span>
+          <span class="milestone-date">${isReached ? 'Reached!' : estDate ? formatDate(estDate) : '—'}</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill ${isReached ? 'complete' : ''}" style="width:${progress}%"></div>
+        </div>
+        <div class="milestone-stats">
+          <span>${progress.toFixed(1)}% complete</span>
+          <span>${isReached ? 'Goal achieved!' : formatCurrency(remaining) + ' to go'}</span>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+}
+
+// ============================================================
+// ACTIVITY FEED
+// ============================================================
+function renderActivityFeed() {
+  const container = document.getElementById('activity-feed');
+  const activities = [];
+  
+  // From transactions
+  DATA.cash.transactions.forEach(t => {
+    activities.push({
+      type: 'cash',
+      icon: '💰',
+      text: `<strong>${t.note}</strong> — ${formatCurrency(t.amount)}`,
+      time: new Date(t.date)
+    });
+  });
+  
+  // From leads
+  DATA.leads.leads.forEach(l => {
+    activities.push({
+      type: 'lead',
+      icon: '👤',
+      text: `<strong>New lead: ${l.name}</strong> — ${l.interest} (${formatCurrency(l.estimated_value)})`,
+      time: new Date(l.created_at)
+    });
+  });
+  
+  // From clients
+  DATA.clients.clients.forEach(c => {
+    activities.push({
+      type: 'client',
+      icon: '🤝',
+      text: `<strong>New client: ${c.name}</strong> — ${c.service || 'General'} (${formatCurrency(c.mrr)}/mo)`,
+      time: new Date(c.created_at || Date.now())
+    });
+  });
+  
+  // From content
+  DATA.youtube.episodes.slice(-5).forEach(ep => {
+    activities.push({
+      type: 'content',
+      icon: '🎬',
+      text: `<strong>Published: ${ep.title}</strong>${ep.guest ? ' (feat. ' + ep.guest + ')' : ''}`,
+      time: new Date()
+    });
+  });
+  
+  // Sort by time, take last 20
+  activities.sort((a, b) => b.time - a.time);
+  const recent = activities.slice(0, 20);
+  
+  if (recent.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:20px;">No activity yet</p>';
+    return;
+  }
+  
+  container.innerHTML = recent.map(a => {
+    const timeAgo = getTimeAgo(a.time);
+    return `
+      <div class="activity-item">
+        <div class="activity-icon ${a.type}">${a.icon}</div>
+        <div class="activity-text">
+          <p>${a.text}</p>
+          <div class="activity-time">${timeAgo}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function getTimeAgo(date) {
+  const seconds = Math.floor((new Date() - date) / 1000);
+  if (seconds < 60) return 'Just now';
+  if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+  if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+  if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+  return formatDate(date);
+}
+
+// ============================================================
+// QUICK ACTIONS / MODALS
+// ============================================================
+let currentModal = null;
+
+function openModal(type) {
+  currentModal = type;
+  const overlay = document.getElementById('modal-overlay');
+  const title = document.getElementById('modal-title');
+  const fields = document.getElementById('modal-fields');
+  
+  if (type === 'lead') {
+    title.textContent = 'Add Lead';
+    fields.innerHTML = `
+      <label>Name *</label>
+      <input type="text" id="lead-name" placeholder="John Doe">
+      <label>Email</label>
+      <input type="email" id="lead-email" placeholder="john@company.com">
+      <label>Company</label>
+      <input type="text" id="lead-company" placeholder="Acme Inc">
+      <label>Source</label>
+      <select id="lead-source">
+        <option value="linkedin">LinkedIn</option>
+        <option value="referral">Referral</option>
+        <option value="website">Website</option>
+        <option value="cold-outreach">Cold Outreach</option>
+        <option value="twitter">Twitter/X</option>
+        <option value="other">Other</option>
+      </select>
+      <label>Interest</label>
+      <select id="lead-interest">
+        <option value="ai-ops">AI Ops</option>
+        <option value="web-dev">Web Development</option>
+        <option value="consulting">Consulting</option>
+        <option value="general">General</option>
+      </select>
+      <label>Estimated Value ($)</label>
+      <input type="number" id="lead-value" placeholder="500" value="500">
+    `;
+  } else if (type === 'client') {
+    title.textContent = 'Add Client';
+    fields.innerHTML = `
+      <label>Client Name *</label>
+      <input type="text" id="client-name" placeholder="Acme Corp">
+      <label>Service</label>
+      <select id="client-service">
+        <option value="AI Ops">AI Ops</option>
+        <option value="Web Development">Web Development</option>
+        <option value="Consulting">Consulting</option>
+        <option value="Content Production">Content Production</option>
+        <option value="General">General</option>
+      </select>
+      <label>MRR ($)</label>
+      <input type="number" id="client-mrr" placeholder="500" value="500">
+      <label>Contact Email</label>
+      <input type="email" id="client-email" placeholder="contact@company.com">
+    `;
+  } else if (type === 'cash') {
+    title.textContent = 'Add Cash Transaction';
+    fields.innerHTML = `
+      <label>Amount ($) *</label>
+      <input type="number" id="cash-amount" placeholder="1000" value="1000">
+      <label>Note</label>
+      <input type="text" id="cash-note" placeholder="Payment from client...">
+      <label>Type</label>
+      <select id="cash-type">
+        <option value="income">Income</option>
+        <option value="investment">Investment</option>
+        <option value="expense">Expense (negative)</option>
+      </select>
+    `;
+  }
+  
+  overlay.classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+  currentModal = null;
+}
+
+function submitModal() {
+  if (currentModal === 'lead') {
+    const name = document.getElementById('lead-name').value;
+    if (!name) { alert('Name is required'); return; }
+    
+    const newLead = {
+      id: 'lead-' + Date.now(),
+      name,
+      email: document.getElementById('lead-email').value,
+      company: document.getElementById('lead-company').value,
+      phone: '',
+      source: document.getElementById('lead-source').value,
+      interest: document.getElementById('lead-interest').value,
+      estimated_value: parseFloat(document.getElementById('lead-value').value) || 0,
+      stage: 'new',
+      score: 70,
+      created_at: new Date().toISOString(),
+      last_contact: null,
+      notes: []
+    };
+    
+    DATA.leads.leads.push(newLead);
+    DATA.leads.stats.total++;
+    DATA.metrics.snapshots[DATA.metrics.snapshots.length - 1].total_leads = DATA.leads.leads.length;
+    
+  } else if (currentModal === 'client') {
+    const name = document.getElementById('client-name').value;
+    if (!name) { alert('Name is required'); return; }
+    
+    const newClient = {
+      id: 'client-' + Date.now(),
+      name,
+      service: document.getElementById('client-service').value,
+      mrr: parseFloat(document.getElementById('client-mrr').value) || 0,
+      email: document.getElementById('client-email').value,
+      status: 'active',
+      created_at: new Date().toISOString()
+    };
+    
+    DATA.clients.clients.push(newClient);
+    DATA.clients.stats.total++;
+    DATA.clients.stats.active++;
+    
+  } else if (currentModal === 'cash') {
+    const amount = parseFloat(document.getElementById('cash-amount').value);
+    if (!amount) { alert('Amount is required'); return; }
+    
+    const type = document.getElementById('cash-type').value;
+    const note = document.getElementById('cash-note').value;
+    const actualAmount = type === 'expense' ? -amount : amount;
+    
+    DATA.cash.balance += actualAmount;
+    DATA.cash.transactions.push({
+      date: new Date().toISOString(),
+      amount: actualAmount,
+      balance: DATA.cash.balance,
+      note: note || (type === 'expense' ? 'Expense' : 'Cash added'),
+      running_total: DATA.cash.balance
+    });
+    
+    DATA.metrics.snapshots[DATA.metrics.snapshots.length - 1].cash_balance = DATA.cash.balance;
+  }
+  
+  saveData();
+  renderAll();
+  closeModal();
+}
+
+function generateReport() {
+  const cash = DATA.cash.balance;
+  const leads = DATA.leads.leads;
+  const clients = DATA.clients.clients;
+  const snapshot = DATA.metrics.snapshots[DATA.metrics.snapshots.length - 1];
+  
+  const report = `
+╔══════════════════════════════════════════╗
+║   GOTECHSOLUTIONS — ANALYTICS REPORT    ║
+║   ${formatDate(new Date()).padEnd(38)}║
+╠══════════════════════════════════════════╣
+║                                          ║
+║  FINANCIALS                              ║
+║  ─────────────────────                   ║
+║  Cash Balance:    ${formatCurrency(cash).padEnd(24)}║
+║  MRR:             ${formatCurrency(snapshot.mrr).padEnd(24)}║
+║  ARR:             ${formatCurrency(snapshot.arr).padEnd(24)}║
+║  Pipeline:        ${formatCurrency(snapshot.pipeline_value).padEnd(24)}║
+║                                          ║
+║  LEADS                                   ║
+║  ─────────────────────                   ║
+║  Total Leads:     ${String(leads.length).padEnd(24)}║
+║  Qualified:       ${String(leads.filter(l=>l.stage==='qualified').length).padEnd(24)}║
+║  Won:             ${String(leads.filter(l=>l.stage==='won').length).padEnd(24)}║
+║                                          ║
+║  CLIENTS                                 ║
+║  ─────────────────────                   ║
+║  Active Clients:  ${String(clients.filter(c=>c.status==='active').length).padEnd(24)}║
+║  Total MRR:       ${formatCurrency(clients.reduce((s,c)=>s+(c.mrr||0),0)).padEnd(24)}║
+║                                          ║
+║  CONTENT                                 ║
+║  ─────────────────────                   ║
+║  Episodes:        ${String(DATA.youtube.total_episodes).padEnd(24)}║
+║  Est. Views:      ${formatNumber(DATA.youtube.views_this_month).padEnd(24)}║
+║                                          ║
+╚══════════════════════════════════════════╝
+  `.trim();
+  
+  // Copy to clipboard
+  navigator.clipboard.writeText(report).then(() => {
+    alert('Report copied to clipboard!\n\n' + report);
+  }).catch(() => {
+    alert(report);
+  });
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function renderAll() {
+  renderHeader();
+  renderFinancials();
+  renderCashTrend();
+  renderFunnel();
+  renderGrowth();
+  renderClients();
+  renderContent();
+  renderMilestones();
+  renderActivityFeed();
+}
+
+// Close modal on overlay click
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', renderAll);
+
+// Auto-refresh every 60 seconds
+setInterval(renderAll, 60000);
+</script>
+</body>
+</html>

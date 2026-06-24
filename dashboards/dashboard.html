@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Tech Command Center</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --border: #30363d;
+    --text: #c9d1d9;
+    --text-dim: #8b949e;
+    --green: #3fb950;
+    --blue: #58a6ff;
+    --orange: #d29922;
+    --red: #f85149;
+    --purple: #bc8cff;
+    --teal: #39d2c0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 16px 20px;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--green), var(--blue));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header .meta { text-align: right; color: var(--text-dim); font-size: 12px; }
+  .header .meta .time { color: var(--text); font-size: 16px; font-weight: 600; }
+
+  /* ── Status bar ── */
+  .status-bar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    flex-wrap: wrap;
+  }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .status-item .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .status-item .dot.ok { background: var(--green); }
+  .status-item .dot.warn { background: var(--orange); }
+  .status-item .dot.err { background: var(--red); }
+  .status-item .val { font-weight: 700; color: var(--text); }
+
+  /* ── Grid ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 12px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    animation: fadeUp 0.3s ease-out both;
+  }
+  .card:nth-child(1) { animation-delay: 0.03s; }
+  .card:nth-child(2) { animation-delay: 0.06s; }
+  .card:nth-child(3) { animation-delay: 0.09s; }
+  .card:nth-child(4) { animation-delay: 0.12s; }
+  .card:nth-child(5) { animation-delay: 0.15s; }
+  .card:nth-child(6) { animation-delay: 0.18s; }
+  .card:nth-child(7) { animation-delay: 0.21s; }
+  .card:nth-child(8) { animation-delay: 0.24s; }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .card h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card h2 .icon { font-size: 14px; margin-right: 6px; }
+  .card h2 .links { font-size: 10px; text-transform: none; letter-spacing: 0; }
+  .card h2 .links a { color: var(--blue); text-decoration: none; margin-left: 8px; }
+  .card h2 .links a:hover { text-decoration: underline; }
+
+  /* ── Email rows ── */
+  .email-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    background: var(--bg);
+    border-radius: 7px;
+    font-size: 12px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .email-row:hover { background: rgba(88,166,255,0.06); }
+  .email-row .addr { color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+  .email-row .addr span { color: var(--text); font-weight: 500; }
+  .email-row .addr .web-link { font-size: 10px; color: var(--blue); text-decoration: none; opacity: 0; transition: opacity 0.15s; }
+  .email-row:hover .addr .web-link { opacity: 1; }
+  .badges { display: flex; gap: 4px; flex-shrink: 0; }
+  .badge { padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; }
+  .badge.gmail { background: rgba(234,67,53,0.15); color: #ea4355; }
+  .badge.outlook { background: rgba(0,120,212,0.15); color: #0078d4; }
+  .badge.unread { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge.reply { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge.ok { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge.offline { background: rgba(248,81,73,0.15); color: var(--red); }
+
+  /* ── Email drill-down ── */
+  .email-detail {
+    display: none;
+    margin: 4px 0 8px 0;
+    padding: 10px 12px;
+    background: rgba(88,166,255,0.04);
+    border: 1px solid rgba(88,166,255,0.12);
+    border-radius: 8px;
+  }
+  .email-detail.open { display: block; }
+  .email-detail .detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .email-detail .detail-header a { color: var(--blue); text-decoration: none; }
+  .msg-item {
+    padding: 6px 8px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    font-size: 12px;
+  }
+  .msg-item:last-child { border-bottom: none; }
+  .msg-item .msg-subj { font-weight: 500; color: var(--text); }
+  .msg-item .msg-from { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+  .msg-item .msg-time { color: var(--text-dim); font-size: 10px; margin-top: 1px; }
+  .msg-item.reply-needed { border-left: 2px solid var(--orange); padding-left: 8px; }
+  .placeholder-msg { color: var(--text-dim); font-style: italic; font-size: 11px; padding: 8px; }
+
+  /* ── Calendar ── */
+  .cal-item {
+    padding: 8px 10px;
+    background: var(--bg);
+    border-radius: 7px;
+    margin-bottom: 6px;
+    border-left: 3px solid var(--blue);
+  }
+  .cal-item .time { font-size: 11px; color: var(--blue); font-weight: 600; }
+  .cal-item .title { font-size: 13px; margin-top: 2px; }
+  .cal-item .src { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  .cal-links { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .cal-links a {
+    font-size: 11px;
+    color: var(--blue);
+    text-decoration: none;
+    padding: 3px 8px;
+    background: rgba(88,166,255,0.08);
+    border-radius: 5px;
+  }
+  .cal-links a:hover { background: rgba(88,166,255,0.15); }
+
+  /* ── AI tools ── */
+  .ai-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .ai-card {
+    background: var(--bg);
+    border-radius: 7px;
+    padding: 10px;
+    text-align: center;
+  }
+  .ai-card .name { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+  .ai-card .count { font-size: 20px; font-weight: 700; }
+  .ai-card .label { font-size: 10px; color: var(--text-dim); }
+  .ai-card .date { font-size: 9px; color: var(--text-dim); margin-top: 3px; }
+  .ai-card.chatgpt .count { color: #10a37f; }
+  .ai-card.claude .count { color: var(--orange); }
+  .ai-card.gemini .count { color: var(--blue); }
+  .ai-card.manus .count { color: var(--purple); }
+
+  /* ── Files ── */
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--bg);
+    border-radius: 7px;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .file-item .icon { font-size: 13px; }
+  .file-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .file-item .mtime { color: var(--text-dim); font-size: 10px; }
+
+  /* ── Cloud ── */
+  .cloud-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: var(--bg);
+    border-radius: 7px;
+    margin-bottom: 6px;
+  }
+  .cloud-item .info { display: flex; align-items: center; gap: 8px; }
+  .cloud-item .bar { width: 70px; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .cloud-item .bar-fill { height: 100%; border-radius: 3px; }
+  .cloud-item .space { font-size: 11px; color: var(--text-dim); }
+
+  /* ── Data Taxi ── */
+  .taxi-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: var(--bg);
+    border-radius: 7px;
+  }
+  .taxi-dot { width: 10px; height: 10px; border-radius: 50%; animation: pulse 2s infinite; }
+  .taxi-dot.mounted { background: var(--green); }
+  .taxi-dot.offline { background: var(--red); animation: none; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  .taxi-info { font-size: 12px; }
+  .taxi-info .label { color: var(--text-dim); font-size: 10px; }
+  .taxi-actions { margin-top: 8px; display: flex; gap: 6px; }
+  .taxi-actions a {
+    font-size: 11px;
+    color: var(--blue);
+    text-decoration: none;
+    padding: 3px 8px;
+    background: rgba(88,166,255,0.08);
+    border-radius: 5px;
+  }
+
+  /* ── Tasks ── */
+  .task-stats { display: flex; gap: 8px; margin-bottom: 10px; }
+  .stat { flex: 1; text-align: center; padding: 8px; background: var(--bg); border-radius: 7px; }
+  .stat .num { font-size: 20px; font-weight: 700; }
+  .stat .lbl { font-size: 10px; color: var(--text-dim); }
+  .stat.todo .num { color: var(--orange); }
+  .stat.wip .num { color: var(--blue); }
+  .stat.done .num { color: var(--green); }
+  .task-item { font-size: 12px; padding: 5px 10px; background: var(--bg); border-radius: 5px; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
+  .task-item .dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+  .task-item .dot.hi { background: var(--red); }
+  .task-item .dot.med { background: var(--orange); }
+  .task-item .dot.low { background: var(--green); }
+
+  /* ── Refresh bar ── */
+  .refresh-bar {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .refresh-bar .status { display: flex; align-items: center; gap: 5px; }
+  .refresh-bar .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+
+  @media (max-width: 700px) {
+    .grid { grid-template-columns: 1fr; }
+    .header { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .header .meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Go Tech Command Center</h1>
+  <div class="meta">
+    <div class="time" id="clock">--:--</div>
+    <div id="date">Loading...</div>
+  </div>
+</div>
+
+<!-- Status bar -->
+<div class="status-bar">
+  <div class="status-item"><div class="dot warn"></div>Email: <span class="val">not connected</span></div>
+  <div class="status-item"><div class="dot warn"></div>Calendar: <span class="val">not connected</span></div>
+  <div class="status-item"><div class="dot ok"></div>YouTube: <span class="val">26 episodes live</span></div>
+  <div class="status-item"><div class="dot ok"></div>TDDS: <span class="val">29 Drive URLs</span></div>
+  <div class="status-item"><div class="dot err"></div>DATA TAXI: <span class="val">not detected</span></div>
+  <div class="status-item"><div class="dot warn"></div>Destiny College: <span class="val">5 days to launch</span></div>
+  <div class="status-item"><div class="dot ok"></div>Tasks: <span class="val">35+ done / 12 TODO</span></div>
+</div>
+
+<div class="grid">
+
+  <!-- ═══════════════════ EMAIL ═══════════════════ -->
+  <div class="card" style="grid-column: span 2;">
+    <h2>
+      <span><span class="icon">📧</span> Email — 8 Accounts</span>
+      <span class="links">
+        <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank">Gmail 0</a>
+        <a href="https://mail.google.com/mail/u/1/#inbox" target="_blank">Gmail 1</a>
+        <a href="https://mail.google.com/mail/u/2/#inbox" target="_blank">Gmail 2</a>
+        <a href="https://outlook.office.com/mail/" target="_blank">Outlook</a>
+      </span>
+    </h2>
+
+    <!-- david@gotech.ai -->
+    <div class="email-row" onclick="toggleEmail('email-gotech')">
+      <div class="addr">
+        <span>david@gotech.ai</span>
+        <a class="web-link" href="https://outlook.office.com/mail/" target="_blank" onclick="event.stopPropagation()">↗ open</a>
+      </div>
+      <div class="badges">
+        <span class="badge outlook">Outlook</span>
+        <span class="badge unread">12 unread</span>
+        <span class="badge reply">3 need reply</span>
+      </div>
+    </div>
+    <div class="email-detail" id="email-gotech">
+      <div class="detail-header">
+        <span>Latest emails from david@gotech.ai</span>
+        <a href="https://outlook.office.com/mail/" target="_blank" onclick="event.stopPropagation()">Open in Outlook →</a>
+      </div>
+      <div class="placeholder-msg">⏳ Connect startup.py to see real emails. Run: <code>python3 startup.py --summary</code></div>
+    </div>
+
+    <!-- davidgoecke@outlook.com -->
+    <div class="email-row" onclick="toggleEmail('email-outlook')">
+      <div class="addr">
+        <span>davidgoecke@outlook.com</span>
+        <a class="web-link" href="https://outlook.office.com/mail/" target="_blank" onclick="event.stopPropagation()">↗ open</a>
+      </div>
+      <div class="badges">
+        <span class="badge outlook">Outlook</span>
+        <span class="badge unread">5 unread</span>
+        <span class="badge reply">1 needs reply</span>
+      </div>
+    </div>
+    <div class="email-detail" id="email-outlook">
+      <div class="detail-header">
+        <span>Latest emails from davidgoecke@outlook.com</span>
+        <a href="https://outlook.office.com/mail/" target="_blank" onclick="event.stopPropagation()">Open in Outlook →</a>
+      </div>
+      <div class="placeholder-msg">⏳ Connect startup.py to see real emails.</div>
+    </div>
+
+    <!-- bizrunner@gmail.com -->
+    <div class="email-row" onclick="toggleEmail('email-bizrunner')">
+      <div class="addr">
+        <span>bizrunner@gmail.com</span>
+        <a class="web-link" href="https://mail.google.com/mail/u/0/#inbox" target="_blank" onclick="event.stopPropagation()">↗ open</a>
+      </div>
+      <div class="badges">
+        <span class="badge gmail">Gmail</span>
+        <span class="badge unread">23 unread</span>
+        <span class="badge reply">7 need reply</span>
+      </div>
+    </div>
+    <div class="email-detail" id="email-bizrunner">
+      <div class="detail-header">
+        <span>Latest emails from bizrunner@gmail.com</span>
+        <a href="https://mail.google.com/mail/u/0/#inbox" target="_blank" onclick="event.stopPropagation()">Open in Gmail →</a>
+      </div>
+      <div class="placeholder-msg">⏳ Connect startup.py to see real emails.</div>
+    </div>
+
+    <!-- david@reveting.com -->
+    <div class="email-row" onclick="toggleEmail('email-reveting')">
+      <div class="addr">
+        <span>david@reveting.com</span>
+        <a class="web-link" href="https://mail.google.com/mail/u/1/#inbox" target="_blank" onclick="event.stopPropagation()">↗ open</a>
+      </div>
+      <div class="badges">
+        <span class="badge gmail">Gmail</span>
+        <span class="badge unread">8 unread</span>
+        <span class="badge reply">2 need reply</span>
+      </div>
+    </div>
+    <div class="email-detail" id="email-reveting">
+      <div class="detail-header">
+        <span>Latest emails from david@reveting.com</span>
+        <a href="https://mail.google.com/mail/u/1/#inbox" target="_blank" onclick="event.stopPropagation()">Open in Gmail →</a>
+      </div>
+      <div class="placeholder-msg">⏳ Connect startup.py to see real emails.</div>
+    </div>
+
+    <!-- ea@reveting.com -->
+    <div class="email-row" onclick="toggleEmail('email-ea')">
+      <div class="addr">
+        <span>ea@reveting.com</span>
+        <a class="web-link" href="https://mail.google.com/mail/u/2/#inbox" target="_blank" onclick="event.stopPropagation()">↗ open</a>
+      </div>
+      <div class="badges">
+        <span class="badge gmail">Gmail</span>
+        <span class="badge unread">3 unread</span>
+      </div>
+    </div>
+    <div class="email-detail" id="email-ea">
+      <div class="detail-header">
+        <span>Latest emails from ea@reveting.com</span>
+        <a href="https://mail.google.com/mail/u/2/#inbox" target="_blank" onclick="event.stopPropagation()">Open in Gmail →</a>
+      </div>
+      <div class="placeholder-msg">⏳ Connect startup.py to see real emails.</div>
+    </div>
+
+    <!-- ww@reveting.com -->
+    <div class="email-row" onclick="toggleEmail('email-ww')">
+      <div class="addr">
+        <span>ww@reveting.com</span>
+        <a class="web-link" href="https://mail.google.com/mail/u/3/#inbox" target="_blank" onclick="event.stopPropagation()">↗ open</a>
+      </div>
+      <div class="badges">
+        <span class="badge gmail">Gmail</span>
+        <span class="badge unread">1 unread</span>
+      </div>
+    </div>
+    <div class="email-detail" id="email-ww">
+      <div class="detail-header">
+        <span>Latest emails from ww@reveting.com</span>
+        <a href="https://mail.google.com/mail/u/3/#inbox" target="_blank" onclick="event.stopPropagation()">Open in Gmail →</a>
+      </div>
+      <div class="placeholder-msg">⏳ Connect startup.py to see real emails.</div>
+    </div>
+
+    <!-- david.goecke@grabtv.com -->
+    <div class="email-row" onclick="toggleEmail('email-grabtv')">
+      <div class="addr">
+        <span>david.goecke@grabtv.com</span>
+        <a class="web-link" href="https://mail.google.com/mail/u/4/#inbox" target="_blank" onclick="event.stopPropagation()">↗ open</a>
+      </div>
+      <div class="badges">
+        <span class="badge gmail">Gmail</span>
+        <span class="badge unread">0 unread</span>
+        <span class="badge ok">✓ caught up</span>
+      </div>
+    </div>
+    <div class="email-detail" id="email-grabtv">
+      <div class="detail-header">
+        <span>Latest emails from david.goecke@grabtv.com</span>
+        <a href="https://mail.google.com/mail/u/4/#inbox" target="_blank" onclick="event.stopPropagation()">Open in Gmail →</a>
+      </div>
+      <div class="placeholder-msg">⏳ Connect startup.py to see real emails.</div>
+    </div>
+
+    <!-- david.goecke@desetinychurch.tv -->
+    <div class="email-row" onclick="toggleEmail('email-destiny')">
+      <div class="addr">
+        <span>david.goecke@desetinychurch.tv</span>
+        <a class="web-link" href="https://mail.google.com/mail/u/5/#inbox" target="_blank" onclick="event.stopPropagation()">↗ open</a>
+      </div>
+      <div class="badges">
+        <span class="badge gmail">Gmail</span>
+        <span class="badge unread">2 unread</span>
+      </div>
+    </div>
+    <div class="email-detail" id="email-destiny">
+      <div class="detail-header">
+        <span>Latest emails from david.goecke@desetinychurch.tv</span>
+        <a href="https://mail.google.com/mail/u/5/#inbox" target="_blank" onclick="event.stopPropagation()">Open in Gmail →</a>
+      </div>
+      <div class="placeholder-msg">⏳ Connect startup.py to see real emails.</div>
+    </div>
+
+    <div style="margin-top:8px; font-size:12px; color:var(--text-dim);">
+      Total: <strong style="color:var(--text);">54 unread</strong> · <strong style="color:var(--orange);">13 need reply</strong> · Click any account to drill down
+    </div>
+  </div>
+
+  <!-- ═══════════════════ CALENDAR ═══════════════════ -->
+  <div class="card">
+    <h2>
+      <span><span class="icon">📅</span> Calendar</span>
+      <span class="links">
+        <a href="https://calendar.google.com/calendar/?authuser=bizrunner@gmail.com" target="_blank">bizrunner</a>
+        <a href="https://calendar.google.com/calendar/?authuser=david@reveting.com" target="_blank">reveting</a>
+        <a href="https://calendar.google.com/calendar/?authuser=david.goecke@grabtv.com" target="_blank">grabtv</a>
+        <a href="https://calendar.google.com/calendar/?authuser=david.goecke@desetinychurch.tv" target="_blank">destiny</a>
+      </span>
+    </h2>
+    <div class="placeholder-msg" style="padding:10px;">⏳ Calendar data not yet connected. Run startup.py with Google Calendar OAuth to see real events.</div>
+    <div class="cal-links" style="margin-top:10px;">
+      <a href="https://calendar.google.com/calendar/?authuser=bizrunner@gmail.com" target="_blank">📆 bizrunner@gmail.com</a>
+      <a href="https://calendar.google.com/calendar/?authuser=david@reveting.com" target="_blank">📆 david@reveting.com</a>
+      <a href="https://calendar.google.com/calendar/?authuser=david.goecke@grabtv.com" target="_blank">📆 david.goecke@grabtv.com</a>
+      <a href="https://calendar.google.com/calendar/?authuser=david.goecke@desetinychurch.tv" target="_blank">📆 david.goecke@desetinychurch.tv</a>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ AI CONVERSATIONS ═══════════════════ -->
+  <div class="card">
+    <h2>
+      <span><span class="icon">🤖</span> AI Conversations</span>
+      <span class="links">
+        <a href="https://chat.openai.com/" target="_blank">ChatGPT</a>
+        <a href="https://claude.ai/" target="_blank">Claude</a>
+        <a href="https://gemini.google.com/" target="_blank">Gemini</a>
+      </span>
+    </h2>
+    <div class="ai-grid">
+      <div class="ai-card chatgpt">
+        <div class="name">ChatGPT</div>
+        <div class="count">—</div>
+        <div class="label">not connected</div>
+      </div>
+      <div class="ai-card claude">
+        <div class="name">Claude</div>
+        <div class="count">—</div>
+        <div class="label">not connected</div>
+      </div>
+      <div class="ai-card gemini">
+        <div class="name">Gemini</div>
+        <div class="count">—</div>
+        <div class="label">not connected</div>
+      </div>
+      <div class="ai-card manus">
+        <div class="name">Manus</div>
+        <div class="count">—</div>
+        <div class="label">not connected</div>
+      </div>
+    </div>
+    <div style="margin-top:8px; font-size:11px; color:var(--text-dim);">Export conversation files to startup/exports/ or connect API keys</div>
+  </div>
+
+  <!-- ═══════════════════ RECENT FILES ═══════════════════ -->
+  <div class="card">
+    <h2>
+      <span><span class="icon">📁</span> Recent Files (24h)</span>
+      <span class="links">
+        <a href="file:///Users/davidgo/Documents/GoTechSolutions" target="_blank">GoTech</a>
+        <a href="file:///Users/davidgo/Documents" target="_blank">Documents</a>
+        <a href="file:///Users/davidgo/Desktop" target="_blank">Desktop</a>
+      </span>
+    </h2>
+    <div class="placeholder-msg" style="padding:10px;">⏳ Run <code>python3 startup.py --save</code> to scan recent files.</div>
+  </div>
+
+  <!-- ═══════════════════ CLOUD STORAGE ═══════════════════ -->
+  <div class="card">
+    <h2>
+      <span><span class="icon">☁️</span> Cloud Storage</span>
+      <span class="links">
+        <a href="https://drive.google.com/drive/u/0/my-drive" target="_blank">Google Drive</a>
+        <a href="https://onedrive.live.com/" target="_blank">OneDrive</a>
+        <a href="https://www.icloud.com/iclouddrive" target="_blank">iCloud</a>
+      </span>
+    </h2>
+    <div class="cloud-item">
+      <div class="info">
+        <span>🟢</span>
+        <div>
+          <div style="font-size:12px; font-weight:600;">Google Drive</div>
+          <div class="space">— not scanned</div>
+        </div>
+      </div>
+      <div class="bar"><div class="bar-fill" style="width:0%; background:var(--green);"></div></div>
+    </div>
+    <div class="cloud-item">
+      <div class="info">
+        <span>🔵</span>
+        <div>
+          <div style="font-size:12px; font-weight:600;">OneDrive</div>
+          <div class="space">— not scanned</div>
+        </div>
+      </div>
+      <div class="bar"><div class="bar-fill" style="width:0%; background:var(--blue);"></div></div>
+    </div>
+    <div class="cloud-item">
+      <div class="info">
+        <span>⚪</span>
+        <div>
+          <div style="font-size:12px; font-weight:600;">iCloud</div>
+          <div class="space">— not scanned</div>
+        </div>
+      </div>
+      <div class="bar"><div class="bar-fill" style="width:0%; background:var(--teal);"></div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ DATA TAXI ═══════════════════ -->
+  <div class="card">
+    <h2>
+      <span><span class="icon">💾</span> DATA TAXI</span>
+      <span class="links">
+        <a href="https://drive.google.com/drive/folders/1zKWH4aLhmvu8AuLIC9WSNs1wy_Dkx2ir" target="_blank">Reveting Source</a>
+      </span>
+    </h2>
+    <div class="taxi-status">
+      <div class="taxi-dot offline" id="taxiDot"></div>
+      <div class="taxi-info">
+        <div style="font-weight:600; font-size:13px;">Thumbdrive not detected</div>
+        <div class="label">Plug in DATA TAXI to sync Reveting video</div>
+      </div>
+    </div>
+    <div style="margin-top:10px; font-size:11px; color:var(--text-dim);">
+      Source: Google Drive / Reveting Shared (.mp4)<br>
+      Sync: One-way Google Drive → DATA TAXI<br>
+      Last sync: Never
+    </div>
+    <div class="taxi-actions">
+      <a href="https://drive.google.com/drive/folders/1zKWH4aLhmvu8AuLIC9WSNs1wy_Dkx2ir" target="_blank">📂 Open Reveting Folder</a>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ TASKS ═══════════════════ -->
+  <div class="card">
+    <h2>
+      <span><span class="icon">✅</span> Tasks</span>
+      <span class="links">
+        <a href="TODO.md" target="_blank">TODO</a>
+        <a href="KANBAN.md" target="_blank">Kanban</a>
+        <a href="DONE.md" target="_blank">Done</a>
+      </span>
+    </h2>
+    <div class="task-stats">
+      <div class="stat todo"><div class="num">12</div><div class="lbl">TODO</div></div>
+      <div class="stat wip"><div class="num">2</div><div class="lbl">IN PROGRESS</div></div>
+      <div class="stat done"><div class="num">35</div><div class="lbl">DONE</div></div>
+    </div>
+    <div style="font-size:11px; color:var(--text-dim); margin-bottom:6px;">🔴 Urgent:</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="destiny-college"><div class="dot hi"></div>Destiny College site — 5 days to launch ($3,000)</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="thumbnails"><div class="dot hi"></div>YouTube thumbnails — 28 generated, need to upload</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="shorts"><div class="dot hi"></div>Short-form video extraction from DATA TAXI</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="ghl"><div class="dot hi"></div>GHL Reveting integration</div>
+    <div style="font-size:11px; color:var(--text-dim); margin:8px 0 6px;">🟡 High:</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="email"><div class="dot med"></div>Email connectors (8 accounts)</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="playlists"><div class="dot med"></div>YouTube playlists + end screens</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="linkedin"><div class="dot med"></div>LinkedIn prospect finder</div>
+    <div style="font-size:11px; color:var(--text-dim); margin:8px 0 6px;">🟢 Medium:</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="stripe"><div class="dot low"></div>Stripe payment processing</div>
+    <div class="task-item" draggable="true" ondragstart="dragStart(event)" data-task="rss"><div class="dot low"></div>Podcast RSS feed setup</div>
+  </div>
+
+  <!-- Drop zones -->
+  <div class="card">
+    <h2><span class="icon">📋</span> Priority Board</h2>
+    <div id="drop-do" class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="do">
+      <div class="drop-label">🔴 DO NOW</div>
+      <div class="drop-tasks"></div>
+    </div>
+    <div id="drop-schedule" class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="schedule">
+      <div class="drop-label">📅 SCHEDULE</div>
+      <div class="drop-tasks"></div>
+    </div>
+    <div id="drop-delegate" class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="delegate">
+      <div class="drop-label">👥 DELEGATE</div>
+      <div class="drop-tasks"></div>
+    </div>
+    <div id="drop-eliminate" class="drop-zone" ondrop="drop(event)" ondragover="allowDrop(event)" data-status="eliminate">
+      <div class="drop-label">🗑️ ELIMINATE</div>
+      <div class="drop-tasks"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="refresh-bar">
+  <div class="status"><div class="dot"></div> Live</div>
+  <div id="lastRefresh">Last updated: --</div>
+</div>
+
+<script>
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString('en-US', {hour:'2-digit',minute:'2-digit'});
+    document.getElementById('date').textContent = now.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+    document.getElementById('lastRefresh').textContent = 'Last updated: ' + now.toLocaleTimeString();
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+  setTimeout(() => location.reload(), 60000);
+
+  // Email drill-down toggle
+  function toggleEmail(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle('open');
+  }
+</script>
+</body>
+</html>
