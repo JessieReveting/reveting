@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoTech Solutions — Revenue Dashboard</title>
+<style>
+:root {
+  --bg: #0B0F1A;
+  --bg2: #111827;
+  --card: #1A2234;
+  --card-border: #2A3447;
+  --accent: #F5A623;
+  --accent-dim: #F5A62333;
+  --green: #10B981;
+  --red: #EF4444;
+  --blue: #3B82F6;
+  --text: #E5E7EB;
+  --text-dim: #9CA3AF;
+  --text-muted: #6B7280;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.countdown-header {
+  background: linear-gradient(135deg, #0B0F1A 0%, #1A1F35 50%, #0B0F1A 100%);
+  border-bottom: 2px solid var(--accent);
+  padding: 24px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 4px 30px rgba(245, 166, 35, 0.1);
+}
+
+.countdown-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.countdown-left {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.countdown-days {
+  font-size: 48px;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.countdown-label {
+  font-size: 14px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.countdown-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.countdown-right {
+  text-align: right;
+}
+
+.current-date {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.progress-section {
+  margin-top: 16px;
+}
+
+.progress-bar-container {
+  background: var(--bg2);
+  border-radius: 8px;
+  height: 32px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--card-border);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #FCD34D);
+  border-radius: 8px;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+.progress-bar-text {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bg);
+}
+
+.mrr-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mrr-stat {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.mrr-stat strong {
+  color: var(--green);
+  font-size: 16px;
+}
+
+.mrr-stat .target {
+  color: var(--accent);
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 20px;
+  padding: 24px 32px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-title .icon {
+  font-size: 16px;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+/* Phase Indicator */
+.phase-display {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.phase-badge {
+  background: var(--accent-dim);
+  color: var(--accent);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.phase-days-left {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+.phase-days-left strong {
+  color: var(--text);
+  font-size: 18px;
+}
+
+.phase-target-bar {
+  background: var(--bg2);
+  border-radius: 6px;
+  height: 24px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.phase-target-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.phase-stats {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* Daily Target Tracker */
+.target-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.target-item {
+  background: var(--bg2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.target-item label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.target-item .target-num {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.target-item input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.target-item input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.target-item .actual {
+  color: var(--green);
+  font-weight: 600;
+}
+
+.conversion-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.conversion-pill {
+  background: var(--bg2);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.conversion-pill .label {
+  color: var(--text-muted);
+}
+
+.conversion-pill .value {
+  color: var(--green);
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* Weekly Chart */
+.chart-container {
+  position: relative;
+  height: 250px;
+  margin-top: 8px;
+}
+
+.chart-container canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* Service Donut */
+.donut-container {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.donut-container canvas {
+  flex-shrink: 0;
+}
+
+.service-legend {
+  flex: 1;
+  min-width: 150px;
+}
+
+.service-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--card-border);
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.service-item:hover {
+  opacity: 0.7;
+}
+
+.service-item:last-child {
+  border-bottom: none;
+}
+
+.service-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.service-name {
+  font-size: 13px;
+}
+
+.service-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Pipeline Funnel */
+.funnel-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.funnel-stage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  position: relative;
+  transition: transform 0.2s;
+}
+
+.funnel-stage:hover {
+  transform: translateX(4px);
+}
+
+.funnel-bar-container {
+  flex: 1;
+  background: var(--bg2);
+  border-radius: 4px;
+  height: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.funnel-bar {
+  height: 100%;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  padding-left: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bg);
+  transition: width 0.5s ease;
+}
+
+.funnel-label {
+  min-width: 100px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.funnel-count {
+  min-width: 40px;
+  text-align: right;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.funnel-conversion {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px 0;
+}
+
+.funnel-arrow {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.bottleneck {
+  border: 1px solid var(--red);
+  background: rgba(239, 68, 68, 0.05);
+}
+
+/* Daily Action Log */
+.action-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.streak-badge {
+  background: linear-gradient(135deg, var(--accent), #FCD34D);
+  color: var(--bg);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.action-list {
+  list-style: none;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.action-item:last-child {
+  border-bottom: none;
+}
+
+.action-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 2px solid var(--card-border);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.action-checkbox.checked {
+  background: var(--green);
+  border-color: var(--green);
+}
+
+.action-checkbox.checked::after {
+  content: '✓';
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.action-text {
+  flex: 1;
+  font-size: 13px;
+}
+
+.action-text.completed {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.add-action {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.add-action input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.add-action input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn:hover {
+  opacity: 0.9;
+}
+
+.btn-secondary {
+  background: var(--bg2);
+  color: var(--text);
+  border: 1px solid var(--card-border);
+}
+
+/* Cash Forecast */
+.forecast-milestones {
+  margin-bottom: 16px;
+}
+
+.milestone {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.milestone:last-child {
+  border-bottom: none;
+}
+
+.milestone-icon {
+  font-size: 20px;
+}
+
+.milestone-info {
+  flex: 1;
+}
+
+.milestone-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.milestone-day {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Quick Log */
+.quick-log-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.quick-log-section {
+  background: var(--bg2);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.quick-log-section h4 {
+  font-size: 12px;
+  color: var(--accent);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quick-log-section input,
+.quick-log-section select,
+.quick-log-section textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.quick-log-section input:focus,
+.quick-log-section select:focus,
+.quick-log-section textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.quick-log-section textarea {
+  resize: vertical;
+  min-height: 50px;
+}
+
+.log-btn {
+  width: 100%;
+  margin-top: 4px;
+  padding: 6px;
+  font-size: 11px;
+}
+
+/* Recent Log Entries */
+.log-entries {
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+.log-entry {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--text-dim);
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-entry .timestamp {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  z-index: 1000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast.success {
+  border-color: var(--green);
+}
+
+/* Motivation banner */
+.motivation {
+  background: linear-gradient(135deg, var(--accent-dim), transparent);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--accent);
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  .countdown-header {
+    padding: 16px;
+  }
+  .countdown-days {
+    font-size: 36px;
+  }
+  .quick-log-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="countdown-header">
+  <div class="countdown-top">
+    <div>
+      <div class="countdown-left">
+        <span class="countdown-days" id="daysCount">69</span>
+        <span class="countdown-label">Days to<br>Sept 1</span>
+      </div>
+      <div class="countdown-subtitle" id="subtitle">Launch your $1M ARR journey</div>
+    </div>
+    <div class="countdown-right">
+      <div class="current-date" id="currentDate"></div>
+      <div class="mrr-row">
+        <span class="mrr-stat">MRR: <strong id="currentMRR">$0</strong></span>
+        <span class="mrr-stat">/ Target: <span class="target">$83,333/mo</span></span>
+        <span class="mrr-stat">ARR: <strong id="currentARR">$0</strong></span>
+        <span class="mrr-stat">/ <span class="target">$1,000,000</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="progress-section">
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
+      <span class="progress-bar-text" id="progressText">0%</span>
+    </div>
+  </div>
+</header>
+
+<!-- Dashboard -->
+<div class="dashboard-grid">
+
+  <!-- Phase Indicator -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🎯</span> Current Phase</div>
+    <div class="phase-display">
+      <span class="phase-badge" id="phaseBadge">FOUNDATION</span>
+      <span class="phase-days-left"><strong id="phaseDaysLeft">69</strong> days remaining</span>
+    </div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">Phase Target vs Actual</div>
+    <div class="phase-target-bar">
+      <div class="phase-target-fill" id="phaseTargetFill" style="width: 0%; background: var(--green);"></div>
+    </div>
+    <div class="phase-stats">
+      <span id="phaseTargetText">Target: $0 MRR</span>
+      <span id="phaseActualText" style="color: var(--green);">Actual: $0</span>
+    </div>
+  </div>
+
+  <!-- Daily Target Tracker -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📊</span> Daily Targets</div>
+    <div class="target-grid">
+      <div class="target-item">
+        <label>Outreach</label>
+        <span class="target-num">Target: <span id="tOutreach">50</span></span>
+        <input type="number" id="aOutreach" placeholder="Actual" min="0" oninput="updateConversions()">
+      </div>
+      <div class="target-item">
+        <label>Replies</label>
+        <span class="target-num">Target: <span id="tReplies">10</span></span>
+        <input type="number" id="aReplies" placeholder="Actual" min="0" oninput="updateConversions()">
+      </div>
+      <div class="target-item">
+        <label>Calls</label>
+        <span class="target-num">Target: <span id="tCalls">5</span></span>
+        <input type="number" id="aCalls" placeholder="Actual" min="0" oninput="updateConversions()">
+      </div>
+      <div class="target-item">
+        <label>Proposals</label>
+        <span class="target-num">Target: <span id="tProposals">2</span></span>
+        <input type="number" id="aProposals" placeholder="Actual" min="0" oninput="updateConversions()">
+      </div>
+      <div class="target-item">
+        <label>Closes</label>
+        <span class="target-num">Target: <span id="tCloses">1</span></span>
+        <input type="number" id="aCloses" placeholder="Actual" min="0" oninput="updateConversions()">
+      </div>
+      <div class="target-item">
+        <label>Revenue ($)</label>
+        <span class="target-num">Target: <span id="tRevenue">2000</span></span>
+        <input type="number" id="aRevenue" placeholder="Actual $" min="0" oninput="updateConversions()">
+      </div>
+    </div>
+    <div class="conversion-row" id="conversionRow">
+      <span class="conversion-pill"><span class="label">Conv:</span><span class="value" id="convRate">—</span></span>
+      <span class="conversion-pill"><span class="label">Rev:</span><span class="value" id="revToday">$0</span></span>
+    </div>
+  </div>
+
+  <!-- Weekly Progress -->
+  <div class="card full-width">
+    <div class="card-title"><span class="icon">📈</span> Weekly MRR Progress</div>
+    <div class="chart-container">
+      <canvas id="weeklyChart"></canvas>
+    </div>
+    <div class="chart-legend">
+      <span class="legend-item"><span class="legend-dot" style="background: var(--accent)"></span> Planned</span>
+      <span class="legend-item"><span class="legend-dot" style="background: var(--green)"></span> Actual</span>
+    </div>
+  </div>
+
+  <!-- Service Mix -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🍩</span> Service Mix</div>
+    <div class="donut-container">
+      <canvas id="donutChart" width="180" height="180"></canvas>
+      <div class="service-legend" id="serviceLegend"></div>
+    </div>
+  </div>
+
+  <!-- Pipeline Funnel -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🔻</span> Pipeline Funnel</div>
+    <div class="funnel-stages" id="funnelStages"></div>
+  </div>
+
+  <!-- Daily Action Log -->
+  <div class="card">
+    <div class="card-title"><span class="icon">✅</span> Daily Actions</div>
+    <div class="action-header">
+      <span id="actionProgress">0 / 0 completed</span>
+      <span class="streak-badge" id="streakBadge">🔥 0 day streak</span>
+    </div>
+    <ul class="action-list" id="actionList"></ul>
+    <div class="add-action">
+      <input type="text" id="newActionInput" placeholder="Add custom action..." onkeypress="if(event.key==='Enter')addAction()">
+      <button class="btn" onclick="addAction()">Add</button>
+    </div>
+  </div>
+
+  <!-- 30-Day Cash Forecast -->
+  <div class="card">
+    <div class="card-title"><span class="icon">💰</span> 30-Day Cash Forecast</div>
+    <div class="forecast-milestones" id="forecastMilestones"></div>
+    <div class="chart-container">
+      <canvas id="forecastChart"></canvas>
+    </div>
+    <div class="motivation" id="motivationText" style="margin-top: 12px;">Keep pushing! Every dollar counts. 💪</div>
+  </div>
+
+  <!-- Quick Log -->
+  <div class="card full-width">
+    <div class="card-title"><span class="icon">⚡</span> Quick Log</div>
+    <div class="quick-log-grid">
+      <div class="quick-log-section">
+        <h4>+Revenue</h4>
+        <input type="number" id="qlAmount" placeholder="Amount ($)">
+        <input type="text" id="qlSource" placeholder="Source">
+        <input type="text" id="qlNote" placeholder="Note">
+        <button class="btn log-btn" onclick="logRevenue()">Log Revenue</button>
+      </div>
+      <div class="quick-log-section">
+        <h4>+Lead</h4>
+        <input type="text" id="qlLeadName" placeholder="Name">
+        <input type="text" id="qlLeadSource" placeholder="Source">
+        <input type="text" id="qlLeadInterest" placeholder="Interest Level">
+        <button class="btn log-btn" onclick="logLead()">Log Lead</button>
+      </div>
+      <div class="quick-log-section">
+        <h4>+Client</h4>
+        <input type="text" id="qlClientName" placeholder="Name">
+        <input type="text" id="qlClientService" placeholder="Service">
+        <input type="number" id="qlClientValue" placeholder="Value ($)">
+        <button class="btn log-btn" onclick="logClient()">Log Client</button>
+      </div>
+      <div class="quick-log-section">
+        <h4>+Note</h4>
+        <textarea id="qlNoteText" placeholder="Free text note..."></textarea>
+        <button class="btn log-btn" onclick="logNote()">Log Note</button>
+      </div>
+    </div>
+    <div class="log-entries" id="recentLogs"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ========== DATA LAYER ==========
+const STORAGE_KEY = 'gotech_dashboard';
+const TARGET_ARR = 1000000;
+const TARGET_MRR = Math.round(TARGET_ARR / 12); // 83,333
+const START_DATE = new Date('2026-06-24');
+const LAUNCH_DATE = new Date('2026-09-01');
+
+const PHASES = [
+  { name: 'FOUNDATION', days: 30, targetMRR: 5000 },
+  { name: 'LAUNCH', days: 20, targetMRR: 15000 },
+  { name: 'SCALE', days: 30, targetMRR: 40000 },
+  { name: 'ACCELERATE', days: 30, targetMRR: 65000 },
+  { name: 'SPRINT', days: 30, targetMRR: 83333 },
+  { name: 'LAUNCH', days: 20, targetMRR: 100000 }
+];
+
+const SERVICES = ['AI Ops', 'Comms', 'CRO', 'Go Live', 'Bundle'];
+const SERVICE_COLORS = ['#F5A623', '#10B981', '#3B82F6', '#8B5CF6', '#EF4444'];
+const DEFAULT_ACTIONS = [
+  'Send 50 outreach messages',
+  'Follow up on pending replies',
+  'Book/confirm 5 calls',
+  'Prepare 2 proposals',
+  'Review pipeline & update CRM',
+  'Share content on LinkedIn'
+];
+
+function getDefaults() {
+  return {
+    mrr: 0,
+    log: [],
+    leads: { contacted: 0, qualified: 0, proposal: 0, closed: 0 },
+    services: {},
+    streak: 0,
+    lastTargetDate: null,
+    weeklyMrr: Array(10).fill(0),
+    todayTargets: { outreach: 50, replies: 10, calls: 5, proposals: 2, closes: 1, revenue: 2000 },
+    actions: DEFAULT_ACTIONS.map(a => ({ text: a, completed: false }))
+  };
+}
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  const d = getDefaults();
+  // Pre-populate with sample data
+  d.mrr = 3500;
+  d.leads = { contacted: 45, qualified: 18, proposal: 7, closed: 2 };
+  d.services = { 'AI Ops': 35, 'Comms': 25, 'CRO': 20, 'Go Live': 12, 'Bundle': 8 };
+  d.weeklyMrr = [0, 1500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500];
+  d.streak = 3;
+  d.actions[0].completed = true;
+  d.actions[1].completed = true;
+  return d;
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let appData = loadData();
+
+// ========== UTILITY FUNCTIONS ==========
+function formatCurrency(n) {
+  return '$' + n.toLocaleString();
+}
+
+function daysUntil(date) {
+  const today = new Date('2026-06-24');
+  return Math.max(0, Math.ceil((date - today) / (1000 * 60 * 60 * 24)));
+}
+
+function getCurrentPhase() {
+  let day = 0;
+  for (const phase of PHASES) {
+    day += phase.days;
+    const phaseEnd = new Date(START_DATE);
+    phaseEnd.setDate(phaseEnd.getDate() + day);
+    if (new Date('2026-06-24') <= phaseEnd) {
+      const daysIntoPhase = Math.ceil((new Date('2026-06-24') - new Date(phaseEnd.getTime() - phase.days * 86400000)) / 86400000);
+      return { ...phase, daysLeft: Math.max(0, phase.days - daysIntoPhase), currentDay: daysIntoPhase };
+    }
+  }
+  return PHASES[PHASES.length - 1];
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+function getMotivation(mrr, target) {
+  const pct = mrr / target;
+  if (pct >= 1) return "🎉 You've HIT $1M ARR! Legendary!";
+  if (pct >= 0.75) return "Almost there! The finish line is in sight! 🏁";
+  if (pct >= 0.5) return "Halfway! Momentum is building, keep charging! �";
+  if (pct >= 0.25) return "Great start! Every client gets you closer! 🚀";
+  if (pct >= 0.1) return "You're building something real now! 💪";
+  return "Every journey starts with the first step. Let's go! 🔥";
+}
+
+// ========== RENDER FUNCTIONS ==========
+function renderHeader() {
+  const days = daysUntil(LAUNCH_DATE);
+  const mrr = appData.mrr;
+  const arr = mrr * 12;
+  const pct = Math.min(100, (mrr / TARGET_MRR) * 100);
+
+  document.getElementById('daysCount').textContent = days;
+  document.getElementById('currentDate').textContent = 'June 24, 2026';
+  document.getElementById('currentMRR').textContent = formatCurrency(mrr);
+  document.getElementById('currentARR').textContent = formatCurrency(arr);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = pct.toFixed(1) + '%';
+
+  // Motivation
+  document.getElementById('motivationText').textContent = getMotivation(mrr, TARGET_MRR);
+}
+
+function renderPhase() {
+  const phase = getCurrentPhase();
+  const daysLeft = phase.daysLeft;
+  const phasePct = Math.min(100, (phase.currentDay / phase.days) * 100);
+
+  document.getElementById('phaseBadge').textContent = phase.name;
+  document.getElementById('phaseDaysLeft').textContent = daysLeft;
+  document.getElementById('phaseTargetFill').style.width = phasePct + '%';
+  document.getElementById('phaseTargetText').textContent = `Target: ${formatCurrency(phase.targetMRR)} MRR`;
+  document.getElementById('phaseActualText').textContent = `Actual: ${formatCurrency(appData.mrr)}`;
+}
+
+function renderConversions() {
+  const a = {
+    outreach: parseInt(document.getElementById('aOutreach').value) || 0,
+    replies: parseInt(document.getElementById('aReplies').value) || 0,
+    calls: parseInt(document.getElementById('aCalls').value) || 0,
+    proposals: parseInt(document.getElementById('aProposals').value) || 0,
+    closes: parseInt(document.getElementById('aCloses').value) || 0,
+    revenue: parseInt(document.getElementById('aRevenue').value) || 0
+  };
+
+  const outreach = appData.todayTargets.outreach;
+  const replies = appData.todayTargets.replies;
+  const convRate = outreach > 0 ? ((a.replies / outreach) * 100).toFixed(0) + '%' : '—';
+
+  document.getElementById('convRate').textContent = convRate;
+  document.getElementById('revToday').textContent = formatCurrency(a.revenue);
+
+  // Check streak
+  const today = '2026-06-24';
+  const allHit = a.outreach >= outreach && a.replies >= replies && a.calls >= appData.todayTargets.calls;
+  if (allHit && appData.lastTargetDate !== today) {
+    appData.streak++;
+    appData.lastTargetDate = today;
+    saveData(appData);
+    showToast('🎉 Daily targets hit! Streak: ' + appData.streak + ' days!', 'success');
+  }
+
+  renderStreak();
+}
+
+function updateConversions() {
+  renderConversions();
+}
+
+function renderWeeklyChart() {
+  const canvas = document.getElementById('weeklyChart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const w = rect.width;
+  const h = rect.height;
+
+  ctx.clearRect(0, 0, w, h);
+
+  const padding = { top: 20, right: 20, bottom: 30, left: 50 };
+  const cw = w - padding.left - padding.right;
+  const ch = h - padding.top - padding.bottom;
+
+  // Grid
+  ctx.strokeStyle = '#2A3447';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (ch / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(w - padding.right, y);
+    ctx.stroke();
+  }
+
+  const maxPlanned = TARGET_MRR;
+  const maxActual = Math.max(...appData.weeklyMrr, 1000);
+  const maxY = Math.max(maxPlanned * 0.3, maxActual * 1.2);
+
+  // Planned line (linear to 83,333 by week 10)
+  ctx.beginPath();
+  ctx.strokeStyle = '#F5A623';
+  ctx.lineWidth = 2.5;
+  ctx.setLineDash([6, 4]);
+  for (let i = 0; i < 10; i++) {
+    const x = padding.left + (cw / 9) * i;
+    const val = (maxPlanned * 0.3 / 9) * i;
+    const y = padding.top + ch - (val / maxY) * ch;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Actual line
+  ctx.beginPath();
+  ctx.strokeStyle = '#10B981';
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 10; i++) {
+    const x = padding.left + (cw / 9) * i;
+    const val = appData.weeklyMrr[i] || 0;
+    const y = padding.top + ch - (val / maxY) * ch;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.stroke();
+
+  // Dots on actual
+  for (let i = 0; i < 10; i++) {
+    const x = padding.left + (cw / 9) * i;
+    const val = appData.weeklyMrr[i] || 0;
+    const y = padding.top + ch - (val / maxY) * ch;
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#10B981';
+    ctx.fill();
+  }
+
+  // Labels
+  ctx.fillStyle = '#6B7280';
+  ctx.font = '11px -apple-system';
+  ctx.textAlign = 'center';
+  for (let i = 0; i < 10; i++) {
+    const x = padding.left + (cw / 9) * i;
+    ctx.fillText('W' + (i + 1), x, h - 8);
+  }
+
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const val = (maxY / 4) * (4 - i);
+    const y = padding.top + (ch / 4) * i + 4;
+    ctx.fillText(formatCurrency(Math.round(val)), padding.left - 8, y);
+  }
+}
+
+function renderDonut() {
+  const canvas = document.getElementById('donutChart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 180 * dpr;
+  canvas.height = 180 * dpr;
+  ctx.scale(dpr, dpr);
+
+  const cx = 90, cy = 90, r = 70, ir = 45;
+  const services = SERVICES;
+  const colors = SERVICE_COLORS;
+
+  let total = services.reduce((s, svc) => s + (appData.services[svc] || 0), 0);
+  if (total === 0) total = 1;
+
+  let startAngle = -Math.PI / 2;
+
+  ctx.clearRect(0, 0, 180, 180);
+
+  services.forEach((svc, i) => {
+    const val = appData.services[svc] || 0;
+    const fraction = val / total;
+    const endAngle = startAngle + fraction * Math.PI * 2;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, startAngle, endAngle);
+    ctx.arc(cx, cy, ir, endAngle, startAngle, true);
+    ctx.closePath();
+    ctx.fillStyle = colors[i];
+    ctx.fill();
+
+    startAngle = endAngle;
+  });
+
+  // Center text
+  ctx.fillStyle = '#E5E7EB';
+  ctx.font = 'bold 16px -apple-system';
+  ctx.textAlign = 'center';
+  ctx.fillText(formatCurrency(appData.mrr), cx, cy - 4);
+  ctx.font = '11px -apple-system';
+  ctx.fillStyle = '#6B7280';
+  ctx.fillText('MRR', cx, cy + 14);
+
+  // Legend
+  const legend = document.getElementById('serviceLegend');
+  legend.innerHTML = services.map((svc, i) => {
+    const val = appData.services[svc] || 0;
+    const pct = total > 0 ? ((val / total) * 100).toFixed(0) : 0;
+    return `<div class="service-item" onclick="toggleService('${svc}')">
+      <div class="service-info">
+        <span class="swatch" style="background: ${colors[i]}"></span>
+        <span class="service-name">${svc}</span>
+      </div>
+      <span class="service-value">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderFunnel() {
+  const stages = [
+    { label: 'Leads', count: appData.leads.contacted + appData.leads.qualified + appData.leads.proposal + appData.leads.closed, color: '#3B82F6' },
+    { label: 'Contacted', count: appData.leads.contacted + appData.leads.qualified + appData.leads.proposal + appData.leads.closed, color: '#8B5CF6' },
+    { label: 'Qualified', count: appData.leads.qualified + appData.leads.proposal + appData.leads.closed, color: '#F5A623' },
+    { label: 'Proposal', count: appData.leads.proposal + appData.leads.closed, color: '#10B981' },
+    { label: 'Closed', count: appData.leads.closed, color: '#EF4444' }
+  ];
+
+  const maxCount = Math.max(stages[0].count, 1);
+
+  const container = document.getElementById('funnelStages');
+  container.innerHTML = stages.map((stage, i) => {
+    const width = Math.max(5, (stage.count / maxCount) * 100);
+    const prevCount = i > 0 ? stages[i - 1].count : stage.count;
+    const conversion = prevCount > 0 ? ((stage.count / prevCount) * 100).toFixed(0) : 100;
+    const isBottleneck = i > 0 && conversion < 40;
+
+    let html = `<div class="funnel-stage ${isBottleneck ? 'bottleneck' : ''}">
+      <span class="funnel-label">${stage.label}</span>
+      <div class="funnel-bar-container">
+        <div class="funnel-bar" style="width: ${width}%; background: ${stage.color};">${stage.count}</div>
+      </div>
+      <span class="funnel-count">${stage.count}</span>
+    </div>`;
+
+    if (i < stages.length - 1) {
+      const nextConv = stages[i + 1].count > 0 ? ((stages[i + 1].count / stage.count) * 100).toFixed(0) : '0';
+      html += `<div class="funnel-arrow">↓ ${nextConv}%</div>`;
+    }
+
+    return html;
+  }).join('');
+}
+
+function renderActions() {
+  const list = document.getElementById('actionList');
+  list.innerHTML = appData.actions.map((a, i) => {
+    return `<li class="action-item">
+      <div class="action-checkbox ${a.completed ? 'checked' : ''}" onclick="toggleAction(${i})"></div>
+      <span class="action-text ${a.completed ? 'completed' : ''}">${a.text}</span>
+    </li>`;
+  }).join('');
+
+  const completed = appData.actions.filter(a => a.completed).length;
+  const total = appData.actions.length;
+  document.getElementById('actionProgress').textContent = `${completed} / ${total} completed`;
+}
+
+function renderStreak() {
+  document.getElementById('streakBadge').textContent = `🔥 ${appData.streak} day${appData.streak !== 1 ? 's' : ''} streak`;
+}
+
+function renderForecast() {
+  const mrr = appData.mrr;
+  const monthlyBurn = 5000; // assumed
+  const dailyBurn = monthlyBurn / 30;
+  const dailyRevenue = mrr / 30;
+
+  const milestones = [];
+  let cash = 0;
+
+  // Find break-even
+  if (dailyRevenue > dailyBurn) {
+    const breakEvenDays = Math.ceil(Math.abs(cash) / (dailyRevenue - dailyBurn));
+    milestones.push({ icon: '💰', title: 'Cash Positive', day: breakEvenDays });
+  } else {
+    milestones.push({ icon: '💰', title: 'Cash Positive', day: null });
+  }
+
+  // $1M ARR milestone
+  if (mrr >= TARGET_MRR) {
+    milestones.push({ icon: '🏆', title: '$1M ARR Hit!', day: 0 });
+  } else {
+    const growthNeeded = TARGET_MRR - mrr;
+    const monthlyGrowth = 1500; // assumed
+    const monthsToTarget = Math.ceil(growthNeeded / monthlyGrowth);
+    milestones.push({ icon: '🏆', title: '$1M ARR in ~' + monthsToTarget + ' months', day: monthsToTarget * 30 });
+  }
+
+  document.getElementById('forecastMilestones').innerHTML = milestones.map(m => `
+    <div class="milestone">
+      <span class="milestone-icon">${m.icon}</span>
+      <div class="milestone-info">
+        <div class="milestone-title">${m.title}</div>
+        <div class="milestone-day">${m.day !== null ? (m.day === 0 ? 'NOW!' : 'Day ' + m.day) : 'Not yet'}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Forecast chart
+  const canvas = document.getElementById('forecastChart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  const w = rect.width;
+  const h = rect.height;
+
+  ctx.clearRect(0, 0, w, h);
+  const padding = { top: 10, right: 10, bottom: 25, left: 40 };
+  const cw = w - padding.left - padding.right;
+  const ch = h - padding.top - padding.bottom;
+
+  let cumulative = 0;
+  const points = [];
+  for (let i = 0; i < 30; i++) {
+    cumulative += (dailyRevenue - dailyBurn) * i + dailyRevenue - dailyBurn;
+    points.push(cumulative);
+  }
+  // Recalculate properly
+  cumulative = 0;
+  for (let i = 0; i < 30; i++) {
+    cumulative += dailyRevenue - dailyBurn;
+    points[i] = cumulative;
+  }
+
+  const maxVal = Math.max(...points, 0);
+  const minVal = Math.min(...points, 0);
+  const range = maxVal - minVal || 1;
+
+  // Zero line
+  const zeroY = padding.top + ch - ((0 - minVal) / range) * ch;
+  ctx.strokeStyle = '#2A3447';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath();
+  ctx.moveTo(padding.left, zeroY);
+  ctx.lineTo(w - padding.right, zeroY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Fill
+  ctx.beginPath();
+  for (let i = 0; i < 30; i++) {
+    const x = padding.left + (cw / 29) * i;
+    const y = padding.top + ch - ((points[i] - minVal) / range) * ch;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.lineTo(padding.left + cw, zeroY);
+  ctx.lineTo(padding.left, zeroY);
+  ctx.closePath();
+  const gradient = ctx.createLinearGradient(0, padding.top, 0, h - padding.bottom);
+  gradient.addColorStop(0, 'rgba(239, 68, 68, 0.3)');
+  gradient.addColorStop(1, 'rgba(16, 185, 129, 0.3)');
+  ctx.fillStyle = gradient;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  for (let i = 0; i < 30; i++) {
+    const x = padding.left + (cw / 29) * i;
+    const y = padding.top + ch - ((points[i] - minVal) / range) * ch;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = '#10B981';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Labels
+  ctx.fillStyle = '#6B7280';
+  ctx.font = '10px -apple-system';
+  ctx.textAlign = 'center';
+  [0, 9, 19, 29].forEach(d => {
+    const x = padding.left + (cw / 29) * d;
+    ctx.fillText('D' + (d + 1), x, h - 6);
+  });
+}
+
+function renderRecentLogs() {
+  const container = document.getElementById('recentLogs');
+  const recent = appData.log.slice(-5).reverse();
+  if (recent.length === 0) {
+    container.innerHTML = '<div class="log-entry" style="color: var(--text-muted);">No entries yet. Start logging!</div>';
+    return;
+  }
+  container.innerHTML = recent.map(entry => {
+    const time = entry.time || 'Just now';
+    let text = '';
+    if (entry.type === 'revenue') text = `💰 +${formatCurrency(entry.amount)}`;
+    else if (entry.type === 'lead') text = `👤 Lead: ${entry.name}`;
+    else if (entry.type === 'client') text = `🤝 Client: ${entry.name}`;
+    else if (entry.type === 'note') text = `📝 ${entry.text}`;
+    return `<div class="log-entry">${text} <span class="timestamp">${time}</span></div>`;
+  }).join('');
+}
+
+// ========== INTERACTIONS ==========
+function toggleAction(index) {
+  appData.actions[index].completed = !appData.actions[index].completed;
+  saveData(appData);
+  renderActions();
+  showToast(appData.actions[index].completed ? '✅ Nice work!' : 'Back on it!');
+}
+
+function addAction() {
+  const input = document.getElementById('newActionInput');
+  const text = input.value.trim();
+  if (!text) return;
+  appData.actions.push({ text, completed: false });
+  saveData(appData);
+  renderActions();
+  input.value = '';
+  showToast('Action added! Get after it! 💪');
+}
+
+function toggleService(svc) {
+  // Quick way to increment service share for demo
+  appData.services[svc] = (appData.services[svc] || 0) + 5;
+  saveData(appData);
+  renderDonut();
+  showToast(`${svc} +5%`);
+}
+
+function logRevenue() {
+  const amount = parseInt(document.getElementById('qlAmount').value);
+  const source = document.getElementById('qlSource').value || 'Unknown';
+  const note = document.getElementById('qlNote').value;
+
+  if (!amount || amount <= 0) {
+    showToast('Enter a valid amount');
+    return;
+  }
+
+  appData.mrr += amount;
+  appData.log.push({ type: 'revenue', amount, source, note, time: 'Today' });
+
+  // Update weekly Mrr (current week)
+  const weekIdx = Math.min(9, Math.floor((new Date('2026-06-24') - START_DATE) / (7 * 86400000)));
+  appData.weeklyMrr[Math.max(0, weekIdx)] = appData.mrr;
+
+  saveData(appData);
+  renderAll();
+  showToast(`🎉 +${formatCurrency(amount)} MRR logged! Incredible!`, 'success');
+
+  document.getElementById('qlAmount').value = '';
+  document.getElementById('qlSource').value = '';
+  document.getElementById('qlNote').value = '';
+}
+
+function logLead() {
+  const name = document.getElementById('qlLeadName').value.trim();
+  const source = document.getElementById('qlLeadSource').value || 'Other';
+  const interest = document.getElementById('qlLeadInterest').value || 'Medium';
+
+  if (!name) { showToast('Enter a lead name'); return; }
+
+  appData.leads.contacted++;
+  appData.log.push({ type: 'lead', name, source, interest, time: 'Today' });
+  saveData(appData);
+  renderFunnel();
+  renderRecentLogs();
+  showToast(`Lead ${name}! Pipeline growing! 🔥`);
+
+  document.getElementById('qlLeadName').value = '';
+  document.getElementById('qlLeadSource').value = '';
+  document.getElementById('qlLeadInterest').value = '';
+}
+
+function logClient() {
+  const name = document.getElementById('qlClientName').value.trim();
+  const service = document.getElementById('qlClientService').value || 'AI Ops';
+  const value = parseInt(document.getElementById('qlClientValue').value) || 0;
+
+  if (!name) { showToast('Enter client name'); return; }
+
+  appData.services[service] = (appData.services[service] || 0) + value;
+  appData.log.push({ type: 'client', name, service, value, time: 'Today' });
+  saveData(appData);
+  renderDonut();
+  renderRecentLogs();
+  showToast(`🤝 ${name} onboarded! Amazing!`, 'success');
+
+  document.getElementById('qlClientName').value = '';
+  document.getElementById('qlClientService').value = '';
+  document.getElementById('qlClientValue').value = '';
+}
+
+function logNote() {
+  const text = document.getElementById('qlNoteText').value.trim();
+  if (!text) return;
+
+  appData.log.push({ type: 'note', text, time: 'Today' });
+  saveData(appData);
+  renderRecentLogs();
+  showToast('📝 Note saved!');
+
+  document.getElementById('qlNoteText').value = '';
+}
+function renderAll() {
+  renderHeader();
+  renderPhase();
+  renderConversions();
+  renderWeeklyChart();
+  renderDonut();
+  renderFunnel();
+  renderActions();
+  renderStreak();
+  renderForecast();
+  renderRecentLogs();
+}
+
+// Initialize with target defaults in the UI
+document.getElementById('tOutreach').textContent = appData.todayTargets.outreach;
+document.getElementById('tReplies').textContent = appData.todayTargets.replies;
+document.getElementById('tCalls').textContent = appData.todayTargets.calls;
+document.getElementById('tProposals').textContent = appData.todayTargets.proposals;
+document.getElementById('tCloses').textContent = appData.todayTargets.closes;
+document.getElementById('tRevenue').textContent = appData.todayTargets.revenue;
+
+renderAll();
+
+// Handle resize
+window.addEventListener('resize', () => {
+  renderWeeklyChart();
+  renderForecast();
+  renderDonut();
+});
+</script>
+</body>
+</html>
