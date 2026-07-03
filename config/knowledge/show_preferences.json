@@ -1,0 +1,101 @@
+{
+  "version": "1.0",
+  "purpose": "Show-specific preferences learned from human operations decisions. These preferences are knowledge only until Jessie approves a rule change.",
+  "shows": {
+    "deconstructing-data": {
+      "show_name": "Deconstructing Data",
+      "preferences": [
+        {
+          "id": "preshow-instructions-can-satisfy-preshow-expectation",
+          "preference_type": "calendar_timing",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Calendar may show 4:00-5:00 PM ET because pre-show starts at 4:00 PM ET and livestream begins at 4:15 PM ET. This is valid when the description confirms the 4:15 PM live start.",
+          "confirmation_count": 2,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "For Deconstructing Data, treat 4:00 PM ET calendar start as valid pre-show if description states livestream begins at 4:15 PM ET."
+        }
+      ]
+    },
+    "winsday": {
+      "show_name": "WinsDay",
+      "preferences": [
+        {
+          "id": "replacement-guest-topics-first",
+          "preference_type": "replacement_guest_workflow",
+          "decision_outcome": "audit was partially correct",
+          "summary": "When a replacement guest steps in manually and bypasses HighLevel, classify episode readiness as waiting on replacement guest topics before LinkedIn event, calendar update, and emails.",
+          "confirmation_count": 2,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Support manually confirmed replacement guests who bypass HighLevel and recommend adding them to HighLevel later."
+        }
+      ]
+    },
+    "beyond-the-cart": {
+      "show_name": "Beyond the Cart",
+      "preferences": [
+        {
+          "id": "related-canceled-context-needs-confirmation",
+          "preference_type": "source_of_truth_resolution",
+          "decision_outcome": "audit was partially correct",
+          "summary": "When Google Calendar has an event but related HighLevel context appears canceled, classify as Needs Human Verification unless a human-confirmed active exception exists.",
+          "confirmation_count": 2,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Support human-confirmed active exceptions before stale/orphaned classification."
+        }
+      ]
+    },
+    "cherry-willow": {
+      "show_name": "Apparel with Purpose",
+      "preferences": [
+        {
+          "id": "guest-confirmation-pitch-followup-state",
+          "preference_type": "guest_confirmation",
+          "decision_outcome": "audit was partially correct",
+          "summary": "Treat uncertain July guest records as needing guest confirmation or pitch follow-up before readiness.",
+          "confirmation_count": 1,
+          "confidence": "medium",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Promote to show-specific readiness state after repeated confirmation."
+        },
+        {
+          "id": "show-needs-replacement-guest-state",
+          "preference_type": "replacement_guest_alert",
+          "decision_outcome": "new SOP discovered",
+          "summary": "If an Apparel with Purpose show within 30 days has no confirmed active guest, alert Needs Guest Replacement and recommend Write PR pitch / find replacement guest.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Promote show_needs_guest_replacement alert for Cherry Willow/Apparel with Purpose after another confirmation."
+        },
+        {
+          "id": "calendar-confirmed-highlevel-canceled-followup",
+          "preference_type": "guest_confirmation",
+          "decision_outcome": "audit was partially correct",
+          "summary": "If a guest appears confirmed in Google Calendar but canceled in HighLevel, classify as Needs Human Follow-Up until the records are reconciled.",
+          "confirmation_count": 1,
+          "confidence": "medium",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Promote Needs Human Follow-Up status for HighLevel/Calendar disagreements after repeated confirmation."
+        }
+      ]
+    },
+    "david-daily": {
+      "show_name": "The David Daily Show",
+      "preferences": [
+        {
+          "id": "manual-confirmation-can-validate-event",
+          "preference_type": "manual_confirmation",
+          "decision_outcome": "intentional business exception",
+          "summary": "A human-confirmed calendar event can be valid even if the audit cannot match an active HighLevel booking.",
+          "confirmation_count": 1,
+          "confidence": "medium",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Consider a manual-confirmation source file if this happens again."
+        }
+      ]
+    }
+  }
+}
