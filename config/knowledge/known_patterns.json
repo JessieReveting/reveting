@@ -1,0 +1,78 @@
+{
+  "version": "1.0",
+  "purpose": "Recurring operational patterns observed from human decisions. These are learning candidates and do not automatically change audit behavior.",
+  "patterns": [
+    {
+      "id": "deconstructing-data-preshow-in-description",
+      "show_key": "deconstructing-data",
+      "pattern_type": "show_preference",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "Deconstructing Data always has pre-show at 4:00 PM ET and goes live at 4:15 PM ET. A 4:00-5:00 PM ET calendar event is correct if the description states livestream begins at 4:15 PM ET.",
+      "observed_issue_codes": ["calendar_missing_preshow_block", "sop_required_assets_missing"],
+      "confirmation_count": 2,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "For Deconstructing Data, do not flag missing pre-show when calendar starts at 4:00 PM ET and description confirms 4:15 PM live start."
+    },
+    {
+      "id": "replacement-guest-after-cancellation",
+      "show_key": "winsday",
+      "pattern_type": "replacement_workflow",
+      "status": "candidate_workflow",
+      "decision_outcome": "audit was partially correct",
+      "summary": "A canceled/rescheduled guest may be replaced by a last-minute manually confirmed guest who bypasses HighLevel; production should wait on replacement topics before final LinkedIn, calendar, and email steps.",
+      "observed_issue_codes": ["guest_email_not_invited", "title_missing_guest", "guest_topics_pending", "sop_required_assets_missing"],
+      "confirmation_count": 2,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Support manually confirmed replacement guests who bypass HighLevel and recommend adding them to HighLevel later."
+    },
+    {
+      "id": "calendar-event-related-canceled-highlevel-context",
+      "show_key": "beyond-the-cart",
+      "pattern_type": "verification_workflow",
+      "status": "candidate_sop",
+      "decision_outcome": "audit was partially correct",
+      "summary": "A calendar event without an active booking may still be valid when operations were updated manually or HighLevel shows stale PR/cancellation context.",
+      "observed_issue_codes": ["calendar_event_without_booking", "calendar_event_needs_confirmation"],
+      "confirmation_count": 2,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Classify related cancellation/PR context as Needs Human Verification unless a human-confirmed active exception exists."
+    },
+    {
+      "id": "cherry-willow-confirmation-followup",
+      "show_key": "cherry-willow",
+      "pattern_type": "client_show_workflow",
+      "status": "candidate_sop",
+      "decision_outcome": "audit was partially correct",
+      "summary": "Cherry Willow/Apparel with Purpose July guest records may need pitch or confirmation follow-up before treating calendar events as production-ready.",
+      "observed_issue_codes": ["guest_confirmation_pitch_follow_up", "guest_rsvp_acceptance_risk"],
+      "confirmation_count": 1,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Recommend a permanent show-specific confirmation state after repeated confirmation."
+    },
+    {
+      "id": "source-of-truth-human-verification-nuance",
+      "show_key": "*",
+      "pattern_type": "source_of_truth_resolution",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "HighLevel is intended source of truth, but Google Calendar and manual operations may temporarily be correct when guests cancel by email, PR reps act on behalf of guests, replacements bypass HighLevel, or events land on Jessie's calendar.",
+      "observed_issue_codes": ["booking_without_calendar_event", "calendar_event_without_booking"],
+      "confirmation_count": 1,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Classify HighLevel/calendar mismatches as Needs Human Verification unless near-term and no alternate calendar/manual confirmation is known."
+    },
+    {
+      "id": "show-needs-guest-replacement-within-30-days",
+      "show_key": "*",
+      "pattern_type": "replacement_alert",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "Any show within the next 30 days without a confirmed active guest should produce a show_needs_guest_replacement alert.",
+      "observed_issue_codes": ["show_needs_guest_replacement"],
+      "confirmation_count": 1,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Add read-only show_needs_guest_replacement alerts with calendar status, HighLevel status, guest status, outreach-needed flag, and recommended human action."
+    }
+  ]
+}

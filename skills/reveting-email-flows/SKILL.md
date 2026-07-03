@@ -24,7 +24,28 @@ related_skills:
 
 # Reveting Email Flows
 
-A 6-sequence email system for Go Technology Solutions' GoLiveStream business hub. Covers the full lifecycle from initial guest outreach through ongoing nurture and re-engagement.
+A Reveting email system for livestream guests, from initial outreach through booked-guest activation, show promotion, and post-production delivery.
+
+## SOP Priority
+
+For every confirmed livestream guest, use the current Reveting SOP cadence before any generic nurture sequence:
+
+| # | Email | Trigger | Purpose |
+|---|-------|---------|---------|
+| 1 | T-14 Activation | 10-14 days before show, or immediately if booked inside 14 days | Reinforce live-show expectations and promotion |
+| 2 | Event Published | Social event links are live | Share finalized title, edited topics, StreamYard link, and promo links |
+| 3 | One Week | 5-7 days before livestream | Remind guest and push LinkedIn invites |
+| 4 | Day Before | Day before event | Final timing, StreamYard link, and what to bring |
+| 5 | Day Of | Morning of event or 2-4 hours before pre-show | Quick link and timing reminder |
+| 6 | One-Hour Post-Show | Within 1 hour or less of livestream | AI clip, full recording, transcript, and Drive link |
+| 7 | Final Post-Production | 24-36 hours after show, never later than 36 hours | Replay/podcast links, edited clips, share CTA, and thanks |
+
+Critical rules:
+
+- Never email raw submitted guest topics.
+- All guest-facing topics must be edited to fit the show strategy.
+- LinkedIn direct event invites should be encouraged repeatedly.
+- Final post-production timing is a Production Assistant KPI.
 
 ## Sequences Overview
 

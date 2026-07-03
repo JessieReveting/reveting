@@ -1,0 +1,356 @@
+{
+  "version": "1.1",
+  "description": "Read-only production readiness timeline rules for the Reveting Operations Manager. These rules define what is due at each production stage and how issue severity should be interpreted for operator triage. Operating principle: the show must go on; unresolved uncertainty inside 7 days requires urgent operator review.",
+  "operating_principles": [
+    {
+      "key": "show_must_go_on",
+      "label": "The show must go on",
+      "description": "If a show is less than 7 days away and guest status, topics, links, confirmations, calendar ownership, or HighLevel/Google Calendar data is unclear, surface it as Fix Today or Urgent Review."
+    }
+  ],
+  "urgent_uncertainty": {
+    "within_hours": 168,
+    "operator_category": "Urgent Review",
+    "reason": "The show is less than 7 days away and unresolved uncertainty can block production. The show must go on, so an operator should review this today.",
+    "issue_codes": [
+      "guest_confirmation_pitch_follow_up",
+      "guest_rsvp_acceptance_risk",
+      "guest_topics_pending",
+      "calendar_event_needs_confirmation",
+      "calendar_event_without_booking",
+      "booking_without_calendar_event",
+      "sop_required_assets_missing",
+      "required_custom_fields_missing_from_description",
+      "pr_email_not_invited",
+      "active_guest_email_missing",
+      "guest_email_not_invited"
+    ]
+  },
+  "streamyard_expectations": {
+    "monitor_hours_until": 336,
+    "due_soon_hours_until": 168,
+    "urgent_hours_until": 168,
+    "critical_hours_until": 48,
+    "labels": {
+      "monitor": "Monitor",
+      "due_soon": "Due Soon",
+      "urgent": "Urgent Review",
+      "critical": "Critical",
+      "blocked_by_guest": "Blocked by Guest",
+      "blocked_by_confirmation": "Blocked by Confirmation",
+      "ready_to_create": "Ready to Create",
+      "present": "Present"
+    },
+    "blocked_message": "StreamYard blocked by missing guest topics/confirmation."
+  },
+  "stages": [
+    {
+      "key": "30_plus_days",
+      "label": "30+ days out",
+      "min_hours_until": 720,
+      "operator_focus": "Confirm the booking, guest forms, calendar event, and initial guest invite."
+    },
+    {
+      "key": "14_30_days",
+      "label": "14-30 days out",
+      "min_hours_until": 336,
+      "max_hours_until": 720,
+      "operator_focus": "Confirm episode positioning, guest support contacts, and internal team coverage."
+    },
+    {
+      "key": "7_14_days",
+      "label": "7-14 days out",
+      "min_hours_until": 168,
+      "max_hours_until": 336,
+      "operator_focus": "Prepare production assets, calendar details, LinkedIn event, and promotion instructions."
+    },
+    {
+      "key": "48_hours_7_days",
+      "label": "48 hours-7 days out",
+      "min_hours_until": 48,
+      "max_hours_until": 168,
+      "operator_focus": "Make guest-facing logistics complete and confirm StreamYard readiness."
+    },
+    {
+      "key": "24_48_hours",
+      "label": "24-48 hours out",
+      "min_hours_until": 24,
+      "max_hours_until": 48,
+      "operator_focus": "Resolve invite, logistics, StreamYard, and critical field gaps before show day."
+    },
+    {
+      "key": "day_of_show",
+      "label": "Day of show",
+      "min_hours_until": 0,
+      "max_hours_until": 24,
+      "operator_focus": "Only show-critical issues matter now: guest access, StreamYard, team coverage, and missing critical fields."
+    },
+    {
+      "key": "post_show",
+      "label": "Post-show",
+      "min_hours_since_show": 0,
+      "max_hours_since_show": 168,
+      "operator_focus": "Confirm recording handoff, transcript, clips, recap/newsletter, and follow-up status."
+    },
+    {
+      "key": "post_production",
+      "label": "Post-production",
+      "min_hours_since_show": 168,
+      "operator_focus": "Monitor post-production completion and archive readiness."
+    }
+  ],
+  "checklist_items": [
+    {"key": "highlevel_booking", "label": "HighLevel booking exists", "source": "HighLevel discovery", "due_stage": "30_plus_days"},
+    {"key": "guest_1_form", "label": "Guest 1 form submitted", "source": "HighLevel discovery", "due_stage": "30_plus_days"},
+    {"key": "guest_2_form", "label": "Guest 2 form submitted", "source": "HighLevel discovery", "due_stage": "30_plus_days"},
+    {"key": "calendar_created", "label": "Calendar event exists", "source": "Google Calendar export", "due_stage": "30_plus_days"},
+    {"key": "guest_invites_sent", "label": "Guest invite present", "source": "Google Calendar export", "due_stage": "30_plus_days"},
+    {"key": "title_drafted", "label": "Title drafted", "source": "Google Calendar export", "due_stage": "14_30_days"},
+    {"key": "topics_present", "label": "Topics present", "source": "Calendar description and form field audit", "due_stage": "14_30_days"},
+    {"key": "pr_assistant_emails_captured", "label": "PR/assistant emails captured", "source": "HighLevel discovery", "due_stage": "14_30_days"},
+    {"key": "internal_invites_sent", "label": "Internal team invited", "source": "Google Calendar export", "due_stage": "14_30_days"},
+    {"key": "calendar_description_complete", "label": "Calendar description updated", "source": "Operations audit", "due_stage": "7_14_days"},
+    {"key": "linkedin_event_created", "label": "LinkedIn event created", "source": "Calendar description", "due_stage": "7_14_days"},
+    {"key": "streamyard_created", "label": "StreamYard link added", "source": "Calendar description", "due_stage": "7_14_days"},
+    {"key": "guest_promotion_instructions_included", "label": "Guest promotion instructions included", "source": "Calendar description", "due_stage": "7_14_days"},
+    {"key": "pr_assistant_invited", "label": "PR/assistant invited if captured", "source": "Google Calendar export", "due_stage": "48_hours_7_days"},
+    {"key": "title_topic_fields_complete", "label": "Title/topic fields complete", "source": "Operations audit", "due_stage": "48_hours_7_days"},
+    {"key": "required_attendees_present", "label": "Required attendees present", "source": "Operations audit", "due_stage": "48_hours_7_days"},
+    {"key": "guests_confirmed", "label": "Guests confirmed", "source": "Reminder/confirmation normalized data", "due_stage": "24_48_hours"},
+    {"key": "recording_exists", "label": "Recording exists", "source": "Post-production normalized data", "due_stage": "post_show"},
+    {"key": "transcript_exists", "label": "Transcript exists", "source": "Post-production normalized data", "due_stage": "post_show"},
+    {"key": "ai_clips_complete", "label": "Clips created", "source": "Post-production normalized data", "due_stage": "post_show"},
+    {"key": "newsletter_complete", "label": "Newsletter/recap status checked", "source": "Post-production normalized data", "due_stage": "post_show"},
+    {"key": "post_production_complete", "label": "Post-production status checked", "source": "Post-production normalized data", "due_stage": "post_show"}
+  ],
+  "stage_requirements": {
+    "30_plus_days": ["highlevel_booking", "guest_1_form", "guest_2_form", "calendar_created", "guest_invites_sent"],
+    "14_30_days": ["title_drafted", "topics_present", "pr_assistant_emails_captured", "internal_invites_sent"],
+    "7_14_days": ["calendar_description_complete", "linkedin_event_created", "streamyard_created", "guest_promotion_instructions_included"],
+    "48_hours_7_days": ["streamyard_created", "pr_assistant_invited", "title_topic_fields_complete", "required_attendees_present"],
+    "24_48_hours": ["guests_confirmed"],
+    "day_of_show": ["streamyard_created", "guest_invites_sent", "internal_invites_sent", "required_attendees_present", "guests_confirmed"],
+    "post_show": ["recording_exists", "transcript_exists", "ai_clips_complete", "newsletter_complete", "post_production_complete"],
+    "post_production": ["recording_exists", "transcript_exists", "ai_clips_complete", "newsletter_complete", "post_production_complete"]
+  },
+  "timeline_steps": [
+    {"key": "booking_received", "label": "Booking received", "checklist_keys": ["highlevel_booking"]},
+    {"key": "guest_forms_submitted", "label": "Guest forms submitted", "checklist_keys": ["guest_1_form", "guest_2_form"]},
+    {"key": "calendar_created", "label": "Calendar created", "checklist_keys": ["calendar_created"]},
+    {"key": "invites_sent", "label": "Invites sent", "checklist_keys": ["guest_invites_sent", "pr_assistant_invited", "internal_invites_sent", "required_attendees_present"]},
+    {"key": "episode_positioning", "label": "Title and topics", "checklist_keys": ["title_drafted", "topics_present", "title_topic_fields_complete"]},
+    {"key": "linkedin_event", "label": "LinkedIn event", "checklist_keys": ["linkedin_event_created"]},
+    {"key": "streamyard", "label": "StreamYard", "checklist_keys": ["streamyard_created"]},
+    {"key": "guest_confirmation", "label": "Guest confirmation", "checklist_keys": ["guests_confirmed"]},
+    {"key": "livestream", "label": "Livestream"},
+    {"key": "post_production", "label": "Post production", "checklist_keys": ["recording_exists", "transcript_exists", "ai_clips_complete", "post_production_complete"]},
+    {"key": "newsletter", "label": "Newsletter/recap", "checklist_keys": ["newsletter_complete"]},
+    {"key": "follow_up", "label": "Follow-up"}
+  ],
+  "stage_aware_issue_severity": {
+    "booking_without_calendar_event": {
+      "default_severity": "Critical",
+      "by_stage": {
+        "30_plus_days": "Warning",
+        "14_30_days": "Critical",
+        "7_14_days": "Critical",
+        "48_hours_7_days": "Critical",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical",
+        "post_show": "Warning",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: missing calendar coverage is monitored at 30+ days and becomes show-blocking inside the configured production window."
+    },
+    "calendar_export_window_gap": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Warning",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Warning",
+        "day_of_show": "Warning",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: this is a calendar export coverage gap, not proof that the Google Calendar event is missing."
+    },
+    "calendar_event_without_booking": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: HighLevel/Google Calendar mismatch becomes urgent when the show is close."
+    },
+    "calendar_event_needs_confirmation": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: unclear guest/calendar status must be resolved before production."
+    },
+    "guest_confirmation_pitch_follow_up": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: guest confirmation uncertainty is urgent close to showtime."
+    },
+    "guest_rsvp_acceptance_risk": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: RSVP uncertainty can affect whether guests arrive and should be resolved before show day."
+    },
+    "guest_topics_pending": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: missing topics block final calendar, LinkedIn, StreamYard, and email prep."
+    },
+    "guest_email_not_invited": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Warning",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: guest access becomes show-blocking inside 48 hours."
+    },
+    "active_guest_email_missing": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Warning",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: the operator cannot safely invite a guest without an email."
+    },
+    "required_attendee_not_invited": {
+      "default_severity": "Warning",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: team coverage becomes critical close to showtime."
+    },
+    "pr_email_not_invited": {
+      "default_severity": "Informational",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Informational",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Warning",
+        "day_of_show": "Warning"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: support contacts matter more as show logistics approach."
+    },
+    "title_missing_guest": {
+      "default_severity": "Informational",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Warning",
+        "day_of_show": "Warning"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: guest-facing title accuracy is due before production assets are finalized."
+    },
+    "sop_required_assets_missing": {
+      "default_severity": "Informational",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Informational",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: missing production assets become urgent as the show approaches."
+    },
+    "required_custom_fields_missing_from_description": {
+      "default_severity": "Informational",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Warning",
+        "7_14_days": "Warning",
+        "48_hours_7_days": "Warning",
+        "24_48_hours": "Critical",
+        "day_of_show": "Critical"
+      },
+      "reason": "{issue_code} is {adjusted_severity} during {stage}: missing guest/topic fields block production prep near showtime."
+    },
+    "form_submission_not_exactly_linked": {
+      "default_severity": "Informational",
+      "by_stage": {
+        "30_plus_days": "Informational",
+        "14_30_days": "Informational",
+        "7_14_days": "Informational",
+        "48_hours_7_days": "Informational",
+        "24_48_hours": "Informational",
+        "day_of_show": "Informational",
+        "post_show": "Informational",
+        "post_production": "Informational"
+      },
+      "reason": "{issue_code} remains Informational during {stage}: it affects audit confidence but does not by itself block production."
+    },
+    "default": {
+      "default_severity": "{base_severity}",
+      "reason": "{issue_code} keeps its base severity during {stage} because no timeline-specific rule is configured."
+    }
+  }
+}
