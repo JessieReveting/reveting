@@ -1,10 +1,6 @@
-.DS_Store
-.hermes/
-__pycache__/
-*.pyc
 .env
-google_token.json
-google_client_secret.json
+.env.*
+!.env.example
 assets/
-dashboards/
-data/
+docs/sops/source-text/
+secrets/

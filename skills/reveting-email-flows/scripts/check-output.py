@@ -14,14 +14,17 @@ import sys
 import os
 import argparse
 
-# Required terms that must appear in valid email flow output
+# Required terms that must appear in valid Reveting email flow output
 REQUIRED_TERMS = [
     "sequence",
     "guest",
-    "confirmation",
+    "activation",
+    "StreamYard",
+    "LinkedIn",
+    "pre-show",
+    "post-production",
     "replay",
     "subject",
-    "nurture",
 ]
 
 # Minimum character count for valid output
@@ -87,7 +90,7 @@ def validate_file(file_path: str, verbose: bool = False) -> dict:
             result["valid"] = False
 
     # Verbose output
-        if verbose:
+    if verbose:
         status = "PASS" if result["valid"] else "FAIL"
         print(f"[{status}] {file_path}")
         print(f"  Characters: {result['char_count']} (min: {MIN_CHAR_COUNT})")

@@ -4,6 +4,30 @@ Deliverable shell for all email variants. Copy, customize variables, and deploy.
 
 ---
 
+## SOP-Required Booked Guest Cadence
+
+Use this sequence for every confirmed Reveting livestream guest. These emails come from the current Reveting guest booking and post-production SOPs and should be checked before any generic nurture sequence.
+
+| # | Email | Trigger | Required Content |
+|---|-------|---------|------------------|
+| 1 | T-14 Activation | 10-14 days before show, or immediately if booked inside 14 days | Live-show expectation, promotion request, LinkedIn invites, notice/referral expectation |
+| 2 | Event Published | LinkedIn/Facebook/YouTube/Twitch event links are live | Final title, edited topics, StreamYard link, pre-show/go-live timing, social promo links |
+| 3 | One Week | 5-7 days before livestream | Appearance reminder, pre-show timing, go-live timing, LinkedIn invite push |
+| 4 | Day Before | Day before event | Pre-show time in all required time zones, StreamYard link, what to bring, calm final confirmation |
+| 5 | Day Of | Morning of event or 2-4 hours before pre-show | StreamYard link, pre-show time, go-live time, quick join reminder |
+| 6 | One-Hour Post-Show | Within 1 hour or less after livestream | AI clip, full recording, transcript, organized Drive link, fresh-share CTA |
+| 7 | Final Post-Production | 24-36 hours after show, never later than 36 hours | Replay links, Spotify/Apple links, edited clips, share/tag CTA, thank-you note |
+
+### SOP Guardrails
+
+- Never email raw submitted guest topics.
+- All topics must be edited to 3-7 words and aligned to the show strategy before guest-facing use.
+- Guest-facing timing should include ET/CT/PT when required by the email.
+- LinkedIn event invites should be encouraged repeatedly; direct invites drive attendance.
+- Post-production timing is a Production Assistant KPI.
+
+---
+
 ## Guest Outreach Sequence (3 Emails)
 
 ### GO-01: Introduction Email

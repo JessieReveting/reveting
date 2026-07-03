@@ -1,0 +1,769 @@
+{
+  "version": "1.0",
+  "calendar_id": "ww@reveting.com",
+  "show_keys": [
+    "cherry-willow",
+    "david-daily",
+    "beyond-the-cart",
+    "deconstructing-data",
+    "winsday"
+  ],
+  "audit_window_days_ahead": 180,
+  "preshow_offset_minutes": 15,
+  "time_tolerance_minutes": 10,
+  "calendar_match_threshold": 45,
+  "preshow_validation": {
+    "mode": "calendar_start_required"
+  },
+  "calendar_export_window_rules": {
+    "issue_code": "calendar_export_window_gap",
+    "severity": "Warning",
+    "recommended_action": "Extend the Google Calendar export window to include this HighLevel booking, rerun the export, then rerun the audit."
+  },
+  "inactive_statuses": [
+    "cancelled",
+    "canceled",
+    "cancelled_by_user",
+    "canceled_by_user",
+    "rescheduled",
+    "reschedule_requested",
+    "replaced",
+    "replacement_booked",
+    "deleted",
+    "invalid",
+    "no_show",
+    "noshow"
+  ],
+  "guest_lifecycle_rules": {
+    "canceled_statuses": [
+      "cancelled",
+      "canceled",
+      "cancelled_by_user",
+      "canceled_by_user"
+    ],
+    "rescheduled_statuses": [
+      "rescheduled",
+      "reschedule_requested"
+    ],
+    "replaced_statuses": [
+      "replaced",
+      "replacement_booked"
+    ],
+    "non_actionable_statuses": [
+      "deleted",
+      "invalid",
+      "no_show",
+      "noshow"
+    ]
+  },
+  "suppression_rules": {
+    "known_exceptions": [
+      {
+        "enabled": false,
+        "show_key": "winsday",
+        "episode_date": "YYYY-MM-DD",
+        "guest_name": "",
+        "guest_email": "",
+        "issue_code": "",
+        "reason": "Document why the audit should suppress this known exception.",
+        "expires_on": "YYYY-MM-DD"
+      },
+      {
+        "enabled": true,
+        "show_key": "winsday",
+        "episode_date": "2026-07-08",
+        "guest_name": "Daniel Burrus",
+        "guest_email": "",
+        "issue_code": "title_missing_guest",
+        "reason": "Human verified Daniel Burrus/Jennifer Burrus canceled and rescheduled to fall; Jeff Chen is the correct July 8 replacement guest.",
+        "expires_on": "2026-07-09"
+      },
+      {
+        "enabled": true,
+        "show_key": "winsday",
+        "episode_date": "2026-07-08",
+        "guest_name": "",
+        "guest_email": "jennifer@burrus.com",
+        "issue_code": "guest_email_not_invited",
+        "reason": "Human verified Daniel Burrus/Jennifer Burrus canceled and rescheduled to fall; Jennifer should not be invited for the July 8 episode.",
+        "expires_on": "2026-07-09"
+      },
+      {
+        "enabled": true,
+        "show_key": "*",
+        "episode_date": "2026-07-10",
+        "calendar_event_id": "_60q30c1g60o30e1i60o4ac1g60rj8gpl88rj2c1h84s34h9g60s30c1g60o30c1g611j0d9l8h23ecq560o48h1g64o30c1g60o30c1g60o30c1g60o32c1g60o30c1g8l0jid9i60q3eh9g8kok6h9k750jcgpo8kr30e1i6oojadpn8p20",
+        "guest_name": "",
+        "guest_email": "",
+        "issue_code": "calendar_event_without_booking",
+        "reason": "Human verified Jayce Gutzler is scheduled and the Google Calendar event is valid; pre-show is 2:45 PM.",
+        "expires_on": "2026-07-11"
+      },
+      {
+        "enabled": true,
+        "show_key": "deconstructing-data",
+        "episode_date": "2026-07-16",
+        "guest_name": "Nina Jagannathan",
+        "guest_email": "",
+        "issue_code": "booking_without_calendar_event",
+        "reason": "Human review note: Nina Jagannathan may exist on jessie@reveting.com instead of ww@reveting.com for now. Verify calendar ownership before treating this as an urgent ww@reveting.com failure.",
+        "expires_on": "2026-07-31"
+      }
+    ],
+    "suppressed_issues": [
+      {
+        "enabled": false,
+        "show_key": "winsday",
+        "episode_date": "YYYY-MM-DD",
+        "guest_name": "",
+        "guest_email": "",
+        "issue_code": "",
+        "reason": "Document why this issue is intentionally suppressed.",
+        "expires_on": "YYYY-MM-DD"
+      }
+    ]
+  },
+  "manual_episode_issues": [
+    {
+      "enabled": true,
+      "show_key": "winsday",
+      "episode_date": "2026-07-08",
+      "calendar_title_contains": "Charlie Sells and Jeff Chen",
+      "issue_code": "guest_topics_pending",
+      "severity": "Warning",
+      "message": "WinsDay July 8 is waiting on Jeff Chen's guest topics before final production updates.",
+      "recommended_action": "Follow up for Jeff Chen's topics. Once topics are received, post the LinkedIn event, update the Google Calendar description, and send or schedule the related emails.",
+      "confidence": "high",
+      "details": {
+        "status": "Needs Topics / Waiting on Guest Topics",
+        "replacement_guest": "Jeff Chen",
+        "canceled_or_rescheduled_guest": "Daniel Burrus / Jennifer Burrus",
+        "next_steps_after_topics": ["LinkedIn event", "Google Calendar update", "emails"]
+      }
+    }
+  ],
+  "manual_calendar_event_issues": [
+    {
+      "enabled": true,
+      "show_key": "beyond-the-cart",
+      "show_name": "Beyond the Cart",
+      "episode_date": "2026-07-07",
+      "calendar_event_id": "5ea62gm4dcj496qvg4cv6peqeb",
+      "issue_code": "calendar_event_needs_confirmation",
+      "severity": "Warning",
+      "message": "Beyond the Cart calendar event needs human confirmation because related HighLevel booking context appears canceled or mismatched.",
+      "recommended_action": "Follow up with Samantha/Rubenstein context and confirm whether Tim Berney is the intended guest for this slot before treating the event as stale or fully ready.",
+      "confidence": "medium",
+      "details": {
+        "status": "Needs human confirmation",
+        "calendar_guest": "Tim Berney",
+        "related_highlevel_context": "Samantha Rubenstein appears canceled in HighLevel."
+      }
+    },
+    {
+      "enabled": true,
+      "show_key": "cherry-willow",
+      "show_name": "Apparel with Purpose",
+      "episode_date": "2026-07-07",
+      "calendar_event_id": "2lcgdqhf07rbklges5b558r786",
+      "issue_code": "guest_confirmation_pitch_follow_up",
+      "severity": "Warning",
+      "message": "Cherry Willow / Apparel with Purpose needs guest confirmation and pitch follow-up for Wayne Elsey.",
+      "recommended_action": "Confirm whether Wayne Elsey is still expected, follow up with the guest side, and verify the HighLevel source-of-truth status before treating the episode as ready.",
+      "confidence": "medium",
+      "details": {
+        "status": "Needs Guest Confirmation / Pitch Follow-Up",
+        "calendar_guest": "Wayne Elsey",
+        "human_note": "Human review found only Judith accepted the invite."
+      }
+    },
+    {
+      "enabled": true,
+      "show_key": "cherry-willow",
+      "show_name": "Apparel with Purpose",
+      "episode_date": "2026-07-07",
+      "calendar_event_id": "2lcgdqhf07rbklges5b558r786",
+      "issue_code": "guest_rsvp_acceptance_risk",
+      "severity": "Warning",
+      "message": "Cherry Willow / Apparel with Purpose has guest-side RSVP acceptance risk for Wayne Elsey.",
+      "recommended_action": "Review attendee responses and follow up with guest-side attendees who have not accepted before treating the episode as confirmed.",
+      "confidence": "medium",
+      "details": {
+        "status": "RSVP / Acceptance Risk",
+        "calendar_guest": "Wayne Elsey",
+        "human_note": "Only Judith has accepted on the guest side."
+      }
+    },
+    {
+      "enabled": true,
+      "show_key": "cherry-willow",
+      "show_name": "Apparel with Purpose",
+      "episode_date": "2026-07-21",
+      "calendar_event_id": "1399846vum11ptc55msv3246ai",
+      "issue_code": "guest_confirmation_pitch_follow_up",
+      "severity": "Warning",
+      "message": "Cherry Willow / Apparel with Purpose needs guest confirmation and pitch follow-up because the related HighLevel booking appears canceled.",
+      "recommended_action": "Confirm whether Traci Channer is still expected, and verify HighLevel status before treating the calendar event as ready or stale.",
+      "confidence": "medium",
+      "details": {
+        "status": "Needs Guest Confirmation / Pitch Follow-Up",
+        "calendar_guest": "Traci Channer",
+        "related_highlevel_context": "Traci Channer appears canceled in HighLevel."
+      }
+    }
+  ],
+  "manual_issue_overrides": [
+    {
+      "enabled": true,
+      "show_key": "*",
+      "episode_date": "2026-07-21",
+      "calendar_event_id": "1399846vum11ptc55msv3246ai",
+      "issue_code": "calendar_event_without_booking",
+      "new_issue_code": "guest_confirmation_pitch_follow_up",
+      "severity": "Warning",
+      "message": "Cherry Willow / Apparel with Purpose needs guest confirmation and pitch follow-up because the related HighLevel booking appears canceled.",
+      "recommended_action": "Confirm whether Traci Channer is still expected, and verify HighLevel status before treating the calendar event as ready or stale.",
+      "confidence": "medium",
+      "reason": "Human verified the next Cherry Willow booked guests appear canceled and need confirmation/pitch follow-up rather than a clean orphan classification.",
+      "details": {
+        "status": "Needs Guest Confirmation / Pitch Follow-Up"
+      }
+    }
+  ],
+  "required_field_keywords": {
+    "guest email": ["email"],
+    "linkedin profile": ["linkedin"],
+    "job title/company": ["job title", "company name"],
+    "topic 1": ["first", "topic"],
+    "topic 2": ["second", "topic"],
+    "guru of the week": ["guru of the week"],
+    "promotion commitment": ["help promote"],
+    "live show acknowledgement": ["live show"]
+  },
+  "required_attendee_emails": [
+    "ww@reveting.com",
+    "ea@reveting.com"
+  ],
+  "calendar_description_sections": [
+    {
+      "key": "original_submission",
+      "label": "Original booking submission",
+      "any_terms": ["original submission"],
+      "severity": "Warning"
+    },
+    {
+      "key": "promotion_guidance",
+      "label": "Promotion or LinkedIn invite guidance",
+      "any_terms": ["linkedin", "promote"],
+      "severity": "Warning"
+    },
+    {
+      "key": "preshow_timing",
+      "label": "Pre-show timing",
+      "any_terms": ["pre show", "15 minute", "15 minutes"],
+      "severity": "Warning"
+    }
+  ],
+  "sop_assets": [
+    {
+      "key": "calendar_description",
+      "label": "Calendar description",
+      "type": "description_present",
+      "severity": "Warning"
+    },
+    {
+      "key": "streamyard_logistics",
+      "label": "StreamYard logistics",
+      "any_terms": ["streamyard"],
+      "severity": "Warning"
+    },
+    {
+      "key": "published_event_link",
+      "label": "Published LinkedIn event link",
+      "any_raw_terms": ["linkedin.com/events", "linkedin.com/feed/update/", "linkedin.com/posts/", "linkedin.com/video/live", "linkedin.com/live"],
+      "within_days": 14,
+      "severity": "Warning"
+    },
+    {
+      "key": "final_streamyard_link",
+      "label": "Final StreamYard link",
+      "forbid_raw_terms": ["streamyard url tbd", "streamyard tbd"],
+      "within_days": 14,
+      "severity": "Warning"
+    }
+  ],
+  "issue_metadata": {
+    "attendee_list_unavailable": {
+      "confidence": "high"
+    },
+    "booking_without_calendar_event": {
+      "confidence": "medium"
+    },
+    "calendar_export_window_gap": {
+      "confidence": "high"
+    },
+    "calendar_event_without_booking": {
+      "confidence": "medium"
+    },
+    "duplicate_calendar_event": {
+      "confidence": "high"
+    },
+    "guest_email_not_invited": {
+      "confidence": "high"
+    },
+    "active_guest_email_missing": {
+      "confidence": "high"
+    },
+    "pr_email_not_invited": {
+      "confidence": "medium"
+    },
+    "required_attendee_not_invited": {
+      "confidence": "high"
+    },
+    "required_custom_fields_missing_from_description": {
+      "confidence": "medium"
+    },
+    "sop_required_assets_missing": {
+      "confidence": "medium"
+    },
+    "guest_topics_pending": {
+      "confidence": "high"
+    },
+    "calendar_event_needs_confirmation": {
+      "confidence": "medium"
+    },
+    "guest_confirmation_pitch_follow_up": {
+      "confidence": "medium"
+    },
+    "guest_rsvp_acceptance_risk": {
+      "confidence": "medium"
+    }
+  },
+  "issue_operational_impacts": {
+    "guest_email_not_invited": "An active guest may not receive the calendar invite, StreamYard logistics, or live-show timing updates.",
+    "active_guest_email_missing": "The operator cannot verify whether the active guest has been invited without manually confirming the correct email.",
+    "title_missing_guest": "Operators may overlook a booked guest when preparing title cards, promotion copy, speaker tagging, or show notes.",
+    "guest_not_represented": "The guest is invited, but production context may be incomplete for downstream operators reviewing the calendar event.",
+    "required_attendee_not_invited": "A required internal operator may miss production prep, calendar updates, or day-of coordination.",
+    "pr_email_not_invited": "A PR or assistant contact may miss coordination details if they are expected to support the guest.",
+    "sop_required_assets_missing": "The event may be missing a production asset such as StreamYard logistics, promotion links, or final show instructions.",
+    "required_custom_fields_missing_from_description": "Important booking details may not be visible in the operator-facing calendar event.",
+    "form_submission_not_exactly_linked": "The audit cannot prove the calendar description came from the exact HighLevel submission, so edits should be human-reviewed.",
+    "booking_without_calendar_event": "A booked episode may not have an operator-facing calendar event, which can cause the show to be missed operationally.",
+    "calendar_export_window_gap": "The audit cannot prove whether a Google Calendar event exists because the loaded calendar export does not cover the HighLevel booking time.",
+    "calendar_event_without_booking": "A calendar event may be stale, manually created, or disconnected from the active booking source of truth.",
+    "calendar_event_needs_confirmation": "A calendar event may still be valid, but the related HighLevel context is canceled or mismatched and needs human confirmation.",
+    "guest_topics_pending": "The episode cannot move into final LinkedIn, calendar-description, or email prep until guest topics are received.",
+    "guest_confirmation_pitch_follow_up": "The guest or booking status needs human confirmation before the episode can be treated as production-ready.",
+    "guest_rsvp_acceptance_risk": "Guest-side attendees may not have accepted the calendar invite, creating confirmation risk before production.",
+    "duplicate_calendar_event": "Duplicate calendar events can split attendee lists and cause operators or guests to follow the wrong invite.",
+    "calendar_missing_preshow_block": "The calendar may not reserve prep time before going live.",
+    "date_time_mismatch": "Guests and operators may arrive at different times if HighLevel and Google Calendar disagree.",
+    "calendar_end_time_mismatch": "The calendar may reserve too little or too much production time.",
+    "attendee_list_unavailable": "The audit cannot verify guest, PR, assistant, or internal invite coverage without attendee data.",
+    "assistant_email_present": "Assistant or alternate attendees may be intentional, but the operator should know they are present.",
+    "default": "This can create manual production risk unless an operator verifies it before showtime."
+  },
+  "confidence_explanations": {
+    "high": "The audit is based on direct normalized HighLevel and Google Calendar evidence.",
+    "medium": "The audit found a likely issue, but one or more source links, submission matches, or SOP fields require human review.",
+    "low": "The audit cannot verify the item from normalized data and needs manual operator review.",
+    "form_submission_not_exactly_linked": "Discovery could not prove the exact HighLevel form submission ID for this guest or episode.",
+    "sop_required_assets_missing": "The audit can identify configured missing text/assets, but the operator may need to confirm whether an alternate asset location is acceptable.",
+    "default": "Confidence is based on the available normalized audit evidence."
+  },
+  "operator_recommendation_rules": {
+    "warning_due_days": 14,
+    "critical_reason": "Critical issues can block a successful show and should be reviewed today.",
+    "warning_due_reason": "This Warning affects an upcoming episode inside the configured action window.",
+    "warning_monitor_reason": "This Warning is outside the configured immediate action window and should be monitored.",
+    "informational_reason": "Informational findings do not require immediate action but should stay visible."
+  },
+  "future_autofix_policy": {
+    "default_by_severity": {
+      "Critical": "Needs approval",
+      "Warning": "Needs approval",
+      "Informational": "Never autofix"
+    },
+    "issue_codes": {
+      "guest_email_not_invited": {
+        "classification": "Needs approval",
+        "reason": "Adding a guest to Google Calendar is a write action and must be approved by an operator."
+      },
+      "active_guest_email_missing": {
+        "classification": "Never autofix",
+        "reason": "The system cannot infer a missing guest email safely."
+      },
+      "title_missing_guest": {
+        "classification": "Needs approval",
+        "reason": "Renaming a calendar event is a write action and should be approved because titles affect guests and operators."
+      },
+      "required_attendee_not_invited": {
+        "classification": "Needs approval",
+        "reason": "Adding internal attendees is a write action and should require approval."
+      },
+      "sop_required_assets_missing": {
+        "classification": "Needs approval",
+        "reason": "Adding SOP links or production assets can affect guest-facing instructions and should be reviewed."
+      },
+      "form_submission_not_exactly_linked": {
+        "classification": "Never autofix",
+        "reason": "Uncertain source linkage should not trigger automated edits."
+      },
+      "duplicate_calendar_event": {
+        "classification": "Never autofix",
+        "reason": "Resolving duplicates requires human judgment about the authoritative event."
+      },
+      "calendar_export_window_gap": {
+        "classification": "Never autofix",
+        "reason": "This is a data coverage issue; the safe action is to extend the read-only export window and rerun the audit."
+      },
+      "calendar_event_without_booking": {
+        "classification": "Never autofix",
+        "reason": "A calendar event without a booking may be intentional and should not be deleted or changed automatically."
+      },
+      "calendar_event_needs_confirmation": {
+        "classification": "Never autofix",
+        "reason": "Confirmation requires human judgment across HighLevel and Google Calendar."
+      },
+      "guest_topics_pending": {
+        "classification": "Never autofix",
+        "reason": "The system cannot invent guest topics or safely send production emails before topics are received."
+      },
+      "guest_confirmation_pitch_follow_up": {
+        "classification": "Never autofix",
+        "reason": "Guest confirmation and pitch follow-up require human outreach and judgment."
+      },
+      "guest_rsvp_acceptance_risk": {
+        "classification": "Never autofix",
+        "reason": "RSVP follow-up requires human judgment and may involve external outreach."
+      }
+    }
+  },
+  "trust_layer": {
+    "default": {
+      "category": "Needs Human Verification",
+      "dashboard_bucket": "Needs Verification",
+      "what_jessie_should_verify": "Review the HighLevel and Google Calendar evidence before taking any external action.",
+      "future_automation_candidate": "no",
+      "automation_risk_level": "high",
+      "approval_required_before_action": "Human approval is required before any external system is changed."
+    },
+    "known_context": [
+      {
+        "show_key": "deconstructing-data",
+        "episode_date": "2026-07-16",
+        "guest_name": "Nina Jagannathan",
+        "context": "May exist on jessie@reveting.com instead of ww@reveting.com for now."
+      },
+      {
+        "show_key": "winsday",
+        "episode_date": "2026-07-08",
+        "guest_name": "Daniel Burrus / Jennifer Burrus",
+        "context": "Canceled and rescheduled to fall."
+      },
+      {
+        "show_key": "winsday",
+        "episode_date": "2026-07-08",
+        "guest_name": "Jeff Chen",
+        "context": "Replacement guest for Daniel Burrus on the July 8 WinsDay episode."
+      },
+      {
+        "show_key": "david-daily",
+        "episode_date": "2026-07-10",
+        "guest_name": "Jayce Gutzler",
+        "context": "Human-confirmed valid; pre-show is 2:45 PM."
+      },
+      {
+        "show_key": "beyond-the-cart",
+        "episode_date": "2026-07-07",
+        "guest_name": "Tim Berney",
+        "context": "Needs Samantha confirmation because related HighLevel context appears canceled or mismatched."
+      },
+      {
+        "show_key": "cherry-willow",
+        "episode_date": "2026-07",
+        "guest_name": "July guests",
+        "context": "Cherry Willow July guest status requires pitch or confirmation follow-up."
+      }
+    ],
+    "issue_codes": {
+      "booking_without_calendar_event": {
+        "category": "Confirmed Issue",
+        "dashboard_bucket": "Confirmed Issues",
+        "what_jessie_should_verify": "Confirm whether a valid Google Calendar event exists on ww@reveting.com or another Reveting calendar before creating or changing anything.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "high",
+        "approval_required_before_action": "Explicit approval to create or update a calendar event."
+      },
+      "calendar_event_without_booking": {
+        "category": "Needs Human Verification",
+        "dashboard_bucket": "Needs Verification",
+        "what_jessie_should_verify": "Confirm whether the calendar event is intentional, manually booked, canceled, or stale before any cleanup.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "high",
+        "approval_required_before_action": "Explicit approval before editing, deleting, or canceling any calendar event."
+      },
+      "calendar_event_needs_confirmation": {
+        "category": "Needs Human Verification",
+        "dashboard_bucket": "Waiting on Client",
+        "what_jessie_should_verify": "Confirm the guest/client context with the named stakeholder before deciding whether the calendar event is valid.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "high",
+        "approval_required_before_action": "Human confirmation from the responsible stakeholder."
+      },
+      "guest_confirmation_pitch_follow_up": {
+        "category": "Waiting on Someone",
+        "dashboard_bucket": "Waiting on Guest",
+        "what_jessie_should_verify": "Confirm whether the guest is still expected and whether the pitch/confirmation follow-up has happened.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Human approval before any guest or client outreach."
+      },
+      "guest_rsvp_acceptance_risk": {
+        "category": "Waiting on Someone",
+        "dashboard_bucket": "Waiting on Guest",
+        "what_jessie_should_verify": "Review attendee RSVP status and confirm which guest-side people still need follow-up.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Human approval before sending any follow-up."
+      },
+      "guest_topics_pending": {
+        "category": "Waiting on Someone",
+        "dashboard_bucket": "Waiting on Guest",
+        "what_jessie_should_verify": "Confirm whether guest topics have arrived outside the loaded data before posting production assets or emails.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Guest topics and human approval before LinkedIn, calendar, or email updates."
+      },
+      "guest_email_not_invited": {
+        "category": "Confirmed Issue",
+        "dashboard_bucket": "Confirmed Issues",
+        "what_jessie_should_verify": "Confirm the guest is active and the email is correct before adding anyone to a guest-facing calendar invite.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "high",
+        "approval_required_before_action": "Explicit approval before changing guest-facing attendees."
+      },
+      "active_guest_email_missing": {
+        "category": "Needs Human Verification",
+        "dashboard_bucket": "Needs Verification",
+        "what_jessie_should_verify": "Find the correct guest email in HighLevel, form fields, Gmail, or client notes before any invite action.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "high",
+        "approval_required_before_action": "Verified guest email and explicit approval."
+      },
+      "required_attendee_not_invited": {
+        "category": "Ready for Safe Action Later",
+        "dashboard_bucket": "Future Safe Actions",
+        "what_jessie_should_verify": "Confirm the configured internal attendee list is still correct for this show.",
+        "future_automation_candidate": "yes",
+        "automation_risk_level": "low",
+        "approval_required_before_action": "Operator approval to add known internal attendees."
+      },
+      "pr_email_not_invited": {
+        "category": "Ready for Safe Action Later",
+        "dashboard_bucket": "Future Safe Actions",
+        "what_jessie_should_verify": "Confirm the PR or assistant email was captured from an approved source and should be included on the invite.",
+        "future_automation_candidate": "yes",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Operator approval to add known PR or assistant attendees."
+      },
+      "sop_required_assets_missing": {
+        "category": "Confirmed Issue",
+        "dashboard_bucket": "Confirmed Issues",
+        "what_jessie_should_verify": "Check whether the missing SOP asset exists in an alternate approved location before updating calendar text.",
+        "future_automation_candidate": "yes",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Operator approval and approved source content before editing a calendar description."
+      },
+      "required_custom_fields_missing_from_description": {
+        "category": "Ready for Safe Action Later",
+        "dashboard_bucket": "Future Safe Actions",
+        "what_jessie_should_verify": "Confirm the HighLevel field value should be copied into the calendar description.",
+        "future_automation_candidate": "yes",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Operator approval and approved SOP field mapping."
+      },
+      "form_submission_not_exactly_linked": {
+        "category": "Needs Human Verification",
+        "dashboard_bucket": "Needs Verification",
+        "what_jessie_should_verify": "Verify the form submission relationship manually if the exact submission ID matters for production.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Human confirmation of the source record."
+      },
+      "calendar_export_window_gap": {
+        "category": "Needs Human Verification",
+        "dashboard_bucket": "Needs Verification",
+        "what_jessie_should_verify": "Extend the Google Calendar export window and rerun the audit before deciding whether an event is missing.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "low",
+        "approval_required_before_action": "No external change; rerun the read-only export with a wider date range."
+      }
+    }
+  },
+  "operations_manager": {
+    "upcoming_days": 30,
+    "recently_completed_days": 14,
+    "checklist_items": [
+      {"key": "highlevel_booking", "label": "HighLevel booking", "source": "HighLevel discovery"},
+      {"key": "guest_1_form", "label": "Guest 1 form", "source": "HighLevel discovery"},
+      {"key": "guest_2_form", "label": "Guest 2 form", "source": "HighLevel discovery"},
+      {"key": "calendar_created", "label": "Calendar created", "source": "Google Calendar export"},
+      {"key": "calendar_title_correct", "label": "Calendar title correct", "source": "Operations audit"},
+      {"key": "calendar_description_complete", "label": "Calendar description complete", "source": "Operations audit"},
+      {"key": "guest_invites_sent", "label": "Guest invites sent", "source": "Google Calendar export"},
+      {"key": "internal_invites_sent", "label": "Internal invites sent", "source": "Google Calendar export"},
+      {"key": "required_attendees_present", "label": "Required attendees present", "source": "Operations audit"},
+      {"key": "linkedin_event_created", "label": "LinkedIn event created", "source": "Calendar description", "due_within_days": 14},
+      {"key": "streamyard_created", "label": "StreamYard created", "source": "Calendar description", "due_within_days": 7},
+      {"key": "episode_folder_exists", "label": "Episode folder exists", "source": "Google Drive normalized data"},
+      {"key": "transcript_exists", "label": "Transcript exists", "source": "Post-production normalized data"},
+      {"key": "ai_clips_complete", "label": "AI clips complete", "source": "Post-production normalized data"},
+      {"key": "newsletter_complete", "label": "Newsletter complete", "source": "Post-production normalized data"},
+      {"key": "social_assets_complete", "label": "Social assets complete", "source": "Post-production normalized data"},
+      {"key": "post_production_complete", "label": "Post-production complete", "source": "Post-production normalized data"}
+    ],
+    "timeline_steps": [
+      {"key": "booking_received", "label": "Booking received", "checklist_key": "highlevel_booking"},
+      {"key": "guest_forms_submitted", "label": "Guest forms submitted", "checklist_key": "guest_1_form"},
+      {"key": "calendar_created", "label": "Calendar created", "checklist_key": "calendar_created"},
+      {"key": "invites_sent", "label": "Invites sent", "checklist_key": "guest_invites_sent"},
+      {"key": "linkedin_event", "label": "LinkedIn event", "checklist_key": "linkedin_event_created"},
+      {"key": "streamyard", "label": "StreamYard", "checklist_key": "streamyard_created"},
+      {"key": "livestream", "label": "Livestream"},
+      {"key": "post_production", "label": "Post production"},
+      {"key": "newsletter", "label": "Newsletter"},
+      {"key": "follow_up", "label": "Follow-up"}
+    ]
+  },
+  "health_score": {
+    "base": 100,
+    "minimum": 0,
+    "deductions_by_severity": {
+      "Critical": 25,
+      "Warning": 10,
+      "Informational": 2
+    },
+    "deductions_by_issue_code": {
+      "booking_without_calendar_event": 30,
+      "calendar_export_window_gap": 4,
+      "calendar_event_needs_confirmation": 8,
+      "guest_topics_pending": 8,
+      "guest_confirmation_pitch_follow_up": 10,
+      "guest_rsvp_acceptance_risk": 8,
+      "calendar_event_missing_start": 25,
+      "date_time_mismatch": 25,
+      "duplicate_calendar_event": 25,
+      "active_guest_email_missing": 20,
+      "guest_email_not_invited": 20,
+      "required_attendee_not_invited": 15,
+      "calendar_missing_preshow_block": 10,
+      "calendar_end_time_mismatch": 8,
+      "pr_email_not_invited": 8,
+      "required_custom_fields_missing_from_description": 8,
+      "sop_required_assets_missing": 8,
+      "title_missing_guest": 6,
+      "guest_not_represented": 6,
+      "title_missing_show_name": 5,
+      "calendar_event_without_booking": 10,
+      "attendee_list_unavailable": 8,
+      "assistant_email_present": 0,
+      "form_submission_not_exactly_linked": 2
+    },
+    "labels": [
+      {"min": 90, "label": "Ready for production"},
+      {"min": 75, "label": "Warnings requiring attention"},
+      {"min": 50, "label": "Major production risks"},
+      {"min": 25, "label": "Critical failures"},
+      {"min": 0, "label": "Not production ready"}
+    ]
+  },
+  "shows": {
+    "cherry-willow": {
+      "show_name": "Apparel with Purpose",
+      "client_name": "Cherry Willow",
+      "highlevel_token_env_var": "HIGHLEVEL_TOKEN_CHERRY_WILLOW",
+      "highlevel_location_id_env_var": "HIGHLEVEL_LOCATION_ID_CHERRY_WILLOW",
+      "timezone": "America/New_York",
+      "show_time_et": "",
+      "preshow_offset_minutes": 15,
+      "episode_duration_minutes": 60,
+      "expected_guest_count": 1,
+      "required_attendee_emails": [],
+      "required_field_keywords": {},
+      "calendar_description_sections": [],
+      "sop_assets": [],
+      "post_production_workflow": []
+    },
+    "david-daily": {
+      "show_name": "The David Daily Show",
+      "client_name": "David Daily",
+      "highlevel_token_env_var": "HIGHLEVEL_TOKEN_DAVID_DAILY",
+      "highlevel_location_id_env_var": "HIGHLEVEL_LOCATION_ID_DAVID_DAILY",
+      "timezone": "America/New_York",
+      "show_time_et": "11:00 AM",
+      "preshow_offset_minutes": 15,
+      "episode_duration_minutes": 60,
+      "expected_guest_count": 1,
+      "required_attendee_emails": [],
+      "required_field_keywords": {},
+      "calendar_description_sections": [],
+      "sop_assets": [],
+      "post_production_workflow": []
+    },
+    "beyond-the-cart": {
+      "show_name": "Beyond the Cart",
+      "client_name": "Beyond the Cart / OmniRocket LLC",
+      "highlevel_token_env_var": "HIGHLEVEL_TOKEN_BEYOND_THE_CART",
+      "highlevel_location_id_env_var": "HIGHLEVEL_LOCATION_ID_BEYOND_THE_CART",
+      "timezone": "America/New_York",
+      "show_time_et": "",
+      "preshow_offset_minutes": 15,
+      "episode_duration_minutes": 60,
+      "expected_guest_count": 1,
+      "required_attendee_emails": [],
+      "required_field_keywords": {},
+      "calendar_description_sections": [],
+      "sop_assets": [],
+      "post_production_workflow": []
+    },
+    "deconstructing-data": {
+      "show_name": "Deconstructing Data",
+      "client_name": "BDEX",
+      "highlevel_token_env_var": "HIGHLEVEL_TOKEN_DECONSTRUCTING_DATA",
+      "highlevel_location_id_env_var": "HIGHLEVEL_LOCATION_ID_DECONSTRUCTING_DATA",
+      "timezone": "America/New_York",
+      "show_time_et": "",
+      "preshow_offset_minutes": 15,
+      "preshow_validation": {
+        "mode": "calendar_start_or_description_instruction",
+        "instruction_all_terms": ["streamyard", "15 minutes early"],
+        "instruction_any_terms": ["livestream begins", "we will go live", "go live"]
+      },
+      "episode_duration_minutes": 60,
+      "expected_guest_count": 1,
+      "required_attendee_emails": [],
+      "required_field_keywords": {},
+      "calendar_description_sections": [],
+      "sop_assets": [],
+      "post_production_workflow": []
+    },
+    "winsday": {
+      "show_name": "WinsDay",
+      "client_name": "Reveting",
+      "highlevel_token_env_var": "HIGHLEVEL_TOKEN_WINSDAY",
+      "highlevel_location_id_env_var": "HIGHLEVEL_LOCATION_ID_WINSDAY",
+      "timezone": "America/New_York",
+      "show_time_et": "8:00 PM",
+      "preshow_offset_minutes": 15,
+      "episode_duration_minutes": 60,
+      "expected_guest_count": 2,
+      "required_attendee_emails": [],
+      "required_field_keywords": {},
+      "calendar_description_sections": [],
+      "sop_assets": [],
+      "post_production_workflow": []
+    }
+  }
+}
