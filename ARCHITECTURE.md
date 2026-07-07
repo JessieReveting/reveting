@@ -1,22 +1,59 @@
-# Reveting AI Operations Manager Architecture
+# Reveting Operations Manager Architecture
 
-Version 1 establishes a read-only, auditable operations platform for Reveting livestream and podcast production.
+Reveting Operations Manager is a read-only AI operations manager and AI operations copilot for LinkedIn Live production, podcast production operations, livestream operations, guest booking workflows, calendar QA, and show operations automation.
 
-## Mission
+The system is designed to help Reveting understand what is booked, what is scheduled, what is missing, what is risky, and what a human operator should do next without changing production systems automatically.
 
-The Operations Manager is the central operations platform for Reveting. It should eventually understand every show, guest, booking, calendar event, production task, SOP, asset, and communication required to produce a livestream or podcast.
+## Core System Map
 
-The system must remain modular, deterministic, explainable, auditable, and read-only until automation is explicitly enabled.
+### External System Roles
 
-## Layers
+- HighLevel = booking, forms, contacts, and custom fields source
+- Google Calendar = production schedule source
+- StreamYard = livestream studio and recording source
+- LinkedIn Events = promotion and event source
+- Gmail = guest communication source
+- Google Drive = asset and source file storage
 
-### Layer 1: Discovery
+### Internal System Roles
 
-Discovery reads external systems and writes normalized JSON snapshots.
+- Operations Audit = QA layer
+- Daily Operations Brief = operator layer
+- Operations Copilot = work queue layer
+- Knowledge Mode = learning layer
 
-Discovery must not make decisions.
+## Why The Architecture Matters
 
-Current and future snapshot roots:
+Reveting show operations span multiple systems that each represent a different part of reality:
+
+- HighLevel knows what was booked
+- Google Calendar knows what is on the production calendar
+- StreamYard knows what live room or recording environment exists
+- LinkedIn Events knows what promotion event exists
+- Gmail carries reminder and coordination context
+- Google Drive holds working assets and source files
+
+The architecture keeps those roles explicit so the system can compare them without blurring source-of-truth boundaries.
+
+## Layer 1: Discovery
+
+Discovery reads external systems and writes normalized local snapshots.
+
+Discovery should:
+
+- authenticate safely
+- read source data
+- normalize it into a predictable shape
+- write local artifacts for audit use
+
+Discovery must not:
+
+- make production decisions
+- suppress issues
+- send messages
+- modify source systems
+
+Current and planned snapshot roots include:
 
 - `data/discovery/`
 - `data/calendar/`
@@ -24,44 +61,125 @@ Current and future snapshot roots:
 - `data/drive/`
 - `data/streamyard/`
 
-### Layer 2: Operations Audit
+## Layer 2: Operations Audit
 
-Audit compares normalized snapshots only. It must not call external APIs and must never modify data.
+Operations Audit is the QA layer.
 
-Every issue should include:
+It compares normalized snapshots only and produces:
 
-- Severity
-- Reason
-- Evidence
-- Confidence
-- Recommended action
-- Human-readable explanation
+- issues
+- severity
+- evidence
+- confidence
+- recommended human action
+- production health context
 
-### Layer 3: Rules Engine
+The audit should answer questions like:
 
-Rules live in configuration, not source code. Version 1 rules are stored in `config/operations_rules.json`.
+- Does a HighLevel booking have a valid production calendar event?
+- Does the calendar title reflect the real guest?
+- Is the LinkedIn event ready?
+- Is the StreamYard link ready?
+- Is the show blocked by guest topics, confirmation, or production assets?
+- Is this a true mismatch or a known exception?
 
-Rules may define:
+The audit must remain read-only.
 
-- Required attendees and invite recipients
-- Guest, PR, assistant, and alternate invite email checks
-- Calendar title and description expectations
-- Required Drive, StreamYard, SOP, and production assets
-- Required custom form fields
-- Pre-show offset and show duration
-- Production health scoring
+## Layer 3: Daily Operations Brief
 
-### Layer 4: Automation
+The Daily Operations Brief is the operator layer.
 
-Automation is not implemented in Version 1.
+It turns audit outputs into a short operational readout for the near-term show window. It helps a human operator understand:
 
-Future automation must be approval-based and separated from discovery, audit, and rules.
+- what is urgent today
+- what is blocked
+- what is safe to ignore today
+- what work queue items are active
+- what completion claims were actually verified
+
+This is the “what should Jessie care about right now?” layer.
+
+## Layer 4: Operations Copilot
+
+The Operations Copilot is the work queue layer.
+
+It translates audit findings into operator-facing tasks such as:
+
+- finalize production links
+- resolve calendar and HighLevel mismatches
+- follow up for topics
+- confirm guest status
+- source a replacement guest
+
+This layer is not an automation engine. It is a prioritization and coordination layer for human operators.
+
+## Layer 5: Trust Layer
+
+The Trust Layer explains confidence and boundaries.
+
+Instead of flattening everything into “right” or “wrong,” it classifies operational findings into buckets such as:
+
+- Confirmed Issues
+- Needs Verification
+- PR Representative Booking / Guest Represented
+- Waiting on Guest
+- Waiting on Guest Topics
+- Known Exceptions
+- Needs Human Follow-Up
+
+This matters because Reveting operations often include:
+
+- PR representatives booking on behalf of guests
+- manually corrected production calendars
+- replacement guests
+- human-confirmed exceptions
+- valid LinkedIn events that are missing from the calendar description
+
+## Layer 6: Knowledge Mode
+
+Knowledge Mode is the learning layer.
+
+It stores approved or observed operational context in local configuration such as:
+
+- known exceptions
+- known decisions
+- known patterns
+- LinkedIn event evidence
+- show preferences
+
+Knowledge Mode exists so the system can learn from repeated operations work without silently changing logic or hiding uncertainty.
+
+## Source-Of-Truth Boundaries
+
+The current model is intentionally explicit:
+
+- HighLevel is the best source for bookings, form submissions, submitters, and custom fields
+- Google Calendar is the best source for scheduled production events
+- StreamYard is the best source for live-room and recording readiness
+- LinkedIn Events is the best source for promotion-event existence
+- Gmail is the best source for communication history
+- Google Drive is the best source for files and assets
+
+The audit layer exists precisely because these sources do not always agree.
 
 ## Connector Boundary
 
-Connectors isolate external systems. A connector may authenticate, read, normalize, and write JSON snapshots. It must not contain business logic or recommendations.
+Connectors isolate external systems.
 
-Connector folders:
+A connector may:
+
+- authenticate
+- read source data
+- normalize records
+- write local snapshots
+
+A connector must not:
+
+- contain business rules
+- determine operator priority
+- send communications without an approved future automation layer
+
+Connector folders include:
 
 - `connectors/highlevel/`
 - `connectors/google_calendar/`
@@ -69,13 +187,59 @@ Connector folders:
 - `connectors/google_drive/`
 - `connectors/streamyard/`
 
-## Onboarding Model
+## Rules Engine
 
-Future client/show onboarding should require:
+Rules live in configuration rather than being scattered through code.
 
-- Credentials
-- Configuration
-- SOP
+Current rule areas include:
 
-It should not require Python code changes.
+- attendees and invite expectations
+- calendar title and description checks
+- production timeline expectations
+- guest, PR, assistant, and alternate invite handling
+- LinkedIn event and StreamYard readiness expectations
+- production health scoring
 
+This supports safer iteration and clearer review over time.
+
+## Completion Verification
+
+The architecture now includes a completion verification step for local operator claims.
+
+That means the system can distinguish:
+
+- Jessie marked a task done locally
+- the fresh read-only audit verified it in source data
+
+This prevents local completion notes from being treated as true production completion unless HighLevel, Google Calendar, or other relevant source evidence confirms them.
+
+## Read-Only Safety Model
+
+Version 1 is intentionally read-only.
+
+The system should not directly:
+
+- change HighLevel
+- edit Google Calendar
+- send Gmail messages
+- edit StreamYard
+- create or change LinkedIn Events
+- update Google Drive assets
+
+Any future automation must be narrow, approval-based, auditable, and clearly separated from discovery, audit, and reporting.
+
+## Long-Term Direction
+
+The long-term goal is not generic automation. It is safe operations assistance for Reveting’s recurring shows.
+
+That means improving:
+
+- LinkedIn Live show operations
+- B2B podcast production operations
+- livestream guest booking
+- production readiness
+- calendar QA
+- operator clarity
+- safe automation readiness
+
+See [VERSION_2_ROADMAP.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/VERSION_2_ROADMAP.md) for the future roadmap.

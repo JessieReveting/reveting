@@ -1,469 +1,247 @@
-# Reveting Show Operations Tool
+# Reveting Operations Manager
 
-Internal tooling for Reveting show operations, including read-only discovery, Google Calendar exports, operations audits, and production health reporting.
+Reveting Operations Manager is an AI-powered operations copilot for managing LinkedIn Live shows, livestreams, podcasts, guest bookings, production calendars, and post-production workflows across HighLevel, Google Calendar, StreamYard, LinkedIn Events, Gmail, and Google Drive.
 
-Version 1 is read-only. Do not enable automation until explicitly approved.
+This repository documents and powers Reveting's read-only operations layer for show operations automation, production readiness, calendar QA, guest booking workflows, and B2B marketing operations.
 
-See [ARCHITECTURE.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/ARCHITECTURE.md) for the long-term platform architecture and [VERSION_2_ROADMAP.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/VERSION_2_ROADMAP.md) for future work that must not begin without approval.
+## What This Is
 
-## Setup
+Reveting Operations Manager is an internal AI operations manager and AI operations copilot for recurring Reveting shows. It helps operators audit bookings, production calendars, guest readiness, livestream production tasks, and downstream workflow gaps without changing external systems automatically.
 
-1. Create a local virtual environment if you want one:
+In practical terms, this project gives Reveting:
+
+- A read-only Operations Audit for HighLevel, Google Calendar, and production data
+- A Daily Operations Brief for near-term operator decisions
+- An Operations Copilot work queue for what to do next
+- A Trust Layer for explaining confidence, mismatch handling, and exceptions
+- A Knowledge Mode for learning repeated patterns safely before automation
+
+## Who It Is For
+
+This project is for:
+
+- Reveting operators managing LinkedIn Live show operations
+- Producers running livestream production and podcast production workflows
+- Marketing operations teams coordinating guest booking, scheduling, and content readiness
+- B2B marketing teams using HighLevel, StreamYard, Google Calendar, Gmail, LinkedIn Events, and Google Drive
+- Future partners who need to understand how Reveting show operations automation is structured
+
+## Shows Currently Supported
+
+- WinsDay
+- Beyond the Cart
+- Deconstructing Data
+- Apparel with Purpose
+- The David Daily Show
+
+## Problems It Solves
+
+Reveting runs recurring LinkedIn Live and B2B podcast-style shows with many moving parts. Those moving parts often live across disconnected systems.
+
+This repository helps solve:
+
+- HighLevel booking and form data that does not obviously line up with production calendars
+- Guest booking workflows that rely on custom fields, PR reps, assistants, or submitters
+- Google Calendar production audit needs before a show goes live
+- StreamYard production workflow gaps close to air time
+- LinkedIn Events promotion links missing from the production source of truth
+- Gmail communication coordination around invites, reminders, and SOP timing
+- Google Drive asset readiness and source file tracking
+- Operator uncertainty about what is real, what is blocked, and what is safe to ignore today
+
+## Current Capabilities
+
+- Read-only HighLevel discovery for bookings, forms, form submissions, and custom fields
+- Google Calendar OAuth export for production schedule visibility
+- All-show Operations Audit across supported Reveting shows
+- Daily Operations Brief for the next 7 days of show operations
+- Operations Copilot work queue for operator action prioritization
+- Trust Layer for confidence, exception handling, and human verification boundaries
+- Knowledge Mode for known exceptions, known decisions, known patterns, and LinkedIn event evidence
+- Production readiness checks across bookings, invites, calendar copy, LinkedIn event status, StreamYard status, and timeline stages
+- Completion verification workflow that distinguishes local completion claims from source-verified completion
+
+## Read-Only Safety Model
+
+Version 1 is intentionally read-only.
+
+The repository does not automatically:
+
+- modify HighLevel
+- modify Google Calendar
+- send Gmail messages
+- modify StreamYard
+- update LinkedIn Events
+- change Google Drive files
+
+The operating principle is simple: read external systems, normalize local snapshots, run audits, and explain recommended actions without changing production data unless a future approved automation layer is added.
+
+## Architecture Overview
+
+At a high level:
+
+- HighLevel is the booking, forms, and custom fields source
+- Google Calendar is the production schedule source
+- StreamYard is the livestream studio and recording source
+- LinkedIn Events is the promotion and event source
+- Gmail is the guest communication source
+- Google Drive is the asset and source-file storage layer
+- Operations Audit is the QA layer
+- Daily Operations Brief is the operator layer
+- Operations Copilot is the work queue layer
+- Knowledge Mode is the learning layer
+
+See [ARCHITECTURE.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/ARCHITECTURE.md) for the fuller system explanation.
+
+## Daily Operations Brief
+
+The Daily Operations Brief is the operator-facing snapshot for what matters now.
+
+It is designed to answer:
+
+- Which shows are approaching production risk
+- Which guests are confirmed, blocked, or need topics
+- Whether LinkedIn Events and StreamYard links are ready
+- Which work queue items should be closed, escalated, or monitored
+- Which completion claims were actually verified by fresh source data
+
+## Operations Copilot Work Queue
+
+The Operations Copilot work queue is the task layer for near-term action.
+
+It helps prioritize:
+
+- guest follow-up
+- calendar mismatch review
+- production link completion
+- replacement guest sourcing
+- readiness blockers before a LinkedIn livestream or podcast recording
+
+## Trust Layer
+
+The Trust Layer explains how confident the system is about what it found.
+
+It separates findings into categories like:
+
+- Confirmed Issues
+- Needs Verification
+- PR Representative Booking / Guest Represented
+- Waiting on Guest
+- Waiting on Guest Topics
+- Known Exceptions
+- Needs Human Follow-Up
+
+This is important because livestream operations and guest booking workflows often include legitimate edge cases, especially across HighLevel, Google Calendar, and PR-submitted bookings.
+
+## Knowledge Mode
+
+Knowledge Mode is the safe learning layer.
+
+It records:
+
+- known exceptions
+- known decisions
+- known patterns
+- LinkedIn event evidence
+- show preferences
+
+Knowledge Mode helps the system learn recurring operational nuance without silently changing production behavior.
+
+## Rule Approval Workflow
+
+Rules and recommendations should become more accurate over time, but changes should remain reviewable.
+
+The rule approval workflow exists so Reveting can:
+
+- identify repeated operational patterns
+- propose safer future rules
+- avoid hard-coding assumptions too early
+- keep human approval in the loop before automation
+
+## Future Roadmap
+
+Planned future directions include:
+
+- richer Gmail and Google Drive normalization
+- read-only StreamYard validation
+- safer LinkedIn event verification paths
+- better post-production tracking
+- approval-based safe automation for narrow, low-risk actions
+
+See [VERSION_2_ROADMAP.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/VERSION_2_ROADMAP.md) for longer-horizon planning.
+
+## How To Run Locally
+
+1. Create a virtual environment if you want one.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-2. Install Python dependencies:
+2. Install dependencies.
 
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Create a local `.env` file in the project root and add the HighLevel tokens:
+3. Copy the local environment template.
 
 ```bash
 cp .env.example .env
 ```
 
-Required variables:
-
-```env
-HIGHLEVEL_TRANSPORT=direct
-HIGHLEVEL_RELAY_BASE_URL=
-HIGHLEVEL_RELAY_SHARED_SECRET=
-
-HIGHLEVEL_TOKEN_CHERRY_WILLOW=
-HIGHLEVEL_LOCATION_ID_CHERRY_WILLOW=
-HIGHLEVEL_TOKEN_DAVID_DAILY=
-HIGHLEVEL_LOCATION_ID_DAVID_DAILY=
-HIGHLEVEL_TOKEN_BEYOND_THE_CART=
-HIGHLEVEL_LOCATION_ID_BEYOND_THE_CART=
-HIGHLEVEL_TOKEN_DECONSTRUCTING_DATA=
-HIGHLEVEL_LOCATION_ID_DECONSTRUCTING_DATA=
-HIGHLEVEL_TOKEN_WINSDAY=
-HIGHLEVEL_LOCATION_ID_WINSDAY=
-
-GOOGLE_CALENDAR_ID=ww@reveting.com
-GOOGLE_CALENDAR_AUTH_MODE=oauth
-GOOGLE_CALENDAR_OAUTH_CLIENT_JSON=secrets/google-calendar-oauth-client.json
-GOOGLE_CALENDAR_OAUTH_TOKEN_JSON=secrets/google-calendar-token.json
-GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON=
-GOOGLE_CALENDAR_DELEGATED_USER=
-GOOGLE_CALENDAR_EXPORT_DAYS_AHEAD=180
-```
-
-`scripts/show-launch.py` and `scripts/highlevel-direct-smoke-test.py` automatically load `.env` from the project root before validating tokens. Existing system environment variables are preserved and take precedence over values in `.env`.
-
-## Supported HighLevel Pattern
-
-The primary supported pattern is direct, location-scoped API access with one private integration token per show/sub-account.
-
-- Base URL: `https://services.leadconnectorhq.com`
-- Version header: `2021-04-15`
-- Auth style: `Authorization: Bearer <pit-...>`
-- Working documented auth check: `POST /contacts/search`
-- Required request body for our sub-account tokens: `{"locationId":"...","pageLimit":1}`
-
-This matches HighLevel's official Contacts API docs and works for the WinsDay private integration token when the token and location ID belong to the same sub-account.
-
-If you explicitly want to force relay mode from a deployed server, set:
-
-```env
-HIGHLEVEL_TRANSPORT=relay
-```
-
-For direct mode, each show should have both:
-
-- `HIGHLEVEL_TOKEN_*`
-- `HIGHLEVEL_LOCATION_ID_*`
-
-Required location IDs:
-
-```env
-HIGHLEVEL_LOCATION_ID_CHERRY_WILLOW=
-HIGHLEVEL_LOCATION_ID_DAVID_DAILY=
-HIGHLEVEL_LOCATION_ID_BEYOND_THE_CART=
-HIGHLEVEL_LOCATION_ID_DECONSTRUCTING_DATA=
-HIGHLEVEL_LOCATION_ID_WINSDAY=
-```
-
-The script does not assume a private token can use agency-wide location search endpoints.
-
-## Minimal Direct Smoke Test
-
-Use this standalone test to validate one private integration token against one documented HighLevel endpoint from a clean local environment:
-
-```bash
-python3 scripts/highlevel-direct-smoke-test.py --show-key winsday
-```
-
-Expected success shape:
-
-- endpoint: `https://services.leadconnectorhq.com/contacts/search`
-- method: `POST`
-- status: `200`
-
-The script never prints the token and redacts known secrets from errors.
-
-## Relay Setup
-
-Install the relay dependencies in your deployed environment:
-
-```bash
-pip install -r requirements-server.txt
-```
-
-Run the relay:
-
-```bash
-uvicorn server.highlevel_relay:APP --host 0.0.0.0 --port 8000
-```
-
-Then point the desktop tool at it:
-
-```env
-HIGHLEVEL_TRANSPORT=relay
-HIGHLEVEL_RELAY_BASE_URL=https://your-relay-host
-HIGHLEVEL_RELAY_SHARED_SECRET=your-shared-secret
-```
-
-Relay mode is optional. Keep it as a fallback if a deployed environment is ever needed for network-policy reasons.
-
-## Test HighLevel Auth
-
-Use this to verify the documented location-scoped HighLevel endpoint from the main orchestration script:
-
-```bash
-python3 scripts/show-launch.py --test-highlevel-auth --show-key winsday
-```
-
-The auth test uses `POST /contacts/search` with the configured `HIGHLEVEL_LOCATION_ID_*` for that show.
-
-## Run Discovery
-
-This will load `.env` automatically and run HighLevel discovery for the WinsDay sub-account without manually exporting tokens:
-
-```bash
-python3 scripts/show-launch.py --discover-highlevel --show-key winsday
-```
-
-Run all configured shows after all five `HIGHLEVEL_LOCATION_ID_*` values are present:
+4. Run discovery or audit commands as needed.
 
 ```bash
 python3 scripts/show-launch.py --discover-highlevel
-```
-
-Discovery writes these per-show read-only artifacts:
-
-- `data/discovery/{show_key}_appointments.json`
-- `data/discovery/{show_key}_forms.json`
-- `data/discovery/{show_key}_form_fields.json`
-- `data/discovery/{show_key}_form_submissions.json`
-- `data/discovery/{show_key}_custom_field_map.json`
-- `data/discovery/{show_key}_episodes.json`
-
-Appointment discovery keeps appointments, contacts, and form submissions separate. For shows like WinsDay that can have two guests per episode, `*_episodes.json` groups records by episode date/time while preserving each guest and each form submission independently.
-
-### Discovery Calendar Selection
-
-HighLevel bookings are treated as the source of truth, so discovery now validates the booking calendar before writing appointment artifacts.
-
-For each show, discovery:
-
-- Loads all calendars in that HighLevel location.
-- Checks whether the configured `calendar_id_hint` exists.
-- Checks whether the configured `calendar_name_hint` matches an available calendar.
-- Finds the configured booking form, when available.
-- Probes appointment counts for all calendars in the location.
-- Prefers calendars associated with the show's booking form.
-- Ranks candidate calendars by config match, form association, active status, and appointment count.
-- Writes confidence, warnings, configuration mismatches, and alternate calendars considered into discovery metadata.
-
-Calendar hints live in:
-
-```bash
-scripts/show-launch.py
-```
-
-Update the matching show entry if HighLevel creates a replacement booking calendar or if a stale calendar starts returning 0 appointments:
-
-```python
-"calendar_name_hint": "Exact HighLevel calendar name",
-"calendar_id_hint": "ExactHighLevelCalendarId",
-```
-
-Discovery confidence means:
-
-- `High`: the selected calendar has strong evidence, usually a config/form match plus appointment data.
-- `Medium`: the selected calendar is plausible, but appointment data or configuration evidence is incomplete.
-- `Low`: discovery could not prove the selected calendar is the booking source of truth.
-
-Open the discovery health dashboard after discovery:
-
-```bash
-open data/discovery/discovery_health.html
-```
-
-The dashboard shows selected calendars, IDs, appointment counts, form counts, contact sample counts, confidence, warnings, and configuration mismatches for all shows.
-
-### Validate Discovery
-
-Use validation when a show has 0 appointments, a stale calendar hint, or unclear discovery confidence:
-
-```bash
 python3 scripts/show-launch.py --validate-discovery
-```
-
-Limit validation to one show:
-
-```bash
-python3 scripts/show-launch.py --validate-discovery --show-key beyond-the-cart
-```
-
-Validation checks:
-
-- Token valid.
-- Location valid.
-- Calendar exists.
-- Calendar ID matches config.
-- Booking form found.
-- Appointment endpoint returning data.
-- Discovery confidence.
-
-If a check fails, the command prints the failed show, the reason, and the exact configuration area to review. It does not modify HighLevel or Google Calendar.
-
-## Run Operations Audit
-
-Discovery is Version 1. Do not expand discovery unless a missing field blocks audit or operations work.
-
-The read-only operations audit compares HighLevel Discovery V1 artifacts against the `ww@reveting.com` Google Calendar. It does not change Google Calendar, HighLevel, or email.
-
-Audit rules and health scoring live in:
-
-```bash
-config/operations_rules.json
-```
-
-Rules are configuration, not source-code decisions. Use this file for pre-show offsets, required attendees, required description sections, SOP assets, required custom fields, and production health deductions.
-
-The same rules file also controls audit trust behavior:
-
-- `guest_lifecycle_rules` defines canceled, rescheduled, replaced, and otherwise non-actionable booking statuses.
-- `suppression_rules.known_exceptions` and `suppression_rules.suppressed_issues` let operators suppress a specific issue by show, episode date, guest, issue code, reason, and expiration date.
-- `issue_operational_impacts` explains why each issue matters in the HTML evidence panels.
-
-First, export Google Calendar event data for `ww@reveting.com` to:
-
-```bash
-data/calendar/ww_reveting_events.json
-```
-
-### Option A: Direct API Export With OAuth
-
-Recommended for a local Mac. This uses Google's OAuth Desktop app flow, opens a browser the first time you run it, saves a read-only token under `secrets/`, and exports directly to `data/calendar/ww_reveting_events.json` after that. It does not modify Google Calendar.
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/).
-2. Create or select a Google Cloud project for Reveting internal tooling.
-3. Enable the [Google Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) for that project.
-4. If prompted, configure the OAuth consent screen:
-   - User type: `Internal` if Reveting uses Google Workspace and that option is available, otherwise `External`.
-   - App name: `Reveting Operations Audit`.
-   - User support email: your Google account.
-   - Developer contact email: your Google account.
-   - Publishing status can stay in testing for local use.
-   - Add your Google account as a test user if the app is external/testing.
-5. Create credentials:
-   - Credential type: `OAuth client ID`.
-   - Application type: `Desktop app`.
-   - Name: `Reveting Operations Audit Local`.
-6. Download the OAuth client JSON.
-7. Create the local secrets directory:
-
-```bash
-mkdir -p secrets
-```
-
-8. Save the downloaded file as:
-
-```bash
-secrets/google-calendar-oauth-client.json
-```
-
-The `secrets/` directory is ignored by git. Do not commit the OAuth client JSON or the generated token file.
-
-Local `.env`:
-
-```env
-GOOGLE_CALENDAR_ID=ww@reveting.com
-GOOGLE_CALENDAR_AUTH_MODE=oauth
-GOOGLE_CALENDAR_OAUTH_CLIENT_JSON=secrets/google-calendar-oauth-client.json
-GOOGLE_CALENDAR_OAUTH_TOKEN_JSON=secrets/google-calendar-token.json
-GOOGLE_CALENDAR_EXPORT_DAYS_AHEAD=180
-```
-
-Install dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Run the export:
-
-```bash
-python3 scripts/export-google-calendar.py
-```
-
-The first run opens your browser and asks for Google Calendar read-only consent. After approval, the script saves `secrets/google-calendar-token.json` locally and future exports run without manually copying/pasting event JSON.
-
-Use a bounded audit window when testing:
-
-```bash
-python3 scripts/export-google-calendar.py \
-  --time-min 2026-06-30T00:00:00-04:00 \
-  --time-max 2026-09-28T23:59:59-04:00
-```
-
-The export includes normalized fields for event ID, calendar ID, title/summary, start/end, attendees, attendee emails, organizer, creator, description, location, meeting/conference link, and the raw event payload.
-
-### Option B: Direct API Export With A Service Account
-
-Use this only if a Workspace admin prefers service-account access. OAuth Desktop is simpler for local Mac setup.
-
-Required Google credential:
-
-- Enable the Google Calendar API in the Google Cloud project.
-- Create a service account JSON key and keep it out of git, for example `secrets/google-calendar-service-account.json`.
-- Share the `ww@reveting.com` calendar with the service account email with `See all event details`, or configure Google Workspace domain-wide delegation.
-- Required OAuth scope: `https://www.googleapis.com/auth/calendar.readonly`.
-- If using domain-wide delegation, set `GOOGLE_CALENDAR_DELEGATED_USER=ww@reveting.com`.
-
-Local `.env`:
-
-```env
-GOOGLE_CALENDAR_ID=ww@reveting.com
-GOOGLE_CALENDAR_AUTH_MODE=service-account
-GOOGLE_CALENDAR_SERVICE_ACCOUNT_JSON=secrets/google-calendar-service-account.json
-GOOGLE_CALENDAR_DELEGATED_USER=
-GOOGLE_CALENDAR_EXPORT_DAYS_AHEAD=180
-```
-
-Run:
-
-```bash
-python3 scripts/export-google-calendar.py
-```
-
-The export includes normalized fields for event ID, calendar ID, title/summary, start/end, attendees, attendee emails, organizer, creator, description, location, meeting/conference link, and the raw event payload.
-
-### Option C: Manual API Export
-
-Use this for the first test if creating credentials is slower.
-
-1. Open Google Calendar API `Events: list` in Google's API Explorer.
-2. Use calendar ID `ww@reveting.com`.
-3. Set `timeMin` and `timeMax` for the audit window, for example `2026-06-30T00:00:00-04:00` to `2026-09-28T23:59:59-04:00`.
-4. Set `singleEvents=true`, `orderBy=startTime`, and `maxResults=2500`.
-5. Authorize with `https://www.googleapis.com/auth/calendar.readonly`.
-6. Save the JSON response to `data/calendar/manual_google_calendar_events_raw.json`.
-7. Normalize it:
-
-```bash
-python3 scripts/export-google-calendar.py \
-  --input data/calendar/manual_google_calendar_events_raw.json \
-  --output data/calendar/ww_reveting_events.json \
-  --time-min 2026-06-30T00:00:00-04:00 \
-  --time-max 2026-09-28T23:59:59-04:00
-```
-
-Google Calendar's UI export creates ICS files, which are not enough for this audit because they can omit full attendee, organizer, creator, and raw event payload details.
-
-The audit input can also use Google Calendar API shape:
-
-```json
-{"items": []}
-```
-
-or connector/export shape:
-
-```json
-{"events": []}
-```
-
-Use full event details whenever possible. Attendees are required for the auditor to verify guest, PR, and assistant invite status.
-
-Then run:
-
-```bash
+python3 scripts/highlevel-direct-smoke-test.py --show-key winsday
 python3 scripts/operations-audit.py
+python3 scripts/operations-audit.py --daily-brief
 ```
 
-Limit to one show:
+## Environment Setup
 
-```bash
-python3 scripts/operations-audit.py --show-key winsday
-```
+This repository expects local environment variables for HighLevel and Google Calendar access. Keep these in `.env`, not in Git.
 
-Run the Operations Manager audit for every configured show:
+Typical local setup includes:
 
-```bash
-python3 scripts/operations-audit.py --show-key all --calendar-events data/calendar/ww_reveting_events.json
-```
+- one HighLevel private integration token per show
+- one HighLevel location ID per show
+- Google Calendar OAuth client JSON path
+- Google Calendar OAuth token JSON path
+- calendar ID and export window settings
 
-The audit writes:
+The repository already includes `.env.example` as a template and ignores real `.env` files.
 
-- `data/audit/operations_audit_report.md`
-- `data/audit/operations_audit_report.html`
-- `data/audit/operations_audit_report.json`
-- `data/audit/operations_audit_issues.csv`
-- `data/audit/operations_dashboard.json`
-- `data/audit/operations_manager_dashboard.json`
-- `data/audit/operations_manager_dashboard.html`
+## Security Notes
 
-The audit checks whether a calendar event exists, whether the SOP pre-show/live time matches, whether title and guests match, whether guest and PR emails are invited, whether assistant emails appear, whether required operations attendees are invited, whether required form fields are present in the description, whether configured SOP/production assets are present, whether duplicates exist, and whether bookings/calendar events are orphaned.
+- Do not commit `.env`, secrets, OAuth token files, or OAuth client files.
+- Do not commit `data/`, `output/`, or generated audit/discovery artifacts containing guest or production data.
+- Treat HighLevel exports, Gmail context, Google Calendar exports, and Drive-derived records as private operational data.
+- Version 1 is read-only by design to reduce the risk of accidental production changes.
 
-Each issue includes severity, reason, evidence, confidence, recommended action, and a human-readable explanation.
+## Keywords
 
-The Operations Manager dashboard is the primary operator landing page. It consumes normalized audit JSON only and does not call HighLevel, Google Calendar, Gmail, Google Drive, or any other external system directly. It summarizes overall production health, per-show health, upcoming episodes, recent episodes, episode production status, SOP checklists, operational timelines, prioritized recommendations, suppressed issues, future autofix classification, and trend versus a previous audit snapshot if one exists.
+This repository is intentionally positioned around the following natural-language search themes:
 
-Production readiness timing is configured in `config/production_timeline_rules.json`. That file controls production stages, stage thresholds, checklist due rules, timeline steps, and stage-aware severity escalation. Override the default with:
+- Reveting
+- WinsDay
+- LinkedIn Live show operations
+- LinkedIn livestream production
+- B2B podcast production
+- livestream guest booking
+- HighLevel booking automation
+- StreamYard production workflow
+- Google Calendar production audit
+- AI operations manager
+- AI operations copilot
+- marketing operations automation
 
-```bash
-python3 scripts/operations-audit.py --production-timeline-rules config/production_timeline_rules.json
-```
+## Related Docs
 
-By default the audit expects Google Calendar events to start 15 minutes before the HighLevel booking time because the calendar should reserve the pre-show window. Override with:
-
-```bash
-python3 scripts/operations-audit.py --preshow-minutes 15 --time-tolerance-minutes 10
-```
-
-## Connectors
-
-Connectors live under `connectors/` and isolate external systems. A connector may authenticate, read, normalize, and write JSON snapshots. It must not contain business logic, audit decisions, recommendations, or automation.
-
-Current connector folders:
-
-- `connectors/highlevel/`
-- `connectors/google_calendar/`
-- `connectors/gmail/`
-- `connectors/google_drive/`
-- `connectors/streamyard/`
-
-## Webhooks
-
-HighLevel officially documents appointment webhook events that fit this project's scheduling workflow:
-
-- `AppointmentCreate`
-- `AppointmentUpdate`
-- `AppointmentDelete`
-
-For our use case, `AppointmentDelete` is the closest documented equivalent to an appointment cancellation event.
-
-I did not find a documented form-submitted webhook event in HighLevel's webhook catalog or sitemap. Until HighLevel documents one, the safest design is:
-
-- event-driven for appointment lifecycle changes
-- direct API reads for form/contact enrichment only when an appointment event arrives
-
-This avoids continuous polling while still keeping form-dependent show operations accurate.
+- [ARCHITECTURE.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/ARCHITECTURE.md)
+- [CHANGELOG.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/CHANGELOG.md)
+- [docs/project-overview.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/docs/project-overview.md)
+- [docs/github-about-and-topics.md](/Users/jessiebdex/Documents/Operations%20Automation/reveting/docs/github-about-and-topics.md)
