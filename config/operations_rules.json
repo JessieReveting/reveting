@@ -125,7 +125,7 @@
   },
   "manual_episode_issues": [
     {
-      "enabled": true,
+      "enabled": false,
       "show_key": "winsday",
       "episode_date": "2026-07-08",
       "calendar_title_contains": "Charlie Sells and Jeff Chen",
@@ -332,6 +332,12 @@
     "calendar_event_needs_confirmation": {
       "confidence": "medium"
     },
+    "linkedin_event_exists_calendar_needs_update": {
+      "confidence": "high"
+    },
+    "pr_representative_booking_guest_represented": {
+      "confidence": "high"
+    },
     "guest_confirmation_pitch_follow_up": {
       "confidence": "medium"
     },
@@ -353,6 +359,8 @@
     "calendar_export_window_gap": "The audit cannot prove whether a Google Calendar event exists because the loaded calendar export does not cover the HighLevel booking time.",
     "calendar_event_without_booking": "A calendar event may be stale, manually created, or disconnected from the active booking source of truth.",
     "calendar_event_needs_confirmation": "A calendar event may still be valid, but the related HighLevel context is canceled or mismatched and needs human confirmation.",
+    "linkedin_event_exists_calendar_needs_update": "The LinkedIn event already exists, but operators may miss it until the Google Calendar event is updated with the URL and downstream SOP steps are completed.",
+    "pr_representative_booking_guest_represented": "A PR representative, assistant, or submitter appears to have booked on behalf of the actual guest, and the guest is represented by other booking/calendar evidence.",
     "guest_topics_pending": "The episode cannot move into final LinkedIn, calendar-description, or email prep until guest topics are received.",
     "guest_confirmation_pitch_follow_up": "The guest or booking status needs human confirmation before the episode can be treated as production-ready.",
     "guest_rsvp_acceptance_risk": "Guest-side attendees may not have accepted the calendar invite, creating confirmation risk before production.",
@@ -478,7 +486,7 @@
         "show_key": "beyond-the-cart",
         "episode_date": "2026-07-07",
         "guest_name": "Tim Berney",
-        "context": "Needs Samantha confirmation because related HighLevel context appears canceled or mismatched."
+        "context": "Samantha Rubenstein is the HighLevel submitter/contact for Tim Berney; treat this as a PR representative booking when Tim guest evidence is present."
       },
       {
         "show_key": "cherry-willow",
@@ -511,6 +519,22 @@
         "future_automation_candidate": "no",
         "automation_risk_level": "high",
         "approval_required_before_action": "Human confirmation from the responsible stakeholder."
+      },
+      "linkedin_event_exists_calendar_needs_update": {
+        "category": "Waiting on Internal Team",
+        "dashboard_bucket": "Waiting on Internal Team",
+        "what_jessie_should_verify": "Confirm the LinkedIn event URL is correct, then update the Google Calendar event and downstream SOP materials manually.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Human approval before updating calendar text or sending emails."
+      },
+      "pr_representative_booking_guest_represented": {
+        "category": "PR Representative Booking / Guest Represented",
+        "dashboard_bucket": "PR Representative Booking / Guest Represented",
+        "what_jessie_should_verify": "Review the submitter/contact, represented guest, and supporting evidence before changing any guest-facing record if later context conflicts.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "medium",
+        "approval_required_before_action": "Human approval before changing any guest-facing record."
       },
       "guest_confirmation_pitch_follow_up": {
         "category": "Waiting on Someone",
@@ -649,6 +673,8 @@
       "booking_without_calendar_event": 30,
       "calendar_export_window_gap": 4,
       "calendar_event_needs_confirmation": 8,
+      "linkedin_event_exists_calendar_needs_update": 4,
+      "pr_representative_booking_guest_represented": 0,
       "guest_topics_pending": 8,
       "guest_confirmation_pitch_follow_up": 10,
       "guest_rsvp_acceptance_risk": 8,

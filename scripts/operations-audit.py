@@ -23,6 +23,7 @@ REPO_ROOT = Path(__file__).parent.parent
 DISCOVERY_DIR = REPO_ROOT / "data" / "discovery"
 DEFAULT_CALENDAR_EVENTS_PATH = REPO_ROOT / "data" / "calendar" / "ww_reveting_events.json"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "data" / "audit"
+DEFAULT_COMPLETED_TASKS_PATH = DEFAULT_OUTPUT_DIR / "completed_tasks.json"
 DEFAULT_RULES_PATH = REPO_ROOT / "config" / "operations_rules.json"
 DEFAULT_PRODUCTION_TIMELINE_RULES_PATH = REPO_ROOT / "config" / "production_timeline_rules.json"
 DEFAULT_KNOWLEDGE_DIR = REPO_ROOT / "config" / "knowledge"
@@ -30,6 +31,7 @@ DEFAULT_CALENDAR_ID = "ww@reveting.com"
 DEFAULT_PRESHOW_MINUTES = 15
 DEFAULT_TIME_TOLERANCE_MINUTES = 10
 DEFAULT_DAYS_AHEAD = 180
+INTERNAL_EMAIL_DOMAINS = {"reveting.com"}
 
 FALLBACK_SHOW_KEYS = [
     "cherry-willow",
@@ -91,6 +93,7 @@ SEVERITY_ORDER = {"Critical": 0, "Warning": 1, "Informational": 2}
 TRUST_BUCKETS = [
     "Confirmed Issues",
     "Needs Verification",
+    "PR Representative Booking / Guest Represented",
     "Waiting on Guest",
     "Waiting on Guest Topics",
     "Waiting on Client",
@@ -107,8 +110,47 @@ KNOWLEDGE_FILE_DEFAULTS = {
     "known_exceptions": ("known_exceptions.json", {"version": "1.0", "exceptions": []}),
     "known_decisions": ("known_decisions.json", {"version": "1.0", "decisions": []}),
     "known_patterns": ("known_patterns.json", {"version": "1.0", "patterns": []}),
+    "linkedin_events": ("linkedin_events.json", {"version": "1.0", "events": []}),
     "show_preferences": ("show_preferences.json", {"version": "1.0", "shows": {}}),
 }
+COMPLETED_TASKS_DEFAULT = {
+    "version": "1.0",
+    "purpose": "Read-only local completion claims. These claims are never treated as source of truth unless the fresh audit confirms them from source data.",
+    "task_record_fields": [
+        "task_id (optional)",
+        "task_kind",
+        "show_key",
+        "show_name (optional)",
+        "episode_date or episode_time",
+        "guest_name",
+        "marked_complete_at",
+        "marked_complete_by",
+        "claimed_actions",
+        "notes",
+    ],
+    "example_task": {
+        "task_kind": "production_links",
+        "show_key": "beyond-the-cart",
+        "episode_date": "2026-07-07",
+        "guest_name": "Tim Berney",
+        "marked_complete_at": "2026-07-06T15:30:00-04:00",
+        "marked_complete_by": "Jessie",
+        "claimed_actions": [
+            "Calendar updated",
+            "StreamYard URL added",
+            "LinkedIn URL added",
+            "SOP email sent"
+        ],
+        "notes": "Local completion claim only; must be verified against source data on the next audit run."
+    },
+    "tasks": [],
+}
+COMPLETION_STATUSES = (
+    "Completed and verified",
+    "Completed but not verified",
+    "Still open",
+    "Needs human review",
+)
 
 
 def read_json(path, default):
@@ -150,6 +192,22 @@ def load_knowledge(knowledge_dir):
             "exists": path.exists(),
         }
     return knowledge
+
+
+def ensure_json_file(path, default_payload):
+    if not path.exists():
+        write_json(path, default_payload)
+
+
+def load_completed_tasks(path):
+    ensure_json_file(path, COMPLETED_TASKS_DEFAULT)
+    payload = read_json(path, default=COMPLETED_TASKS_DEFAULT)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Completed tasks file must contain a JSON object: {path}")
+    tasks = payload.get("tasks")
+    if not isinstance(tasks, list):
+        payload["tasks"] = []
+    return payload
 
 
 def rule_list(rules, key, fallback=None):
@@ -348,7 +406,7 @@ def unique_guest_count(guests):
 def guest_names(guests):
     names = []
     for guest in guests or []:
-        label = guest.get("name") or guest.get("email") or "Unknown guest"
+        label = display_guest_name(guest) or display_guest_email(guest) or "Unknown guest"
         if label not in names:
             names.append(label)
     return names
@@ -393,6 +451,44 @@ def source_ref(path, html_output_dir=None):
             except ValueError:
                 ref["href"] = str(path)
     return ref
+
+
+def linkedin_event_guest_tokens(guests):
+    tokens = set()
+    for guest in guests or []:
+        for value in (
+            display_guest_name(guest),
+            display_guest_email(guest),
+            guest.get("contact_name"),
+            guest.get("contact_email"),
+            guest.get("represented_guest_name"),
+            guest.get("represented_guest_email"),
+        ):
+            if not value:
+                continue
+            text = normalize_email(value) if "@" in str(value) else normalize_text(value)
+            if text:
+                tokens.add(text)
+    return tokens
+
+
+def known_linkedin_event_record(show_key, episode_time, guests, knowledge):
+    episode_day = date_key(episode_time)
+    guest_tokens = linkedin_event_guest_tokens(guests)
+    for record in linkedin_events_from_knowledge(knowledge):
+        if not isinstance(record, dict):
+            continue
+        if record.get("show_key") != show_key:
+            continue
+        if date_key(record.get("episode_date")) != episode_day:
+            continue
+        record_guest = record.get("guest_name")
+        if record_guest:
+            guest_key = normalize_text(record_guest)
+            if guest_key not in guest_tokens:
+                continue
+        return record
+    return None
 
 
 def discovery_source_refs(show_key, discovery_dir):
@@ -610,6 +706,201 @@ def contains_person(text, name=None, email=None):
     return tokens[0] in text and tokens[-1] in text
 
 
+def display_guest_name(guest):
+    represented = guest.get("represented_guest_name")
+    confidence = normalize_text(guest.get("represented_guest_confidence"))
+    if represented and confidence == "high":
+        return represented
+    return guest.get("name") or guest.get("contact_name") or guest.get("email") or guest.get("contact_email")
+
+
+def display_guest_email(guest):
+    represented = normalize_email(guest.get("represented_guest_email"))
+    confidence = normalize_text(guest.get("represented_guest_confidence"))
+    if confidence == "high":
+        return represented or ""
+    return normalize_email(guest.get("email") or guest.get("contact_email"))
+
+
+def first_nonempty(*values):
+    for value in values:
+        if value not in (None, ""):
+            return value
+    return None
+
+
+def unique_text_list(values):
+    seen = set()
+    ordered = []
+    for value in values or []:
+        text = str(value or "").strip()
+        key = normalize_text(text)
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        ordered.append(text)
+    return ordered
+
+
+def contact_custom_fields(appointment, custom_field_map_by_id):
+    payload = appointment.get("enriched_contact_payload") or {}
+    raw_fields = payload.get("customFields") or []
+    normalized = []
+    for field in raw_fields:
+        if not isinstance(field, dict):
+            continue
+        field_id = field.get("id")
+        metadata = custom_field_map_by_id.get(field_id) or {}
+        label = metadata.get("field_label") or metadata.get("name") or field_id
+        key = metadata.get("field_key_or_name") or metadata.get("form_field_key") or field_id
+        normalized.append(
+            {
+                "field_id": field_id,
+                "field_label": label,
+                "field_key_or_name": key,
+                "value": field.get("value"),
+                "required": metadata.get("required"),
+                "raw_field_metadata": metadata.get("raw_field_metadata") or metadata,
+                "appears_to_contain_pr_email": metadata.get("appears_to_contain_pr_email"),
+                "appears_to_contain_assistant_email": metadata.get("appears_to_contain_assistant_email"),
+                "appears_to_contain_alternate_calendar_invite_email": metadata.get("appears_to_contain_alternate_calendar_invite_email"),
+                "appears_to_contain_calendar_invite_notes": metadata.get("appears_to_contain_calendar_invite_notes"),
+            }
+        )
+    return normalized
+
+
+def linkedin_slug_to_name(url):
+    cleaned = clean_url(url)
+    if "linkedin.com/in/" not in cleaned.lower():
+        return None
+    slug = cleaned.rstrip("/").split("/in/", 1)[-1].split("/", 1)[0]
+    slug = re.sub(r"\?.*$", "", slug)
+    slug = re.sub(r"[^a-zA-Z0-9-]", "-", slug)
+    parts = [part for part in slug.split("-") if part]
+    if not parts:
+        return None
+    if len(parts) == 1:
+        token = parts[0]
+        if len(token) >= 6:
+            token = re.sub(r"([a-z])([A-Z])", r"\1 \2", token)
+            token = re.sub(r"([a-z]{2,})([A-Z][a-z]+)", r"\1 \2", token)
+        guesses = re.findall(r"[A-Za-z][a-z]+", token.title())
+        if len(guesses) >= 2:
+            return " ".join(guesses[:2])
+        if len(token) >= 6:
+            return token[:3].title() + " " + token[3:].title()
+        return token.title()
+    return " ".join(part.title() for part in parts[:3])
+
+
+def field_values_for_labels(fields, include_terms):
+    values = []
+    for field in fields or []:
+        label = normalize_text(field.get("field_label") or field.get("field_key_or_name"))
+        if any(term in label for term in include_terms):
+            value = field.get("value")
+            if meaningful_value(value):
+                values.append(str(value).strip())
+    return unique_text_list(values)
+
+
+def internal_email(email):
+    domain = normalize_email(email).split("@")[-1]
+    return domain in INTERNAL_EMAIL_DOMAINS
+
+
+def attendee_email_candidates(event, excluded_emails=None):
+    excluded = {normalize_email(email) for email in (excluded_emails or []) if email}
+    candidates = []
+    for email in event.get("attendee_emails") or []:
+        normalized = normalize_email(email)
+        if not normalized or normalized in excluded or internal_email(normalized):
+            continue
+        candidates.append(normalized)
+    return candidates
+
+
+def extract_guest_from_event_title(event, show_name):
+    title = event.get("title") or ""
+    cleaned = re.sub(re.escape(show_name), "", title, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bwith\b", "", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip(" -:")
+    return cleaned or None
+
+
+def represented_guest_context(guest, show_name, event=None):
+    contact_name = guest.get("contact_name") or guest.get("name")
+    contact_email = normalize_email(guest.get("contact_email") or guest.get("email"))
+    fields = guest.get("contact_custom_fields") or guest.get("field_values") or []
+    linkedin_values = field_values_for_labels(fields, ("linkedin",))
+    episode_titles = field_values_for_labels(fields, ("title", "episode"))
+    topics = field_values_for_labels(fields, ("topic",))
+    linkedin_name = linkedin_slug_to_name(linkedin_values[0]) if linkedin_values else None
+    calendar_guest = extract_guest_from_event_title(event, show_name) if event else None
+    calendar_text = event_full_text(event) if event else ""
+    evidence = []
+    score = 0
+    represented_name = None
+
+    if linkedin_name:
+        represented_name = linkedin_name
+        evidence.append("LinkedIn URL")
+        score += 3
+    if calendar_guest and normalize_text(calendar_guest) != normalize_text(contact_name):
+        if represented_name and normalize_text(calendar_guest) == normalize_text(represented_name):
+            evidence.append("calendar title")
+            score += 4
+        elif not represented_name:
+            represented_name = calendar_guest
+            evidence.append("calendar title")
+            score += 2
+    if episode_titles:
+        evidence.append("episode title")
+        score += 1
+    if topics:
+        evidence.append("topics field")
+        score += 1
+    if fields:
+        evidence.append("custom fields")
+        score += 1
+
+    represented_email = None
+    if event and represented_name:
+        for email in attendee_email_candidates(event, excluded_emails=[contact_email]):
+            local = email.split("@", 1)[0]
+            tokens = name_tokens(represented_name)
+            if tokens and any(token in normalize_text(local) for token in (tokens[0], tokens[-1])):
+                represented_email = email
+                evidence.append("calendar attendees")
+                score += 2
+                break
+    contact_name_differs = bool(represented_name and normalize_text(represented_name) != normalize_text(contact_name))
+    rep_clue = contact_name_differs or any(term in contact_email for term in ("pr", "press", "media", "assistant", "coord", "agency"))
+    if rep_clue and represented_name:
+        score += 1
+    corroborated_identity = "calendar title" in evidence or "calendar attendees" in evidence
+    confidence = "low"
+    if represented_name and contact_name_differs and ("LinkedIn URL" in evidence and "calendar title" in evidence):
+        confidence = "high"
+    elif represented_name and score >= 5 and corroborated_identity:
+        confidence = "medium"
+    if represented_name and represented_email and score >= 7:
+        confidence = "high"
+    return {
+        "contact_name": contact_name,
+        "contact_email": contact_email,
+        "contact_is_submitter_rep": bool(contact_name_differs and represented_name and confidence != "low"),
+        "represented_guest_name": represented_name,
+        "represented_guest_email": represented_email,
+        "represented_guest_confidence": confidence if represented_name else "low",
+        "represented_guest_evidence": unique_text_list(evidence),
+        "episode_titles": episode_titles,
+        "topics": topics,
+        "linkedin_urls": linkedin_values,
+    }
+
+
 def same_local_date(a, b):
     if not a or not b:
         return False
@@ -729,6 +1020,7 @@ def load_show_context(show_key, discovery_dir):
     episodes = read_json(discovery_dir / f"{show_key}_episodes.json", [])
     appointments = read_json(discovery_dir / f"{show_key}_appointments.json", [])
     submissions = read_json(discovery_dir / f"{show_key}_form_submissions.json", [])
+    custom_field_map = read_json(discovery_dir / f"{show_key}_custom_field_map.json", [])
     appointments_by_id = {
         item.get("appointment_id"): item
         for item in appointments
@@ -739,7 +1031,12 @@ def load_show_context(show_key, discovery_dir):
         for item in submissions
         if item.get("submission_id")
     }
-    return episodes, appointments_by_id, submissions_by_id
+    custom_field_map_by_id = {
+        item.get("field_id"): item
+        for item in custom_field_map
+        if isinstance(item, dict) and item.get("field_id")
+    }
+    return episodes, appointments_by_id, submissions_by_id, custom_field_map_by_id
 
 
 DISCOVERY_FILE_SUFFIXES = (
@@ -839,9 +1136,11 @@ def guest_submission_fields(guest, submissions_by_id):
     return fields
 
 
-def enrich_guest(guest, appointments_by_id, submissions_by_id, rules, show_key=None):
+def enrich_guest(guest, appointments_by_id, submissions_by_id, rules, show_key=None, custom_field_map_by_id=None):
     appointment = appointments_by_id.get(guest.get("appointment_id")) or {}
     fields = guest_submission_fields(guest, submissions_by_id)
+    contact_fields = contact_custom_fields(appointment, custom_field_map_by_id or {})
+    fields.extend(contact_fields)
     pr_related = list(guest.get("pr_assistant_alternate_emails") or [])
     for field in fields:
         if any(
@@ -881,9 +1180,12 @@ def enrich_guest(guest, appointments_by_id, submissions_by_id, rules, show_key=N
             alternate_invite_emails.update(emails)
     return {
         **guest,
+        "contact_name": guest.get("name"),
+        "contact_email": guest.get("email"),
         "status": appointment.get("status"),
         "appointment": appointment,
         "field_values": fields,
+        "contact_custom_fields": contact_fields,
         "pr_emails": sorted(pr_emails),
         "assistant_emails": sorted(assistant_emails),
         "alternate_invite_emails": sorted(alternate_invite_emails),
@@ -892,11 +1194,11 @@ def enrich_guest(guest, appointments_by_id, submissions_by_id, rules, show_key=N
     }
 
 
-def active_episode_guests(show_key, episode, appointments_by_id, submissions_by_id, rules):
+def active_episode_guests(show_key, episode, appointments_by_id, submissions_by_id, rules, custom_field_map_by_id=None):
     active = []
     inactive = []
     for guest in episode.get("guests") or []:
-        enriched = enrich_guest(guest, appointments_by_id, submissions_by_id, rules, show_key)
+        enriched = enrich_guest(guest, appointments_by_id, submissions_by_id, rules, show_key, custom_field_map_by_id)
         appointment_id = enriched.get("appointment_id")
         appointment = appointments_by_id.get(appointment_id) if appointment_id else None
         if appointment and not appointment_is_active(appointment, rules):
@@ -959,12 +1261,12 @@ def episode_pairing_summary(show_key, episode, guests, event, rules):
     invited_guests = []
     missing_invites = []
     for guest in guests:
-        label = guest.get("name") or guest.get("email")
-        if contains_person(title_text, guest.get("name"), guest.get("email")):
+        label = display_guest_name(guest) or display_guest_email(guest)
+        if contains_person(title_text, display_guest_name(guest), display_guest_email(guest)):
             title_guests.append(label)
-        if contains_person(full_text, guest.get("name"), guest.get("email")):
+        if contains_person(full_text, display_guest_name(guest), display_guest_email(guest)):
             detail_guests.append(label)
-        guest_email = normalize_email(guest.get("email"))
+        guest_email = display_guest_email(guest)
         if guest_email and guest_email in attendees:
             invited_guests.append(label)
         elif guest_email:
@@ -987,11 +1289,17 @@ def episode_pairing_summary(show_key, episode, guests, event, rules):
 
 def highlevel_guest_summary(guest):
     return {
-        "name": guest.get("name"),
-        "email": guest.get("email"),
+        "name": display_guest_name(guest),
+        "email": display_guest_email(guest),
+        "contact_name": guest.get("contact_name") or guest.get("name"),
+        "contact_email": guest.get("contact_email") or guest.get("email"),
         "appointment_id": guest.get("appointment_id"),
         "contact_id": guest.get("contact_id"),
         "status": guest.get("status"),
+        "represented_guest_name": guest.get("represented_guest_name"),
+        "represented_guest_email": guest.get("represented_guest_email"),
+        "represented_guest_confidence": guest.get("represented_guest_confidence"),
+        "represented_guest_evidence": guest.get("represented_guest_evidence") or [],
         "form_submission_ids": guest.get("form_submission_ids") or [],
         "possible_form_submissions": guest.get("possible_form_submissions") or [],
         "pr_emails": guest.get("pr_emails") or [],
@@ -1021,6 +1329,59 @@ def calendar_event_summary(event):
         "attendee_count": len(event.get("attendee_emails") or []),
         "event_url": event.get("url"),
     }
+
+
+def apply_represented_guest_inference(guests, show_name, event=None):
+    enriched = []
+    for guest in guests or []:
+        context = represented_guest_context(guest, show_name, event)
+        enriched.append({**guest, **context})
+    return enriched
+
+
+def represented_guest_issue(show_key, show_name, episode_time, event, guest, appointment_ids, confidence=None):
+    confidence = confidence or guest.get("represented_guest_confidence") or "medium"
+    represented = guest.get("represented_guest_name")
+    contact = guest.get("contact_name") or guest.get("name")
+    evidence = guest.get("represented_guest_evidence") or []
+    details = {
+        "highlevel_submitter_contact": contact,
+        "highlevel_submitter_email": guest.get("contact_email") or guest.get("email"),
+        "represented_guest": represented,
+        "represented_guest_email": guest.get("represented_guest_email"),
+        "represented_guest_confidence": confidence.title(),
+        "represented_guest_evidence": evidence,
+        "episode_title_candidates": guest.get("episode_titles") or [],
+        "topic_candidates": guest.get("topics") or [],
+        "linkedin_urls": guest.get("linkedin_urls") or [],
+    }
+    if normalize_text(confidence) == "high":
+        return issue(
+            severity="Informational",
+            code="pr_representative_booking_guest_represented",
+            show_key=show_key,
+            show_name=show_name,
+            episode_time=episode_time,
+            calendar_event_id=event.get("id") if event else None,
+            appointment_ids=appointment_ids,
+            message=f"HighLevel submitter/contact {contact} appears to represent guest {represented}.",
+            recommended_action="No mismatch action needed. Keep the represented guest as the calendar-facing guest unless later human review changes the booking context.",
+            details=details,
+            confidence="high",
+        )
+    return issue(
+        severity="Warning",
+        code="calendar_event_needs_confirmation",
+        show_key=show_key,
+        show_name=show_name,
+        episode_time=episode_time,
+        calendar_event_id=event.get("id") if event else None,
+        appointment_ids=appointment_ids,
+        message=f"HighLevel contact {contact} may be a PR/submitter while the calendar appears to use guest {represented}.",
+        recommended_action="Confirm the represented guest before treating the calendar event as fully trusted.",
+        details=details,
+        confidence=confidence,
+    )
 
 
 def issue_operational_impact(rules, code):
@@ -1238,6 +1599,8 @@ def issue_guest_display(item):
         "guest",
         "replacement_guest",
         "canceled_or_rescheduled_guest",
+        "represented_guest",
+        "highlevel_submitter_contact",
     ):
         value = details.get(key)
         if value:
@@ -1399,7 +1762,7 @@ def trust_counts(findings, key):
     return counts
 
 
-def build_trust_review(report, rules):
+def build_trust_review(report, rules, completion_tracking=None):
     findings = trust_findings_from_issues(report.get("issues") or []) + trust_findings_from_issues(report.get("suppressed_issues") or [])
     grouped = group_trust_findings(findings)
     high_confidence = [
@@ -1424,6 +1787,7 @@ def build_trust_review(report, rules):
             "counts_by_dashboard_bucket": trust_counts(findings, "dashboard_bucket"),
             "future_automation_candidate_count": len(automation_candidates),
         },
+        "completion_tracking": completion_tracking or {"summary": {"total_claims": 0, "counts_by_status": {}, "completed_today_count": 0}, "claims": [], "completed_today": []},
         "what_the_system_is_highly_confident_about": high_confidence,
         "what_needs_human_verification": grouped.get("Needs Verification", []) + grouped.get("Waiting on Client", []),
         "what_is_waiting_on_someone": grouped.get("Waiting on Guest", []) + grouped.get("Waiting on Internal Team", []),
@@ -1499,6 +1863,14 @@ def difference_for_issue(item):
         return "HighLevel has an active upcoming booking, but no matching Google Calendar event passed the configured matching threshold."
     if code == "calendar_event_without_booking":
         return "Google Calendar has a show-like event, but no active HighLevel booking matched it."
+    if code == "linkedin_event_exists_calendar_needs_update":
+        url = details.get("linkedin_event_url") or "a verified LinkedIn event URL"
+        return f"A verified LinkedIn event already exists ({url}), but the Google Calendar event description/location does not include that URL yet."
+    if code == "pr_representative_booking_guest_represented":
+        contact = details.get("highlevel_submitter_contact") or "Unknown contact"
+        guest = details.get("represented_guest") or "Unknown guest"
+        evidence = ", ".join(details.get("represented_guest_evidence") or [])
+        return f"HighLevel contact {contact} appears to be a submitter/PR representative, while the actual guest is {guest}. Evidence: {evidence or 'inferred from booking and calendar context'}."
     if code == "show_needs_guest_replacement":
         guest_status = details.get("guest_status") or "No confirmed active guest"
         highlevel_status = details.get("highlevel_status") or "Unknown HighLevel status"
@@ -1622,6 +1994,8 @@ def issue_guest_tokens(item):
         "guest_name",
         "replacement_guest",
         "canceled_or_rescheduled_guest",
+        "represented_guest",
+        "highlevel_submitter_contact",
     ):
         value = (item.get("details") or {}).get(detail_key)
         if isinstance(value, list):
@@ -1838,12 +2212,13 @@ def audit_title_and_guest_representation(show_key, episode, guests, event, issue
     title_missing_guests = []
     represented_missing_guests = []
     for guest in guests:
-        if not contains_person(title_text, guest.get("name"), guest.get("email")):
-            title_missing_guests.append(guest.get("name") or guest.get("email"))
-        guest_email = normalize_email(guest.get("email"))
+        guest_name = display_guest_name(guest)
+        guest_email = display_guest_email(guest)
+        if not contains_person(title_text, guest_name, guest_email):
+            title_missing_guests.append(guest_name or guest_email)
         guest_is_invited = bool(guest_email and guest_email in attendee_emails)
-        if guest_is_invited and not contains_person(calendar_detail_text, guest.get("name"), guest.get("email")):
-            represented_missing_guests.append(guest.get("name") or guest.get("email"))
+        if guest_is_invited and not contains_person(calendar_detail_text, guest_name, guest_email):
+            represented_missing_guests.append(guest_name or guest_email)
     if title_missing_guests:
         issues.append(
             issue(
@@ -1965,11 +2340,16 @@ def audit_attendees(show_key, episode, guests, event, issues, rules):
     missing_pr_emails = []
     assistant_emails_present = []
     for guest in guests:
-        guest_email = normalize_email(guest.get("email"))
+        guest_email = display_guest_email(guest)
+        submitter_email = normalize_email(guest.get("contact_email") or guest.get("email"))
+        represented_high = normalize_text(guest.get("represented_guest_confidence")) == "high"
         if not guest_email:
-            guests_missing_emails.append(guest.get("name") or guest.get("appointment_id") or "Unknown guest")
+            if not represented_high:
+                guests_missing_emails.append(display_guest_name(guest) or guest.get("appointment_id") or "Unknown guest")
         elif guest_email not in attendee_emails:
             missing_guest_emails.append(guest_email)
+        if represented_high and submitter_email and submitter_email != guest_email and submitter_email not in attendee_emails:
+            missing_pr_emails.append(submitter_email)
         for email in guest.get("pr_emails") or []:
             if email and email not in attendee_emails:
                 missing_pr_emails.append(email)
@@ -2075,12 +2455,12 @@ def audit_required_fields(show_key, episode, guests, event, issues):
     unlinked_guests = []
     for guest in guests:
         if not guest.get("form_submission_ids"):
-            unlinked_guests.append(guest.get("name") or guest.get("email"))
+            unlinked_guests.append(display_guest_name(guest) or display_guest_email(guest))
         for field in guest.get("required_fields") or []:
             if not field_value_present_in_description(field, description):
                 missing.append(
                     {
-                        "guest": guest.get("name") or guest.get("email"),
+                        "guest": display_guest_name(guest) or display_guest_email(guest),
                         "field_label": field.get("field_label"),
                         "field_key": field.get("field_key_or_name"),
                     }
@@ -2166,6 +2546,12 @@ def audit_sop_assets(show_key, episode, guests, event, expected_calendar_start, 
     show_config = show_rule(rules, show_key)
     configured_rules.extend(item for item in show_config.get("calendar_description_sections", []) if isinstance(item, dict))
     configured_rules.extend(item for item in show_config.get("sop_assets", []) if isinstance(item, dict))
+    known_linkedin = known_linkedin_event_record(
+        show_key,
+        episode.get("episode_date_time"),
+        guests,
+        rules.get("_loaded_knowledge") if isinstance(rules.get("_loaded_knowledge"), dict) else {},
+    )
     for configured_rule in configured_rules:
         if not isinstance(configured_rule, dict):
             continue
@@ -2179,7 +2565,10 @@ def audit_sop_assets(show_key, episode, guests, event, expected_calendar_start, 
             now,
         )
         if reason:
-            asset_checks.append((configured_rule.get("label") or configured_rule.get("key") or "Configured asset", reason))
+            asset_label = configured_rule.get("label") or configured_rule.get("key") or "Configured asset"
+            if known_linkedin and "linkedin" in normalize_text(asset_label):
+                continue
+            asset_checks.append((asset_label, reason))
 
     if asset_checks:
         issues.append(
@@ -2195,6 +2584,30 @@ def audit_sop_assets(show_key, episode, guests, event, expected_calendar_start, 
                 + ", ".join(item[0] for item in asset_checks),
                 recommended_action="Review the SOP calendar-description checklist and update the event manually if the missing asset is truly absent.",
                 details={"missing_assets": [{"asset": item[0], "reason": item[1]} for item in asset_checks]},
+            )
+        )
+    if known_linkedin and not extract_linkedin_urls(calendar_text_for_brief(event)):
+        issues.append(
+            issue(
+                severity="Warning",
+                code="linkedin_event_exists_calendar_needs_update",
+                show_key=show_key,
+                show_name=show_name,
+                episode_time=episode.get("episode_date_time"),
+                calendar_event_id=event.get("id"),
+                appointment_ids=appointment_ids,
+                message="A verified LinkedIn event exists, but the Google Calendar event still needs the LinkedIn URL added.",
+                recommended_action="Add the verified LinkedIn event URL to the Google Calendar description after review, then send or schedule the SOP emails that depend on the event link.",
+                details={
+                    "guest_name": known_linkedin.get("guest_name"),
+                    "linkedin_event_url": known_linkedin.get("linkedin_event_url"),
+                    "source": known_linkedin.get("source"),
+                    "verified_by": known_linkedin.get("verified_by"),
+                    "verified_at": known_linkedin.get("verified_at"),
+                    "notes": known_linkedin.get("notes"),
+                    "calendar_needs_update": True,
+                },
+                confidence="high",
             )
         )
 
@@ -2340,7 +2753,7 @@ def aggregate_health(episode_health_items, rules):
     }
 
 
-def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, calendar_events, options):
+def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, custom_field_map_by_id, calendar_events, options):
     now = options["now"]
     rules = options["rules"]
     preshow_minutes = show_int_option(rules, show_key, "preshow_offset_minutes", options["preshow_minutes"])
@@ -2356,7 +2769,7 @@ def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, cale
     if options["days_ahead"] is not None and live_start > now + timedelta(days=options["days_ahead"]):
         return None
 
-    guests, inactive_guests = active_episode_guests(show_key, episode, appointments_by_id, submissions_by_id, rules)
+    guests, inactive_guests = active_episode_guests(show_key, episode, appointments_by_id, submissions_by_id, rules, custom_field_map_by_id)
     if not guests:
         return None
 
@@ -2410,6 +2823,20 @@ def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, cale
                 )
             )
     else:
+        guests = apply_represented_guest_inference(guests, episode.get("show_name") or show_key, matched_event)
+        for guest in guests:
+            if guest.get("contact_is_submitter_rep") and guest.get("represented_guest_name"):
+                issues.append(
+                    represented_guest_issue(
+                        show_key,
+                        episode.get("show_name") or show_key,
+                        episode.get("episode_date_time"),
+                        matched_event,
+                        guest,
+                        active_ids,
+                        confidence=guest.get("represented_guest_confidence"),
+                    )
+                )
         matched_event_ids.append(matched_event.get("id"))
         if len(duplicate_events) > 1:
             matched_event_ids.extend(event.get("id") for event in duplicate_events if event.get("id"))
@@ -2469,10 +2896,16 @@ def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, cale
         "pairing": episode_pairing_summary(show_key, episode, guests, matched_event, rules),
         "active_guests": [
             {
-                "name": guest.get("name"),
-                "email": guest.get("email"),
+                "name": display_guest_name(guest),
+                "email": display_guest_email(guest),
+                "contact_name": guest.get("contact_name") or guest.get("name"),
+                "contact_email": guest.get("contact_email") or guest.get("email"),
                 "appointment_id": guest.get("appointment_id"),
                 "status": guest.get("status"),
+                "represented_guest_name": guest.get("represented_guest_name"),
+                "represented_guest_email": guest.get("represented_guest_email"),
+                "represented_guest_confidence": guest.get("represented_guest_confidence"),
+                "represented_guest_evidence": guest.get("represented_guest_evidence") or [],
                 "form_submission_ids": guest.get("form_submission_ids") or [],
                 "possible_form_submissions": guest.get("possible_form_submissions") or [],
                 "pr_emails": guest.get("pr_emails"),
@@ -2499,6 +2932,39 @@ def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, cale
         "suppressed_issues": suppressed_issues,
         "matched_calendar_event_ids": sorted(set(item for item in matched_event_ids if item)),
     }
+
+
+def infer_pr_rep_booking_for_event(event, show_name, options):
+    show_contexts = options.get("show_contexts") or {}
+    target_date = date_key(event.get("start"))
+    for show_key, context in show_contexts.items():
+        if configured_show_name(options["rules"], show_key) != show_name:
+            continue
+        episodes = context.get("episodes") or []
+        appointments_by_id = context.get("appointments_by_id") or {}
+        submissions_by_id = context.get("submissions_by_id") or {}
+        custom_field_map_by_id = context.get("custom_field_map_by_id") or {}
+        for episode in episodes:
+            if date_key(episode.get("episode_date_time")) != target_date:
+                continue
+            guests = [
+                enrich_guest(guest, appointments_by_id, submissions_by_id, options["rules"], show_key, custom_field_map_by_id)
+                for guest in (episode.get("guests") or [])
+            ]
+            guests = apply_represented_guest_inference(guests, show_name, event)
+            for guest in guests:
+                if not guest.get("contact_is_submitter_rep") or not guest.get("represented_guest_name"):
+                    continue
+                return represented_guest_issue(
+                    show_key,
+                    show_name,
+                    event.get("start").isoformat() if event.get("start") else None,
+                    event,
+                    guest,
+                    [guest.get("appointment_id")] if guest.get("appointment_id") else [],
+                    confidence=guest.get("represented_guest_confidence"),
+                )
+    return None
 
 
 def find_calendar_events_without_bookings(calendar_events, audited_episodes, show_names, options):
@@ -2568,6 +3034,10 @@ def find_calendar_events_without_bookings(calendar_events, audited_episodes, sho
                 matching_show_name = show_name
                 break
         if not matching_show_name:
+            continue
+        represented_match = infer_pr_rep_booking_for_event(event, matching_show_name, options)
+        if represented_match:
+            issues.append(represented_match)
             continue
         item = issue(
             severity="Warning",
@@ -2862,6 +3332,14 @@ def render_guest_list(guests):
         bits = []
         if guest.get("email"):
             bits.append(html_email(guest.get("email")))
+        if guest.get("contact_name") and normalize_text(guest.get("contact_name")) != normalize_text(guest.get("name")):
+            bits.append(f"submitter/contact: {html_text(guest.get('contact_name'), 120)}")
+        if guest.get("contact_email") and normalize_email(guest.get("contact_email")) != normalize_email(guest.get("email")):
+            bits.append(f"submitter email: {html_email(guest.get('contact_email'))}")
+        if guest.get("represented_guest_confidence"):
+            bits.append(f"represented confidence: {html_text(guest.get('represented_guest_confidence'), 60)}")
+        if guest.get("represented_guest_evidence"):
+            bits.append(f"evidence: {html_text(', '.join(guest.get('represented_guest_evidence') or []), 180)}")
         if guest.get("status"):
             bits.append(f"status: {html_text(guest.get('status'), 80)}")
         if guest.get("appointment_id"):
@@ -3194,6 +3672,8 @@ def checklist_status(item, episode, now, stage_context=None):
     if key == "linkedin_event_created":
         if item.get("due_within_days") is not None and not checklist_due(item, episode, now):
             return status_result("Not Applicable", "This check is not due yet under the configured window.")
+        if "linkedin_event_exists_calendar_needs_update" in codes:
+            return status_result("Complete", "A verified LinkedIn event exists from manual/read-only evidence, but the Google Calendar description still needs the URL added.")
         if has_missing_asset(episode, "linkedin event"):
             return status_result("Incomplete", "Configured LinkedIn event link check failed.")
         return status_result("Complete" if episode.get("calendar_event_found") else "Unknown", "No LinkedIn event asset issue was found." if episode.get("calendar_event_found") else "No calendar event is available to inspect.")
@@ -3508,6 +3988,18 @@ def build_manager_episode(episode, rules, timeline_rules, now):
         "readiness_percentage": checklist_summary["percentage"],
         "checklist_completion": checklist_summary,
         "guest_names": guest_names(episode.get("active_guests")),
+        "represented_guest_matches": [
+            {
+                "highlevel_submitter_contact": guest.get("contact_name"),
+                "highlevel_submitter_email": guest.get("contact_email"),
+                "represented_guest": guest.get("represented_guest_name"),
+                "represented_guest_email": guest.get("represented_guest_email"),
+                "confidence": guest.get("represented_guest_confidence"),
+                "evidence": guest.get("represented_guest_evidence") or [],
+            }
+            for guest in episode.get("active_guests") or []
+            if guest.get("represented_guest_name")
+        ],
         "calendar_event_title": episode.get("calendar_event_title"),
         "calendar_event_url": episode.get("calendar_event_url"),
         "calendar_event_id": episode.get("calendar_event_id"),
@@ -3669,7 +4161,7 @@ def grouped_manager_items_by_show(show_keys, rules, episodes, issues, show_diagn
     return groups
 
 
-def build_operations_manager_dashboard(report, rules, timeline_rules, now):
+def build_operations_manager_dashboard(report, rules, timeline_rules, now, completion_tracking=None):
     manager = operations_manager_rules(rules)
     upcoming_days = int(manager.get("upcoming_days", 30))
     completed_days = int(manager.get("recently_completed_days", 14))
@@ -3762,9 +4254,11 @@ def build_operations_manager_dashboard(report, rules, timeline_rules, now):
         "suppressed_issues": report.get("suppressed_issues") or [],
         "trust_review": report.get("trust_review") or {},
         "trust_summary": (report.get("trust_review") or {}).get("summary") or {},
+        "completion_tracking": completion_tracking or {"summary": {"total_claims": 0, "counts_by_status": {}, "completed_today_count": 0}, "claims": [], "completed_today": []},
         "trust_buckets": trust_buckets,
         "confirmed_issue_findings": trust_buckets.get("Confirmed Issues", []),
         "needs_verification_findings": trust_buckets.get("Needs Verification", []),
+        "represented_guest_findings": trust_buckets.get("PR Representative Booking / Guest Represented", []),
         "waiting_on_guest_findings": trust_buckets.get("Waiting on Guest", []),
         "waiting_on_guest_topics_findings": trust_buckets.get("Waiting on Guest Topics", []),
         "waiting_on_client_findings": trust_buckets.get("Waiting on Client", []),
@@ -3783,6 +4277,24 @@ def build_operations_manager_dashboard(report, rules, timeline_rules, now):
         "upcoming_days": upcoming_days,
         "recently_completed_days": completed_days,
         "upcoming_episodes": sorted(upcoming, key=lambda item: item.get("episode_time") or ""),
+        "represented_guest_matches": [
+            {
+                "show_name": episode.get("show_name"),
+                "episode_time": episode.get("episode_time"),
+                **match,
+            }
+            for episode in episodes
+            for match in (episode.get("represented_guest_matches") or [])
+        ] + [
+            {
+                "show_name": item.get("show_name"),
+                "episode_time": item.get("episode_time"),
+                **represented_guest_summary_from_issues([item]),
+            }
+            for item in report.get("issues", [])
+            if item.get("code") == "pr_representative_booking_guest_represented"
+            and represented_guest_summary_from_issues([item]).get("represented_guest")
+        ],
         "episodes_requiring_attention": sorted(attention, key=lambda item: ({"Blocked": 0, "Needs Attention": 1}.get(item.get("production_status"), 2), item.get("episode_time") or "")),
         "blocked_episodes": sorted(blocked, key=lambda item: item.get("episode_time") or ""),
         "needs_attention_episodes": sorted(needs_attention, key=lambda item: item.get("episode_time") or ""),
@@ -4216,6 +4728,10 @@ def manager_status_class(status):
         "Not Due Yet": "info",
         "Ready for Safe Action Later": "ready",
         "Future Safe Actions": "ready",
+        "Completed and verified": "ready",
+        "Completed but not verified": "warning",
+        "Still open": "critical",
+        "Needs human review": "warning",
         "low": "ready",
         "medium": "warning",
         "high": "critical",
@@ -4905,6 +5421,9 @@ def render_operations_manager_dashboard_html(dashboard):
     recommendations = dashboard.get("operator_recommendations") or {}
     trust_summary = dashboard.get("trust_summary") or {}
     trust_bucket_counts = trust_summary.get("counts_by_dashboard_bucket") or {}
+    completion_tracking = dashboard.get("completion_tracking") or {}
+    completion_summary = completion_tracking.get("summary") or {}
+    completion_counts = completion_summary.get("counts_by_status") or {}
     score = health.get("score")
     ready_badge = dashboard.get("overall_production_status") or operational_status_from_counts(counts)
     return f"""<!doctype html>
@@ -4940,6 +5459,10 @@ def render_operations_manager_dashboard_html(dashboard):
     .subtitle {{ color: rgba(255,255,255,0.76); margin: 8px 0 0; }}
     .hero-grid, .trend-grid {{ display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }}
     .trend-detail-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }}
+    .task-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 12px 0 20px; }}
+    .task-card {{ background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 16px; box-shadow: var(--shadow); }}
+    .task-top {{ display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }}
+    .task-top h3 {{ margin-top: 0; }}
     .card, .manager-episode-card {{ background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 18px; box-shadow: var(--shadow); }}
     header .card {{ background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); color: white; box-shadow: none; }}
     .metric {{ font-size: 36px; font-weight: 850; letter-spacing: -0.045em; }}
@@ -4977,8 +5500,8 @@ def render_operations_manager_dashboard_html(dashboard):
     a {{ color: var(--info); font-weight: 800; text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
     .muted {{ color: var(--muted); }}
-    @media (max-width: 980px) {{ .hero-grid, .trend-grid, .trend-detail-grid, .manager-card-grid {{ grid-template-columns: 1fr 1fr; }} table {{ display: block; overflow-x: auto; }} }}
-    @media (max-width: 640px) {{ .hero-grid, .trend-grid, .trend-detail-grid, .manager-card-grid {{ grid-template-columns: 1fr; }} main {{ padding: 20px 12px 42px; }} }}
+    @media (max-width: 980px) {{ .hero-grid, .trend-grid, .trend-detail-grid, .manager-card-grid, .task-grid {{ grid-template-columns: 1fr 1fr; }} table {{ display: block; overflow-x: auto; }} }}
+    @media (max-width: 640px) {{ .hero-grid, .trend-grid, .trend-detail-grid, .manager-card-grid, .task-grid {{ grid-template-columns: 1fr; }} main {{ padding: 20px 12px 42px; }} }}
   </style>
 </head>
 <body>
@@ -5003,6 +5526,22 @@ def render_operations_manager_dashboard_html(dashboard):
 
     <h2>Fix Today</h2>
     <section class="card">{render_manager_issue_list(recommendations.get('fix_today') or [], 'No Fix Today issues.')}</section>
+
+    <h2>Completion Verification</h2>
+    <section class="trend-grid">
+      <div class="card"><div class="metric small">{completion_summary.get('total_claims', 0)}</div><div class="label">Claims reviewed</div></div>
+      <div class="card"><div class="metric small">{completion_counts.get('Completed and verified', 0)}</div><div class="label">Completed and verified</div></div>
+      <div class="card"><div class="metric small">{completion_counts.get('Completed but not verified', 0)}</div><div class="label">Completed but not verified</div></div>
+      <div class="card"><div class="metric small">{completion_counts.get('Still open', 0)}</div><div class="label">Still open</div></div>
+      <div class="card"><div class="metric small">{completion_counts.get('Needs human review', 0)}</div><div class="label">Needs human review</div></div>
+    </section>
+    <section class="card"><p><strong>Completion claims file:</strong> {html_text(completion_tracking.get('completed_tasks_path') or 'data/audit/completed_tasks.json', 220)}</p></section>
+
+    <h2>Completed Today</h2>
+    {('<div class="task-grid">' + ''.join(render_completion_claim_html(item) for item in (completion_tracking.get('completed_today') or [])) + '</div>') if (completion_tracking.get('completed_today') or []) else '<section class="card"><p class="muted">No tasks completed and verified today.</p></section>'}
+
+    <h2>Completion Claims</h2>
+    {('<div class="task-grid">' + ''.join(render_completion_claim_html(item) for item in (completion_tracking.get('claims') or [])) + '</div>') if (completion_tracking.get('claims') or []) else '<section class="card"><p class="muted">No local completion claims have been recorded yet.</p></section>'}
 
     <h2>Monitor</h2>
     <section class="card">{render_manager_issue_list(recommendations.get('monitor') or [], 'No Monitor issues.')}</section>
@@ -5273,6 +5812,8 @@ def render_trust_review_markdown(trust_review):
     counts_by_category = summary.get("counts_by_category") or {}
     counts_by_bucket = summary.get("counts_by_dashboard_bucket") or {}
     readiness = trust_review.get("automation_readiness") or {}
+    completion_tracking = trust_review.get("completion_tracking") or {}
+    completion_summary = completion_tracking.get("summary") or {}
     lines = [
         "# Trust Review",
         "",
@@ -5291,6 +5832,29 @@ def render_trust_review_markdown(trust_review):
         count = summary.get("future_automation_candidate_count", 0) if bucket == "Future Safe Actions" else counts_by_bucket.get(bucket, 0)
         lines.append(f"- {bucket}: {count}")
     lines.append("")
+    lines.extend(
+        [
+            "## Completion Verification",
+            "",
+            f"- Total completion claims reviewed: {completion_summary.get('total_claims', 0)}",
+            f"- Completed and verified: {(completion_summary.get('counts_by_status') or {}).get('Completed and verified', 0)}",
+            f"- Completed but not verified: {(completion_summary.get('counts_by_status') or {}).get('Completed but not verified', 0)}",
+            f"- Still open: {(completion_summary.get('counts_by_status') or {}).get('Still open', 0)}",
+            f"- Needs human review: {(completion_summary.get('counts_by_status') or {}).get('Needs human review', 0)}",
+            f"- Completed today: {completion_summary.get('completed_today_count', 0)}",
+            "",
+        ]
+    )
+    completed_today = completion_tracking.get("completed_today") or []
+    if completed_today:
+        for item in completed_today:
+            lines.append(
+                f"- Completed today: {md_escape(item.get('task_label') or 'Claimed completed task')} - "
+                f"{md_escape(item.get('verification_status'))} - {md_escape(item.get('explanation'))}"
+            )
+        lines.append("")
+    else:
+        lines.extend(["No tasks completed and verified today.", ""])
     lines.extend(
         render_trust_finding_section(
             "What The System Is Highly Confident About",
@@ -5400,6 +5964,10 @@ def known_decisions_from_knowledge(knowledge):
 
 def known_patterns_from_knowledge(knowledge):
     return rule_list(knowledge_payload(knowledge, "known_patterns"), "patterns")
+
+
+def linkedin_events_from_knowledge(knowledge):
+    return rule_list(knowledge_payload(knowledge, "linkedin_events"), "events")
 
 
 def knowledge_operational_records(knowledge):
@@ -5668,6 +6236,50 @@ def build_knowledge_alert_issues(calendar_events, existing_issues, options, know
         )
         alerts.append(item)
     return alerts
+
+
+def build_linkedin_manual_evidence_issues(calendar_events, existing_issues, options, knowledge):
+    issues = []
+    existing_keys = {
+        (item.get("calendar_event_id"), item.get("code"))
+        for item in existing_issues or []
+    }
+    for record in linkedin_events_from_knowledge(knowledge):
+        if not isinstance(record, dict):
+            continue
+        event = find_event_for_knowledge_record(record, calendar_events, options["rules"])
+        if not event:
+            continue
+        if extract_linkedin_urls(calendar_text_for_brief(event)):
+            continue
+        key = (event.get("id"), "linkedin_event_exists_calendar_needs_update")
+        if key in existing_keys:
+            continue
+        show_key = record.get("show_key") or "unknown"
+        show_name = configured_show_name(options["rules"], show_key) or show_key
+        issues.append(
+            issue(
+                severity="Warning",
+                code="linkedin_event_exists_calendar_needs_update",
+                show_key=show_key,
+                show_name=show_name,
+                episode_time=(event.get("start").isoformat() if event.get("start") else record.get("episode_date")),
+                calendar_event_id=event.get("id"),
+                message="A verified LinkedIn event exists, but the Google Calendar event still needs the LinkedIn URL added.",
+                recommended_action="Add the verified LinkedIn event URL to the Google Calendar description after review, then send or schedule the SOP emails that depend on the event link.",
+                details={
+                    "guest_name": record.get("guest_name"),
+                    "linkedin_event_url": record.get("linkedin_event_url"),
+                    "source": record.get("source"),
+                    "verified_by": record.get("verified_by"),
+                    "verified_at": record.get("verified_at"),
+                    "notes": record.get("notes"),
+                    "calendar_needs_update": True,
+                },
+                confidence="high",
+            )
+        )
+    return issues
 
 
 def show_preferences_from_knowledge(knowledge):
@@ -6298,6 +6910,36 @@ def display_guests_for_brief(item, show_aliases=None):
     return guests
 
 
+def represented_guest_summary_from_issues(issues):
+    for issue in issues or []:
+        details = issue.get("details") or {}
+        if details.get("represented_guest"):
+            return {
+                "highlevel_submitter_contact": details.get("highlevel_submitter_contact"),
+                "highlevel_submitter_email": details.get("highlevel_submitter_email"),
+                "represented_guest": details.get("represented_guest"),
+                "represented_guest_email": details.get("represented_guest_email"),
+                "confidence": details.get("represented_guest_confidence"),
+                "evidence": details.get("represented_guest_evidence") or [],
+            }
+    return {}
+
+
+def linkedin_event_summary_from_issues(issues):
+    for issue in issues or []:
+        details = issue.get("details") or {}
+        if details.get("linkedin_event_url"):
+            return {
+                "linkedin_event_url": details.get("linkedin_event_url"),
+                "source": details.get("source"),
+                "verified_by": details.get("verified_by"),
+                "verified_at": details.get("verified_at"),
+                "notes": details.get("notes"),
+                "calendar_needs_update": bool(details.get("calendar_needs_update")),
+            }
+    return {}
+
+
 def calendar_text_for_brief(event):
     if not event:
         return ""
@@ -6352,9 +6994,9 @@ def item_has_issue_bucket(item, *bucket_names):
 
 
 def item_has_confirmed_guest(item):
-    if item.get("highlevel_status") in {"Yes", "Human-confirmed active", "Known exception"}:
+    if item.get("highlevel_status") in {"Yes", "Human-confirmed active", "Known exception", "PR Representative Booking / Guest Represented"}:
         return True
-    if item.get("guest_status") in {"Confirmed", "Human-confirmed active"}:
+    if item.get("guest_status") in {"Confirmed", "Human-confirmed active", "PR Representative Booking / Guest Represented"}:
         return True
     return False
 
@@ -6362,12 +7004,16 @@ def item_has_confirmed_guest(item):
 def guest_status_for_schedule(item):
     codes = item_issue_codes(item)
     text = item_issue_text(item)
+    if "pr_representative_booking_guest_represented" in codes:
+        return "PR Representative Booking / Guest Represented"
     if "show_needs_guest_replacement" in codes:
         return "Needs Replacement Guest"
     if "guest_rsvp_acceptance_risk" in codes:
         return "Blocked by Confirmation"
     if "guest_confirmation_pitch_follow_up" in codes or "calendar_event_needs_confirmation" in codes:
         return "Blocked by Confirmation"
+    if item.get("highlevel_status") == "PR Representative Booking / Guest Represented":
+        return "Confirmed"
     if item.get("highlevel_status") == "Human-confirmed active":
         return "Human-confirmed active"
     if item.get("highlevel_status") == "Known exception":
@@ -6401,12 +7047,16 @@ def calendar_status_for_schedule(item):
 
 def highlevel_status_for_schedule(item):
     status = item.get("highlevel_status") or ("Yes" if item.get("highlevel_booking_found") else "No")
+    if "pr_representative_booking_guest_represented" in item_issue_codes(item):
+        return "PR Representative Booking / Guest Represented"
     if status == "No":
         return "Needs Verification"
     return status
 
 
 def linkedin_status_for_schedule(item, days_until):
+    if (item.get("linkedin_event_summary") or {}).get("calendar_needs_update"):
+        return "Exists - Calendar Needs Update"
     if item.get("linkedin_urls"):
         return "Present"
     if item.get("topics_status") == "Blocked by Guest":
@@ -6450,7 +7100,9 @@ def production_blockers_for_schedule(item):
         blockers.append("Calendar status needs verification")
     if item.get("highlevel_status_display") == "Needs Verification":
         blockers.append("HighLevel/calendar mismatch")
-    if item.get("linkedin_status") in {"Urgent Review", "Ready to Create"}:
+    if item.get("linkedin_status") == "Exists - Calendar Needs Update":
+        blockers.append("Google Calendar needs LinkedIn URL added")
+    elif item.get("linkedin_status") in {"Urgent Review", "Ready to Create"}:
         blockers.append("LinkedIn production URL not ready")
     if item.get("streamyard_status") == "Blocked by Guest":
         blockers.append("StreamYard blocked by missing guest topics/confirmation")
@@ -6463,6 +7115,10 @@ def production_blockers_for_schedule(item):
 
 def next_human_action_for_schedule(item):
     codes = item_issue_codes(item)
+    if "pr_representative_booking_guest_represented" in codes:
+        return "No mismatch cleanup needed. Use the represented guest for production context and keep the submitter/contact noted in the booking record."
+    if item.get("linkedin_status") == "Exists - Calendar Needs Update":
+        return "Add the verified LinkedIn event URL to the Google Calendar description, then send or schedule the SOP emails after review."
     if "show_needs_guest_replacement" in codes:
         return "Write PR pitch / source replacement guest."
     if item.get("topics_status") == "Blocked by Guest":
@@ -6488,6 +7144,8 @@ def finalize_schedule_item(item, now_local):
     item["topics_status"] = topics_status_for_schedule(item, days_until)
     item["calendar_status"] = calendar_status_for_schedule(item)
     item["highlevel_status_display"] = highlevel_status_for_schedule(item)
+    if item["highlevel_status_display"] == "PR Representative Booking / Guest Represented":
+        item["highlevel_status"] = item["highlevel_status_display"]
     item["linkedin_status"] = linkedin_status_for_schedule(item, days_until)
     item["streamyard_status"] = streamyard_status_for_schedule(item, days_until)
     item["production_blockers"] = production_blockers_for_schedule(item)
@@ -6547,10 +7205,12 @@ def schedule_source_codes(item):
 def task_from_guest_topics(item):
     guest = schedule_guest_label(item)
     return {
+        "task_kind": "guest_topics",
         "title": schedule_task_title(item, "Waiting on Topics"),
         "group": "Guest Follow-up",
         "lane": "Today's Work",
         "status": "Waiting On",
+        "show_key": item.get("show_key"),
         "show_name": item.get("show_name"),
         "episode_time": item.get("date_time") or item.get("episode_time"),
         "guest": guest,
@@ -6576,10 +7236,12 @@ def task_from_guest_topics(item):
 def task_from_guest_confirmation(item):
     guest = schedule_guest_label(item)
     return {
+        "task_kind": "guest_confirmation",
         "title": schedule_task_title(item, "Confirm Guest Status"),
         "group": "Guest Follow-up",
         "lane": "Today's Work",
         "status": "Blocked by Confirmation",
+        "show_key": item.get("show_key"),
         "show_name": item.get("show_name"),
         "episode_time": item.get("date_time") or item.get("episode_time"),
         "guest": guest,
@@ -6603,10 +7265,12 @@ def task_from_guest_confirmation(item):
 
 def task_from_calendar_mismatch(item):
     return {
+        "task_kind": "calendar_mismatch",
         "title": schedule_task_title(item, "Resolve Calendar / HighLevel Mismatch"),
         "group": "Calendar",
         "lane": "Today's Work",
         "status": "Urgent Review",
+        "show_key": item.get("show_key"),
         "show_name": item.get("show_name"),
         "episode_time": item.get("date_time") or item.get("episode_time"),
         "guest": schedule_guest_label(item),
@@ -6628,22 +7292,67 @@ def task_from_calendar_mismatch(item):
     }
 
 
+PRODUCTION_LINKEDIN_OPEN_STATUSES = {"Exists - Calendar Needs Update", "Urgent Review", "Ready to Create", "Due Soon"}
+PRODUCTION_STREAMYARD_OPEN_STATUSES = {"Critical", "Urgent Review", "Ready to Create", "Due Soon"}
+
+
+def explicit_sop_email_tracking(item):
+    tracked_keys = {"sop_email_sent", "sop_emails_sent", "sop_email_scheduled", "sop_emails_scheduled"}
+    for checklist_item in item.get("checklist_statuses") or []:
+        key = checklist_item.get("key")
+        if key in tracked_keys:
+            return checklist_item
+    return None
+
+
+def production_links_close_criteria(item):
+    criteria = []
+    if item.get("linkedin_status") == "Present":
+        criteria.append("LinkedIn URL present in Google Calendar")
+    elif item.get("linkedin_status") == "Exists - Calendar Needs Update":
+        criteria.append("Add the verified LinkedIn event URL to Google Calendar")
+    else:
+        criteria.append("LinkedIn URL present")
+    if item.get("streamyard_status") == "Present":
+        criteria.append("StreamYard URL present in Google Calendar")
+    else:
+        criteria.append("StreamYard URL present")
+    sop_email_status = explicit_sop_email_tracking(item)
+    if sop_email_status:
+        criteria.append(f"SOP email status updated ({sop_email_status.get('label')}: {sop_email_status.get('status')})")
+    else:
+        criteria.append("SOP email status is not currently tracked in normalized audit data")
+    return criteria
+
+
+def production_links_task_needed(item):
+    return item.get("linkedin_status") in PRODUCTION_LINKEDIN_OPEN_STATUSES or item.get("streamyard_status") in PRODUCTION_STREAMYARD_OPEN_STATUSES
+
+
 def task_from_production_links(item):
     missing = []
-    if item.get("linkedin_status") in {"Urgent Review", "Ready to Create", "Due Soon"}:
+    if item.get("linkedin_status") == "Exists - Calendar Needs Update":
+        missing.append("LinkedIn URL in Google Calendar")
+    elif item.get("linkedin_status") in PRODUCTION_LINKEDIN_OPEN_STATUSES:
         missing.append("LinkedIn promotion URL")
-    if item.get("streamyard_status") in {"Urgent Review", "Ready to Create", "Due Soon", "Critical"}:
+    if item.get("streamyard_status") in PRODUCTION_STREAMYARD_OPEN_STATUSES:
         missing.append("StreamYard link")
     label = "Finalize Production Links" if len(missing) > 1 else f"Finalize {missing[0]}" if missing else "Finalize Production Links"
-    if len(missing) > 1:
+    if item.get("linkedin_status") == "Exists - Calendar Needs Update" and item.get("streamyard_status") in PRODUCTION_STREAMYARD_OPEN_STATUSES:
+        next_action = "Add the verified LinkedIn event URL to the Google Calendar description, verify the StreamYard URL is present, then rerun the audit to confirm the task can close."
+    elif item.get("linkedin_status") == "Exists - Calendar Needs Update":
+        next_action = "Add the verified LinkedIn event URL to the Google Calendar description, then rerun the audit to confirm the task closes."
+    elif len(missing) > 1:
         next_action = "Create or locate the LinkedIn promotion URL and StreamYard link, then add them to the production source of truth after review."
     else:
         next_action = item.get("next_human_action") or "Create or locate the production link and add it to the source of truth after review."
     return {
+        "task_kind": "production_links",
         "title": schedule_task_title(item, label),
         "group": "Production",
         "lane": "Today's Work" if item.get("current_production_status") == "Urgent Review" or (item.get("days_until") is not None and item.get("days_until") < DAILY_BRIEF_NEXT_DAYS) else "This Week",
         "status": item.get("current_production_status") or "Needs Attention",
+        "show_key": item.get("show_key"),
         "show_name": item.get("show_name"),
         "episode_time": item.get("date_time") or item.get("episode_time"),
         "guest": schedule_guest_label(item),
@@ -6656,6 +7365,7 @@ def task_from_production_links(item):
         "waiting_on": False,
         "ignored_risk": "Guests and operators may not have the live-room or promotion link before the show.",
         "checklist": missing or ["Review production links"],
+        "close_when": production_links_close_criteria(item),
         "calendar_event_url": item.get("calendar_event_url"),
         "source_issue_codes": schedule_source_codes(item),
     }
@@ -6664,10 +7374,12 @@ def task_from_production_links(item):
 def task_from_replacement_finding(finding):
     guest = finding.get("guest") or "Replacement guest"
     return {
+        "task_kind": "replacement_guest",
         "title": f"{guest}: Source Replacement Guest",
         "group": "PR",
         "lane": "This Week",
         "status": "Needs Replacement Guest",
+        "show_key": finding.get("show_key"),
         "show_name": finding.get("show"),
         "episode_time": finding.get("episode"),
         "guest": guest,
@@ -6692,10 +7404,12 @@ def task_from_replacement_finding(finding):
 def task_from_follow_up_finding(finding):
     guest = finding.get("guest") or "Guest status"
     return {
+        "task_kind": "follow_up",
         "title": f"{guest}: Reconcile Guest Status",
         "group": "Guest Follow-up",
         "lane": "This Week",
         "status": "Needs Human Follow-Up",
+        "show_key": finding.get("show_key"),
         "show_name": finding.get("show"),
         "episode_time": finding.get("episode"),
         "guest": guest,
@@ -6741,7 +7455,7 @@ def build_work_queue(brief):
         if item.get("calendar_status") == "Needs Verification" or item.get("highlevel_status_display") == "Needs Verification":
             add_work_task(tasks, task_from_calendar_mismatch(item))
             continue
-        if item.get("linkedin_status") in {"Urgent Review", "Ready to Create", "Due Soon"} or item.get("streamyard_status") in {"Urgent Review", "Ready to Create", "Due Soon", "Critical"}:
+        if production_links_task_needed(item):
             add_work_task(tasks, task_from_production_links(item))
     for finding in brief.get("guest_replacement_needed") or []:
         add_work_task(tasks, task_from_replacement_finding(finding))
@@ -6769,17 +7483,216 @@ def build_work_queue(brief):
     }
 
 
+def completion_claim_guest(claim):
+    return claim.get("guest_name") or claim.get("guest") or ""
+
+
+def completion_claim_date(claim):
+    return date_key(claim.get("episode_time") or claim.get("episode_date"))
+
+
+def completion_claim_marked_at(claim):
+    return parse_datetime(claim.get("marked_complete_at") or claim.get("completed_at") or claim.get("recorded_at"))
+
+
+def guest_matches_claim(guest_name, guest_names):
+    if not guest_name:
+        return True
+    expected = normalize_text(guest_name)
+    values = [normalize_text(item) for item in guest_names or []]
+    return any(expected == value or expected in value or value in expected for value in values if value)
+
+
+def claim_matches_schedule_item(claim, item):
+    claim_show_key = claim.get("show_key")
+    if claim_show_key and normalize_text(claim_show_key) != normalize_text(item.get("show_key")):
+        return False
+    claim_show_name = claim.get("show_name")
+    if claim_show_name and normalize_text(claim_show_name) != normalize_text(item.get("show_name")):
+        return False
+    claim_date = completion_claim_date(claim)
+    if claim_date and claim_date != date_key(item.get("episode_time") or item.get("date_time")):
+        return False
+    return guest_matches_claim(completion_claim_guest(claim), item.get("guest_names") or [])
+
+
+def claim_matches_task(claim, task):
+    claim_task_id = claim.get("task_id")
+    if claim_task_id:
+        return normalize_text(claim_task_id) == normalize_text(task.get("task_id"))
+    claim_task_kind = claim.get("task_kind")
+    if claim_task_kind and normalize_text(claim_task_kind) != normalize_text(task.get("task_kind")):
+        return False
+    claim_show_key = claim.get("show_key")
+    if claim_show_key and normalize_text(claim_show_key) != normalize_text(task.get("show_key")):
+        return False
+    claim_show_name = claim.get("show_name")
+    if claim_show_name and normalize_text(claim_show_name) != normalize_text(task.get("show_name")):
+        return False
+    claim_date = completion_claim_date(claim)
+    if claim_date and claim_date != date_key(task.get("episode_time")):
+        return False
+    return guest_matches_claim(completion_claim_guest(claim), [task.get("guest")])
+
+
+def source_verified_linkedin_in_calendar(item):
+    return bool(item.get("calendar_linkedin_urls"))
+
+
+def source_verified_linkedin_any(item):
+    return source_verified_linkedin_in_calendar(item) or bool((item.get("linkedin_event_summary") or {}).get("linkedin_event_url"))
+
+
+def source_verified_streamyard(item):
+    return bool(item.get("streamyard_urls"))
+
+
+def completion_missing_for_production_links(item):
+    verified = []
+    missing = []
+    not_tracked = []
+    if source_verified_streamyard(item):
+        verified.append("StreamYard URL present in Google Calendar location or description")
+    else:
+        missing.append("StreamYard URL is not yet present in Google Calendar location or description")
+    if source_verified_linkedin_in_calendar(item):
+        verified.append("LinkedIn URL present in Google Calendar description")
+    elif (item.get("linkedin_event_summary") or {}).get("linkedin_event_url"):
+        verified.append("LinkedIn event verified from known LinkedIn evidence")
+        missing.append("Google Calendar description still needs the LinkedIn event URL")
+    else:
+        missing.append("LinkedIn URL is not yet present in Google Calendar description or known LinkedIn evidence")
+    sop_email_status = explicit_sop_email_tracking(item)
+    if sop_email_status:
+        if sop_email_status.get("status") == "Complete":
+            verified.append(f"{sop_email_status.get('label')} tracked as complete")
+        else:
+            missing.append(f"{sop_email_status.get('label')} is tracked as {sop_email_status.get('status')}")
+    else:
+        not_tracked.append("SOP email status is not currently tracked in normalized audit data")
+    return verified, missing, not_tracked
+
+
+def completion_result_sort_key(item):
+    marked_at = completion_claim_marked_at(item.get("claim") or {})
+    return (
+        0 if marked_at else 1,
+        "" if not marked_at else marked_at.isoformat(),
+        item.get("show_name") or "",
+        item.get("episode_time") or "",
+        item.get("task_label") or "",
+    )
+
+
+def build_completion_verification(completed_tasks_payload, schedule, work_queue, now_local):
+    claims = (completed_tasks_payload or {}).get("tasks") or []
+    open_tasks = work_queue.get("tasks") or []
+    results = []
+    for claim in claims:
+        if not isinstance(claim, dict):
+            continue
+        matching_schedule = [item for item in schedule if claim_matches_schedule_item(claim, item)]
+        matching_open_tasks = [task for task in open_tasks if claim_matches_task(claim, task)]
+        marked_at = completion_claim_marked_at(claim)
+        result = {
+            "claim": claim,
+            "task_id": claim.get("task_id"),
+            "task_kind": claim.get("task_kind") or (matching_open_tasks[0].get("task_kind") if len(matching_open_tasks) == 1 else ""),
+            "task_label": claim.get("task_label") or claim.get("title") or (matching_open_tasks[0].get("title") if len(matching_open_tasks) == 1 else "Claimed completed task"),
+            "show_key": claim.get("show_key") or (matching_schedule[0].get("show_key") if len(matching_schedule) == 1 else ""),
+            "show_name": claim.get("show_name") or (matching_schedule[0].get("show_name") if len(matching_schedule) == 1 else ""),
+            "episode_time": claim.get("episode_time") or (matching_schedule[0].get("episode_time") if len(matching_schedule) == 1 else ""),
+            "episode_date": completion_claim_date(claim) or (date_key(matching_schedule[0].get("episode_time")) if len(matching_schedule) == 1 else ""),
+            "guest_name": completion_claim_guest(claim) or (", ".join(matching_schedule[0].get("guest_names") or []) if len(matching_schedule) == 1 else ""),
+            "marked_complete_at": marked_at.isoformat() if marked_at else claim.get("marked_complete_at") or claim.get("completed_at") or claim.get("recorded_at"),
+            "marked_complete_by": claim.get("marked_complete_by") or claim.get("completed_by") or claim.get("recorded_by"),
+            "claimed_actions": claim.get("claimed_actions") or [],
+            "notes": claim.get("notes"),
+            "verification_status": "Needs human review",
+            "verified_checks": [],
+            "still_missing": [],
+            "not_tracked": [],
+            "related_work_queue_item_removed": False,
+            "current_task_title": matching_open_tasks[0].get("title") if len(matching_open_tasks) == 1 else None,
+            "current_task_status": matching_open_tasks[0].get("status") if len(matching_open_tasks) == 1 else None,
+            "explanation": "The completion claim needs human review before the system can confirm it.",
+        }
+        if len(matching_schedule) > 1 or len(matching_open_tasks) > 1:
+            result["verification_status"] = "Needs human review"
+            result["explanation"] = "Multiple matching episodes or work queue items were found, so the completion claim could not be verified safely."
+            results.append(result)
+            continue
+        current_task = matching_open_tasks[0] if len(matching_open_tasks) == 1 else None
+        current_schedule = matching_schedule[0] if len(matching_schedule) == 1 else None
+        if result["task_kind"] == "production_links" and current_schedule:
+            verified, missing, not_tracked = completion_missing_for_production_links(current_schedule)
+            result["verified_checks"] = verified
+            result["still_missing"] = missing
+            result["not_tracked"] = not_tracked
+            result["related_work_queue_item_removed"] = not production_links_task_needed(current_schedule)
+            if not missing and result["related_work_queue_item_removed"]:
+                result["verification_status"] = "Completed and verified"
+                result["explanation"] = "The fresh audit confirms the production links are present and the related work queue item is no longer open."
+            elif current_task:
+                result["verification_status"] = "Still open"
+                result["current_task_title"] = current_task.get("title")
+                result["current_task_status"] = current_task.get("status")
+                result["explanation"] = "The fresh audit still shows the related production-links task as open."
+            else:
+                result["verification_status"] = "Completed but not verified"
+                result["explanation"] = "The claim no longer appears as an open work queue item, but at least one requested completion check is still missing from source data."
+            results.append(result)
+            continue
+        if current_task:
+            result["verification_status"] = "Still open"
+            result["still_missing"] = list(current_task.get("checklist") or [])
+            result["not_tracked"] = list(current_task.get("close_when") or [])
+            result["explanation"] = current_task.get("next_action") or "The fresh audit still shows the related work queue item as open."
+            results.append(result)
+            continue
+        if current_schedule or result.get("show_key") or result.get("show_name"):
+            result["verification_status"] = "Completed and verified"
+            result["related_work_queue_item_removed"] = True
+            result["explanation"] = "The fresh audit no longer shows a matching work queue item for this claim."
+        else:
+            result["verification_status"] = "Completed but not verified"
+            result["explanation"] = "The claim was recorded locally, but the fresh audit could not match it to current source-backed episode data."
+        results.append(result)
+
+    results = sorted(results, key=completion_result_sort_key, reverse=True)
+    counts = {status: 0 for status in COMPLETION_STATUSES}
+    for item in results:
+        counts[item.get("verification_status")] = counts.get(item.get("verification_status"), 0) + 1
+    today_key = now_local.date().isoformat()
+    completed_today = [
+        item
+        for item in results
+        if item.get("verification_status") == "Completed and verified"
+        and date_key(item.get("marked_complete_at")) == today_key
+    ]
+    return {
+        "completed_tasks_path": str(DEFAULT_COMPLETED_TASKS_PATH),
+        "claims": results,
+        "completed_today": completed_today,
+        "summary": {
+            "total_claims": len(results),
+            "counts_by_status": counts,
+            "completed_today_count": len(completed_today),
+        },
+    }
+
+
 def brief_item_flags(item):
     flags = []
     if not item.get("calendar_event_found"):
         flags.append("Calendar status unclear")
-    if item.get("highlevel_status") == "No":
+    if item.get("highlevel_status_display") == "Needs Verification":
         flags.append("HighLevel/calendar mismatch")
     if item.get("guest_status") in {"Needs Replacement Guest", "Blocked by Confirmation", "Urgent Review"}:
         flags.append(item["guest_status"])
     if item.get("topics_status") == "Blocked by Guest":
         flags.append("Blocked by Guest")
-    if item.get("linkedin_status") in {"Urgent Review", "Ready to Create", "Blocked by Guest", "Blocked by Confirmation"}:
+    if item.get("linkedin_status") in {"Exists - Calendar Needs Update", "Urgent Review", "Ready to Create", "Blocked by Guest", "Blocked by Confirmation"}:
         flags.append(f"LinkedIn {item['linkedin_status']}")
     if item.get("streamyard_status") in {"Critical", "Urgent Review", "Ready to Create", "Blocked by Guest", "Blocked by Confirmation"}:
         flags.append(f"StreamYard {item['streamyard_status']}")
@@ -6882,6 +7795,7 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
     events_by_id = {event.get("id"): event for event in calendar_events if event.get("id")}
     issues_by_event = issue_list_by_event_id(report)
     issues_by_episode = issue_list_by_episode_key(report)
+    represented_guest_event_ids = finding_event_ids(manager_dashboard, "represented_guest_findings")
     human_confirmed_event_ids = finding_event_ids(manager_dashboard, "human_confirmed_active_findings")
     known_exception_event_ids = finding_event_ids(manager_dashboard, "known_exception_findings")
     window_end = now_local + timedelta(days=DAILY_BRIEF_NEXT_DAYS)
@@ -6918,13 +7832,26 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
             "calendar_event_url": episode.get("calendar_event_url") or (event or {}).get("url"),
             "calendar_event_id": event_id,
             "highlevel_booking_found": has_complete_checklist_item(episode, "highlevel_booking"),
-            "highlevel_status": "Yes" if has_complete_checklist_item(episode, "highlevel_booking") else "No",
+            "highlevel_status": "PR Representative Booking / Guest Represented"
+            if event_id in represented_guest_event_ids
+            else "Yes"
+            if has_complete_checklist_item(episode, "highlevel_booking")
+            else "No",
             "production_status": episode.get("production_status"),
             "readiness_percentage": episode.get("readiness_percentage"),
             "issues": issue_candidates,
+            "checklist_statuses": episode.get("checklist_statuses") or [],
+            "timeline": episode.get("timeline") or [],
             "linkedin_urls": extract_linkedin_urls(event_text),
+            "calendar_linkedin_urls": extract_linkedin_urls(event_text),
             "streamyard_urls": extract_streamyard_urls(event_text),
+            "represented_guest_summary": represented_guest_summary_from_issues(issue_candidates) or (
+                (episode.get("represented_guest_matches") or [None])[0] or {}
+            ),
+            "linkedin_event_summary": linkedin_event_summary_from_issues(issue_candidates),
         }
+        if item["linkedin_event_summary"].get("linkedin_event_url") and item["linkedin_event_summary"]["linkedin_event_url"] not in item["linkedin_urls"]:
+            item["linkedin_urls"].append(item["linkedin_event_summary"]["linkedin_event_url"])
         item["guest_names"] = display_guests_for_brief(item, aliases.get(item.get("show_key")))
         item = finalize_schedule_item(item, now_local)
         schedule.append(item)
@@ -6956,7 +7883,9 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
             "calendar_event_url": event.get("url"),
             "calendar_event_id": event.get("id"),
             "highlevel_booking_found": False,
-            "highlevel_status": "Human-confirmed active"
+            "highlevel_status": "PR Representative Booking / Guest Represented"
+            if event.get("id") in represented_guest_event_ids
+            else "Human-confirmed active"
             if event.get("id") in human_confirmed_event_ids
             else "Known exception"
             if event.get("id") in known_exception_event_ids
@@ -6964,9 +7893,16 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
             "production_status": operational_status_from_counts(effective_issue_counts(issues)),
             "readiness_percentage": None,
             "issues": issues,
+            "checklist_statuses": [],
+            "timeline": [],
             "linkedin_urls": extract_linkedin_urls(event_text),
+            "calendar_linkedin_urls": extract_linkedin_urls(event_text),
             "streamyard_urls": extract_streamyard_urls(event_text),
+            "represented_guest_summary": represented_guest_summary_from_issues(issues),
+            "linkedin_event_summary": linkedin_event_summary_from_issues(issues),
         }
+        if item["linkedin_event_summary"].get("linkedin_event_url") and item["linkedin_event_summary"]["linkedin_event_url"] not in item["linkedin_urls"]:
+            item["linkedin_urls"].append(item["linkedin_event_summary"]["linkedin_event_url"])
         item = finalize_schedule_item(item, now_local)
         schedule.append(item)
 
@@ -7004,7 +7940,7 @@ def md_brief(value, limit=900):
     return compact(value, limit=limit).replace("|", "\\|").replace("\n", " ")
 
 
-def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local):
+def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local, completed_tasks_payload=None, completed_tasks_path=None):
     health = manager_dashboard.get("overall_production_health") or report.get("overall_production_health") or {}
     issue_counts = manager_dashboard.get("issue_counts") or report.get("severity_counts") or {}
     trust_summary = manager_dashboard.get("trust_summary") or {}
@@ -7052,6 +7988,35 @@ def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules,
         "known_exceptions": len(known_exceptions),
         "human_confirmed_active": len(manager_dashboard.get("human_confirmed_active_findings") or []),
     }
+    represented_lookup = {}
+    for issue in list(report.get("issues") or []) + list(report.get("suppressed_issues") or []):
+        details = issue.get("details") or {}
+        if not details.get("represented_guest"):
+            continue
+        key = issue.get("calendar_event_id") or issue.get("episode_time")
+        represented_lookup[key] = details
+    represented_guest_matches = []
+    for finding in manager_dashboard.get("represented_guest_findings") or []:
+        raw_ids = finding.get("raw_ids") or {}
+        details = represented_lookup.get(raw_ids.get("google_calendar_event_id")) or {}
+        event_time = parse_datetime(finding.get("episode"))
+        if not event_time:
+            continue
+        local_time = event_time.astimezone(LOCAL_TIMEZONE)
+        if local_time < now_local or local_time > now_local + timedelta(days=DAILY_BRIEF_NEXT_DAYS):
+            continue
+        represented_guest_matches.append(
+            {
+                "show_name": finding.get("show"),
+                "date_time": finding.get("episode"),
+                "represented_guest_summary": {
+                    "highlevel_submitter_contact": details.get("highlevel_submitter_contact") or finding.get("guest"),
+                    "represented_guest": details.get("represented_guest") or finding.get("guest"),
+                    "confidence": details.get("represented_guest_confidence") or finding.get("confidence"),
+                    "evidence": details.get("represented_guest_evidence") or [],
+                },
+            }
+        )
     payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "today": now_local.date().isoformat(),
@@ -7064,6 +8029,10 @@ def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules,
         "safe_to_ignore_today": safe_to_ignore,
         "trust_bucket_counts": bucket_counts,
         "next_7_days_schedule": schedule,
+        "represented_guest_matches": represented_guest_matches,
+        "linkedin_event_manual_evidence": [
+            item for item in schedule if (item.get("linkedin_event_summary") or {}).get("linkedin_event_url")
+        ],
         "urgent_review": urgent_review,
         "fix_today": fix_today,
         "waiting_on": waiting_on,
@@ -7082,6 +8051,9 @@ def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules,
         "critical_issues": manager_dashboard.get("critical_issues") or [],
     }
     payload["work_queue"] = build_work_queue(payload)
+    payload["completion_tracking"] = build_completion_verification(completed_tasks_payload or COMPLETED_TASKS_DEFAULT, payload.get("next_7_days_schedule") or [], payload["work_queue"], now_local)
+    if completed_tasks_path:
+        payload["completion_tracking"]["completed_tasks_path"] = str(completed_tasks_path)
     return payload
 
 
@@ -7115,9 +8087,62 @@ def render_work_task_markdown(task):
     checklist = task.get("checklist") or []
     if checklist:
         lines.append(f"- Checklist: {md_brief('; '.join(checklist), 520)}")
+    close_when = task.get("close_when") or []
+    if close_when:
+        lines.append(f"- Close when: {md_brief('; '.join(close_when), 520)}")
     if task.get("calendar_event_url"):
         lines.append(f"- Calendar: {task.get('calendar_event_url')}")
     return lines + [""]
+
+
+def render_completion_claim_markdown(item):
+    lines = [
+        f"### {md_brief(item.get('task_label') or 'Claimed completed task', 180)}",
+        "",
+        f"- Status: {md_brief(item.get('verification_status'))}",
+        f"- Show: {md_brief(item.get('show_name') or item.get('show_key') or 'Unknown')}",
+        f"- Episode: {md_brief(short_date(item.get('episode_time') or item.get('episode_date')))}",
+        f"- Guest: {md_brief(item.get('guest_name') or 'Unknown')}",
+        f"- Marked complete by: {md_brief(item.get('marked_complete_by') or 'Unknown')}",
+        f"- Marked complete at: {md_brief(item.get('marked_complete_at') or 'Unknown')}",
+        f"- Explanation: {md_brief(item.get('explanation'))}",
+    ]
+    claimed_actions = item.get("claimed_actions") or []
+    if claimed_actions:
+        lines.append(f"- Claimed actions: {md_brief('; '.join(claimed_actions), 520)}")
+    verified_checks = item.get("verified_checks") or []
+    if verified_checks:
+        lines.append(f"- Verified: {md_brief('; '.join(verified_checks), 520)}")
+    still_missing = item.get("still_missing") or []
+    if still_missing:
+        lines.append(f"- Still missing: {md_brief('; '.join(still_missing), 520)}")
+    not_tracked = item.get("not_tracked") or []
+    if not_tracked:
+        lines.append(f"- Not tracked: {md_brief('; '.join(not_tracked), 520)}")
+    if item.get("notes"):
+        lines.append(f"- Notes: {md_brief(item.get('notes'), 520)}")
+    return lines + [""]
+
+
+def render_completion_claim_html(item):
+    claimed_actions = item.get("claimed_actions") or []
+    verified_checks = item.get("verified_checks") or []
+    still_missing = item.get("still_missing") or []
+    not_tracked = item.get("not_tracked") or []
+    return (
+        '<article class="task-card">'
+        f"<div class=\"task-top\"><h3>{html_text(item.get('task_label') or 'Claimed completed task', 180)}</h3>{badge(item.get('verification_status'), manager_status_class(item.get('verification_status')))}</div>"
+        f"<p><strong>Show:</strong> {html_text(item.get('show_name') or item.get('show_key') or 'Unknown', 120)} <strong>Guest:</strong> {html_text(item.get('guest_name') or 'Unknown', 140)}</p>"
+        f"<p><strong>Episode:</strong> {html_text(short_date(item.get('episode_time') or item.get('episode_date')), 120)}</p>"
+        f"<p><strong>Marked complete by:</strong> {html_text(item.get('marked_complete_by') or 'Unknown', 120)} <strong>At:</strong> {html_text(item.get('marked_complete_at') or 'Unknown', 140)}</p>"
+        f"<p><strong>Explanation:</strong> {html_text(item.get('explanation'), 420)}</p>"
+        + (f"<p><strong>Claimed actions:</strong> {html_text('; '.join(claimed_actions), 520)}</p>" if claimed_actions else "")
+        + (f"<p><strong>Verified:</strong> {html_text('; '.join(verified_checks), 520)}</p>" if verified_checks else "")
+        + (f"<p><strong>Still missing:</strong> {html_text('; '.join(still_missing), 520)}</p>" if still_missing else "")
+        + (f"<p><strong>Not tracked:</strong> {html_text('; '.join(not_tracked), 520)}</p>" if not_tracked else "")
+        + (f"<p><strong>Notes:</strong> {html_text(item.get('notes'), 520)}</p>" if item.get("notes") else "")
+        + "</article>"
+    )
 
 
 def render_work_queue_markdown(queue):
@@ -7156,6 +8181,8 @@ def render_daily_brief_markdown(brief):
     counts = brief.get("issue_counts") or {}
     schedule = brief.get("next_7_days_schedule") or []
     work_queue = brief.get("work_queue") or {}
+    completion_tracking = brief.get("completion_tracking") or {}
+    completion_summary = completion_tracking.get("summary") or {}
     lines = [
         "# Daily Operations Brief",
         "",
@@ -7172,6 +8199,34 @@ def render_daily_brief_markdown(brief):
         "",
     ]
     lines.extend(render_work_queue_markdown(work_queue))
+    lines.extend(
+        [
+            "## Completion Verification",
+            "",
+            f"- Total completion claims reviewed: {completion_summary.get('total_claims', 0)}",
+            f"- Completed and verified: {(completion_summary.get('counts_by_status') or {}).get('Completed and verified', 0)}",
+            f"- Completed but not verified: {(completion_summary.get('counts_by_status') or {}).get('Completed but not verified', 0)}",
+            f"- Still open: {(completion_summary.get('counts_by_status') or {}).get('Still open', 0)}",
+            f"- Needs human review: {(completion_summary.get('counts_by_status') or {}).get('Needs human review', 0)}",
+            f"- Completion claims file: {md_escape((completion_tracking.get('completed_tasks_path') or 'data/audit/completed_tasks.json'))}",
+            "",
+            "## Completed Today",
+            "",
+        ]
+    )
+    completed_today = completion_tracking.get("completed_today") or []
+    if not completed_today:
+        lines.extend(["No tasks completed and verified today.", ""])
+    else:
+        for item in completed_today:
+            lines.extend(render_completion_claim_markdown(item))
+    lines.extend(["## Completion Claims", ""])
+    all_claims = completion_tracking.get("claims") or []
+    if not all_claims:
+        lines.extend(["No local completion claims have been recorded yet.", ""])
+    else:
+        for item in all_claims:
+            lines.extend(render_completion_claim_markdown(item))
     lines.extend(["## Next 7 Days Show Schedule", ""])
     if not schedule:
         lines.extend(["No configured show episodes are scheduled in the next 7 days.", ""])
@@ -7188,7 +8243,11 @@ def render_daily_brief_markdown(brief):
                 calendar_label = f"{calendar_label}: [{item.get('calendar_event_title') or 'Open event'}]({item.get('calendar_event_url')})"
             linkedin_label = item.get("linkedin_status") or "Unknown"
             if item.get("linkedin_urls"):
-                linkedin_label = f"Present: {', '.join(item.get('linkedin_urls') or [])}"
+                prefix = item.get("linkedin_status") or "Present"
+                if prefix == "Present":
+                    linkedin_label = f"Present: {', '.join(item.get('linkedin_urls') or [])}"
+                else:
+                    linkedin_label = f"{prefix}: {', '.join(item.get('linkedin_urls') or [])}"
             streamyard_label = item.get("streamyard_status") or "Unknown"
             if item.get("streamyard_urls"):
                 streamyard_label = f"Present: {', '.join(item.get('streamyard_urls') or [])}"
@@ -7211,6 +8270,30 @@ def render_daily_brief_markdown(brief):
         lines.append(f"- {len(known)} active known exception or human-confirmed context item(s) are being tracked.")
     else:
         lines.append("- No active known exceptions.")
+    lines.extend(["", "## LinkedIn Event Evidence", ""])
+    manual_linkedin = brief.get("linkedin_event_manual_evidence") or []
+    if manual_linkedin:
+        for item in manual_linkedin:
+            summary = item.get("linkedin_event_summary") or {}
+            lines.append(f"- {md_escape(item.get('show_name'))} - {md_escape(short_date(item.get('date_time')))} - {md_escape(', '.join(item.get('guest_names') or []) or 'Unknown')}")
+            lines.append(f"  LinkedIn event exists: {summary.get('linkedin_event_url')}")
+            lines.append(f"  Source: {md_escape(summary.get('source') or 'Unknown')}")
+            lines.append(f"  Verified by: {md_escape(summary.get('verified_by') or 'Unknown')}")
+            lines.append(f"  Notes: {md_escape(summary.get('notes') or 'None')}")
+    else:
+        lines.append("- No external/manual LinkedIn event evidence is recorded for the next 7 days.")
+    lines.extend(["", "## PR Representative Bookings", ""])
+    represented = brief.get("represented_guest_matches") or []
+    if represented:
+        for item in represented:
+            summary = item.get("represented_guest_summary") or {}
+            lines.append(f"- Show: {md_escape(item.get('show_name'))} - {md_escape(short_date(item.get('date_time')))}")
+            lines.append(f"  HighLevel submitter/contact: {md_escape(summary.get('highlevel_submitter_contact') or 'Unknown')}")
+            lines.append(f"  Represented guest: {md_escape(summary.get('represented_guest') or 'Unknown')}")
+            lines.append(f"  Confidence: {md_escape(summary.get('confidence') or 'Unknown')}")
+            lines.append(f"  Evidence: {md_escape(', '.join(summary.get('evidence') or []) or 'None recorded')}")
+    else:
+        lines.append("- No PR representative bookings were inferred in the next 7 days.")
     lines.extend(["", "## Future Safe Actions", ""])
     future = brief.get("future_safe_actions") or []
     if future:
@@ -7247,6 +8330,10 @@ def render_work_task_html(task):
     checklist_html = ""
     if checklist:
         checklist_html = "<p><strong>Checklist:</strong> " + html_text("; ".join(checklist), 520) + "</p>"
+    close_when = task.get("close_when") or []
+    close_when_html = ""
+    if close_when:
+        close_when_html = "<p><strong>Close when:</strong> " + html_text("; ".join(close_when), 520) + "</p>"
     calendar_html = ""
     if task.get("calendar_event_url"):
         calendar_html = f"<p>{html_link(task.get('calendar_event_url'), 'Open calendar event')}</p>"
@@ -7260,7 +8347,7 @@ def render_work_task_html(task):
         f"<p><strong>Next action:</strong> {html_text(task.get('next_action'), 420)}</p>"
         f"<p><strong>Estimated time:</strong> {html_text(task_time_text(task.get('estimated_minutes')), 80)} <strong>Business impact:</strong> {html_text(task.get('business_impact'), 80)}</p>"
         f"<p><strong>If ignored:</strong> {html_text(task.get('ignored_risk'), 420)}</p>"
-        f"{checklist_html}{calendar_html}"
+        f"{checklist_html}{close_when_html}{calendar_html}"
         "</article>"
     )
 
@@ -7341,6 +8428,9 @@ def render_daily_operations_brief_html(brief):
     counts = brief.get("issue_counts") or {}
     waiting = brief.get("waiting_on") or {}
     safe = brief.get("safe_to_ignore_today") or {}
+    completion_tracking = brief.get("completion_tracking") or {}
+    completion_summary = completion_tracking.get("summary") or {}
+    completion_counts = completion_summary.get("counts_by_status") or {}
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -7416,11 +8506,27 @@ def render_daily_operations_brief_html(brief):
     <h2>Operations Copilot Work Queue</h2>
     {render_work_queue_html(brief.get('work_queue') or {})}
 
+    <h2>Completion Verification</h2>
+    <section class="grid">
+      <div class="card"><div class="metric">{completion_summary.get('total_claims', 0)}</div><div class="label">Completion claims reviewed</div></div>
+      <div class="card"><div class="metric">{completion_counts.get('Completed and verified', 0)}</div><div class="label">Completed and verified</div></div>
+      <div class="card"><div class="metric">{completion_counts.get('Still open', 0)}</div><div class="label">Still open</div></div>
+      <div class="card"><div class="metric">{completion_counts.get('Needs human review', 0)}</div><div class="label">Needs human review</div></div>
+    </section>
+    <section class="card"><p><strong>Completion claims file:</strong> {html_text(completion_tracking.get('completed_tasks_path') or 'data/audit/completed_tasks.json', 220)}</p></section>
+
+    <h2>Completed Today</h2>
+    {('<div class="task-grid">' + ''.join(render_completion_claim_html(item) for item in (completion_tracking.get('completed_today') or [])) + '</div>') if (completion_tracking.get('completed_today') or []) else '<section class="card"><p class="muted">No tasks completed and verified today.</p></section>'}
+
+    <h2>Completion Claims</h2>
+    {('<div class="task-grid">' + ''.join(render_completion_claim_html(item) for item in (completion_tracking.get('claims') or [])) + '</div>') if (completion_tracking.get('claims') or []) else '<section class="card"><p class="muted">No local completion claims have been recorded yet.</p></section>'}
+
     <h2>Next 7 Days Show Schedule</h2>
     {render_daily_schedule_html(brief.get('next_7_days_schedule') or [])}
 
     <h2>Known Exceptions</h2>
     <section class="card"><p>{len(brief.get('known_exceptions') or [])} active known exception or human-confirmed context item(s) are being tracked.</p></section>
+    <section class="card"><p>{len(brief.get('linkedin_event_manual_evidence') or [])} episode(s) have LinkedIn event evidence from read-only/manual sources outside Google Calendar.</p></section>
 
     <h2>Future Safe Actions</h2>
     <section class="card"><p>{len(brief.get('future_safe_actions') or [])} future safe action candidate(s) exist, but automation remains disabled.</p></section>
@@ -7443,26 +8549,28 @@ def load_daily_brief_sources(args):
     output_dir = Path(args.output_dir)
     report_path = output_dir / "operations_audit_report.json"
     dashboard_path = output_dir / "operations_manager_dashboard.json"
+    completed_tasks_path = output_dir / "completed_tasks.json"
     if not report_path.exists():
         raise RuntimeError(f"Missing audit report: {report_path}. Run the all-shows audit first.")
     if not dashboard_path.exists():
         raise RuntimeError(f"Missing operations manager dashboard JSON: {dashboard_path}. Run the all-shows audit first.")
     report = read_json(report_path, default={})
     manager_dashboard = read_json(dashboard_path, default={})
+    completed_tasks = load_completed_tasks(completed_tasks_path)
     rules = load_rules(Path(args.rules))
     calendar_events = []
     calendar_path = path_from_report(report.get("calendar_events_path"))
     if calendar_path and calendar_path.exists():
         calendar_payload = load_calendar_payload(calendar_path)
         calendar_events = [normalize_calendar_event(event) for event in flatten_calendar_payload(calendar_payload)]
-    return report, manager_dashboard, calendar_events, rules
+    return report, manager_dashboard, calendar_events, rules, completed_tasks, completed_tasks_path
 
 
 def generate_daily_brief(args):
     output_dir = Path(args.output_dir)
-    report, manager_dashboard, calendar_events, rules = load_daily_brief_sources(args)
+    report, manager_dashboard, calendar_events, rules, completed_tasks, completed_tasks_path = load_daily_brief_sources(args)
     now_local = daily_now(args.now)
-    brief = build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local)
+    brief = build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local, completed_tasks, completed_tasks_path)
     md_path = output_dir / "daily_operations_brief.md"
     html_path = output_dir / "daily_operations_brief.html"
     md_path.write_text(render_daily_brief_markdown(brief), encoding="utf-8")
@@ -7777,9 +8885,13 @@ def build_dashboard(report, previous_report, rules):
 def run_audit(args):
     discovery_dir = Path(args.discovery_dir)
     output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     rules = load_rules(Path(args.rules))
     timeline_rules = load_production_timeline_rules(Path(args.production_timeline_rules))
     knowledge = load_knowledge(Path(args.knowledge_dir))
+    completed_tasks_path = output_dir / "completed_tasks.json"
+    completed_tasks_payload = load_completed_tasks(completed_tasks_path)
+    rules["_loaded_knowledge"] = knowledge
     calendar_payload = load_calendar_payload(Path(args.calendar_events))
     calendar_export_window = calendar_export_window_from_payload(calendar_payload)
     calendar_events = [normalize_calendar_event(event) for event in flatten_calendar_payload(calendar_payload)]
@@ -7805,21 +8917,30 @@ def run_audit(args):
     all_suppressed_issues = []
     show_diagnostics = []
     show_names = set()
+    show_contexts = {}
 
     for show_key in show_keys:
-        episodes, appointments_by_id, submissions_by_id = load_show_context(show_key, discovery_dir)
+        episodes, appointments_by_id, submissions_by_id, custom_field_map_by_id = load_show_context(show_key, discovery_dir)
+        show_contexts[show_key] = {
+            "episodes": episodes,
+            "appointments_by_id": appointments_by_id,
+            "submissions_by_id": submissions_by_id,
+            "custom_field_map_by_id": custom_field_map_by_id,
+        }
         diagnostic = discovery_diagnostic(show_key, discovery_dir, rules, episodes, appointments_by_id, submissions_by_id)
         if diagnostic:
             show_diagnostics.append(diagnostic)
         for episode in episodes:
             if episode.get("show_name"):
                 show_names.add(episode["show_name"])
-            audited = audit_episode(show_key, episode, appointments_by_id, submissions_by_id, calendar_events, options)
+            audited = audit_episode(show_key, episode, appointments_by_id, submissions_by_id, custom_field_map_by_id, calendar_events, options)
             if audited is None:
                 continue
             audited_episodes.append(audited)
             all_issues.extend(audited["issues"])
             all_suppressed_issues.extend(audited.get("suppressed_issues") or [])
+
+    options["show_contexts"] = show_contexts
 
     orphan_issues = find_calendar_events_without_bookings(calendar_events, audited_episodes, show_names, options)
     orphan_active_issues, orphan_suppressed_issues = apply_suppression_rules(orphan_issues, rules, now)
@@ -7832,6 +8953,7 @@ def run_audit(args):
     all_issues.extend(orphan_active_issues)
     all_suppressed_issues.extend(orphan_suppressed_issues)
     all_issues.extend(build_knowledge_alert_issues(calendar_events, all_issues, options, knowledge))
+    all_issues.extend(build_linkedin_manual_evidence_issues(calendar_events, all_issues + all_suppressed_issues, options, knowledge))
     apply_metadata_to_issues(all_issues, rules)
     apply_metadata_to_issues(all_suppressed_issues, rules)
     attach_issue_decisions(all_issues, rules, now)
@@ -7845,7 +8967,6 @@ def run_audit(args):
 
     all_issues.sort(key=issue_sort_key)
     all_suppressed_issues.sort(key=issue_sort_key)
-    output_dir.mkdir(parents=True, exist_ok=True)
     json_path = output_dir / "operations_audit_report.json"
     md_path = output_dir / "operations_audit_report.md"
     html_path = output_dir / "operations_audit_report.html"
@@ -7895,13 +9016,24 @@ def run_audit(args):
     report["change_summary"] = build_change_summary(previous_report, report)
     report["executive_summary"] = build_executive_summary(report)
     report["trust_review"] = build_trust_review(report, rules)
-    report["trust_review"]["path"] = str(trust_review_path)
     report["learning_report"] = build_learning_report(report, previous_report, knowledge)
     report["learning_report"]["path"] = str(learning_report_path)
     report["rule_approval_queue"] = build_rule_approval_queue(report["learning_report"])
     report["rule_approval_queue"]["json_path"] = str(rule_queue_json_path)
     report["rule_approval_queue"]["markdown_path"] = str(rule_queue_md_path)
     manager_dashboard = build_operations_manager_dashboard(report, rules, timeline_rules, now)
+    completion_preview = build_daily_brief_payload(
+        report,
+        manager_dashboard,
+        calendar_events,
+        rules,
+        now.astimezone(LOCAL_TIMEZONE),
+        completed_tasks_payload,
+        completed_tasks_path,
+    ).get("completion_tracking") or {}
+    report["trust_review"] = build_trust_review(report, rules, completion_preview)
+    report["trust_review"]["path"] = str(trust_review_path)
+    manager_dashboard = build_operations_manager_dashboard(report, rules, timeline_rules, now, completion_preview)
     critical_review = manager_dashboard.get("critical_review") or []
     report["critical_review"] = {
         "path": str(critical_review_path),
@@ -7910,6 +9042,7 @@ def run_audit(args):
     report["operations_manager_dashboard"] = {
         "json_path": str(manager_dashboard_path),
         "html_path": str(manager_dashboard_html_path),
+        "completed_tasks_path": str(completed_tasks_path),
     }
 
     write_json(json_path, report)
@@ -7964,8 +9097,11 @@ def main():
         print(f"  Critical issues: {counts.get('Critical', 0)}")
         print(f"  Next 7 days: {len(brief.get('next_7_days_schedule') or [])} scheduled show item(s)")
         work_queue = brief.get("work_queue") or {}
+        completion_summary = (brief.get("completion_tracking") or {}).get("summary") or {}
         print(f"  Work queue tasks: {work_queue.get('total_task_count', 0)}")
         print(f"  Estimated today's work: {task_time_text(work_queue.get('total_estimated_minutes', 0))}")
+        print(f"  Completion claims reviewed: {completion_summary.get('total_claims', 0)}")
+        print(f"  Completed today: {completion_summary.get('completed_today_count', 0)}")
         print(f"  Markdown: {md_path}")
         print(f"  HTML: {html_path}")
         print("  Mode: read-only; generated from existing local audit outputs only.")
@@ -7987,6 +9123,9 @@ def main():
         f"{counts.get('Warning', 0)} Warning, "
         f"{counts.get('Informational', 0)} Informational"
     )
+    completion_summary = ((report.get("trust_review") or {}).get("completion_tracking") or {}).get("summary") or {}
+    print(f"  Completion claims reviewed: {completion_summary.get('total_claims', 0)}")
+    print(f"  Completed today: {completion_summary.get('completed_today_count', 0)}")
     print(f"  Markdown: {md_path}")
     print(f"  HTML: {html_path}")
     print(f"  JSON: {json_path}")

@@ -4,3 +4,6 @@
 assets/
 docs/sops/source-text/
 secrets/
+data/
+output/
+.DS_Store
