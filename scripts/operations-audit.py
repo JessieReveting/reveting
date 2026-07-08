@@ -9,12 +9,15 @@ This script never modifies Google Calendar, HighLevel, or email.
 """
 
 import argparse
+import base64
 import csv
 import difflib
 import json
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
+from email.message import EmailMessage
 from html import escape, unescape
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -28,9 +31,13 @@ DEFAULT_COMPLETED_TASKS_PATH = DEFAULT_OUTPUT_DIR / "completed_tasks.json"
 DEFAULT_RECENT_HUMAN_NOTES_PATH = DEFAULT_OUTPUT_DIR / "recent_human_notes.json"
 DEFAULT_ACTIONS_DIR = REPO_ROOT / "data" / "actions"
 DEFAULT_PENDING_ACTIONS_PATH = DEFAULT_ACTIONS_DIR / "pending_actions.json"
+DEFAULT_ACTION_HISTORY_PATH = DEFAULT_ACTIONS_DIR / "action_history.json"
 DEFAULT_RULES_PATH = REPO_ROOT / "config" / "operations_rules.json"
 DEFAULT_PRODUCTION_TIMELINE_RULES_PATH = REPO_ROOT / "config" / "production_timeline_rules.json"
 DEFAULT_KNOWLEDGE_DIR = REPO_ROOT / "config" / "knowledge"
+DEFAULT_GOOGLE_OAUTH_CLIENT_PATH = REPO_ROOT / "secrets" / "google-calendar-oauth-client.json"
+DEFAULT_GOOGLE_CALENDAR_WRITE_TOKEN_PATH = REPO_ROOT / "secrets" / "google-calendar-write-token.json"
+DEFAULT_GMAIL_DRAFT_TOKEN_PATH = REPO_ROOT / "secrets" / "gmail-draft-token.json"
 DEFAULT_CALENDAR_ID = "ww@reveting.com"
 DEFAULT_PRESHOW_MINUTES = 15
 DEFAULT_TIME_TOLERANCE_MINUTES = 10
@@ -167,6 +174,11 @@ PENDING_ACTIONS_DEFAULT = {
     "actions": [],
     "superseded_actions": [],
 }
+ACTION_HISTORY_DEFAULT = {
+    "version": "1.0",
+    "purpose": "Read-only local audit trail for approved actions, dry runs, and applied results. This log does not replace source-of-truth verification.",
+    "entries": [],
+}
 
 
 def read_json(path, default):
@@ -248,6 +260,17 @@ def load_pending_actions(path):
     superseded = payload.get("superseded_actions")
     if not isinstance(superseded, list):
         payload["superseded_actions"] = []
+    return payload
+
+
+def load_action_history(path):
+    ensure_json_file(path, ACTION_HISTORY_DEFAULT)
+    payload = read_json(path, default=ACTION_HISTORY_DEFAULT)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Action history file must contain a JSON object: {path}")
+    entries = payload.get("entries")
+    if not isinstance(entries, list):
+        payload["entries"] = []
     return payload
 
 
@@ -8544,11 +8567,42 @@ def upsert_pending_action(pending_actions, action_record):
     return action_record, pending_actions
 
 
+def default_operator_name():
+    name = (os.environ.get("REVETING_OPERATOR_NAME") or os.environ.get("USER") or "local-operator").strip()
+    if not name:
+        return "local-operator"
+    if name.lower().startswith("jessie"):
+        return "Jessie"
+    return name
+
+
+def find_pending_action(payload, action_id):
+    for index, action in enumerate((payload or {}).get("actions") or []):
+        if action.get("action_id") == action_id:
+            return "actions", index, action
+    for index, action in enumerate((payload or {}).get("superseded_actions") or []):
+        if action.get("action_id") == action_id:
+            return "superseded_actions", index, action
+    return None, None, None
+
+
+def replace_pending_action(payload, list_name, index, action):
+    values = list((payload or {}).get(list_name) or [])
+    values[index] = action
+    payload[list_name] = values
+    return payload
+
+
+def remove_pending_action(payload, action_id):
+    payload["actions"] = [item for item in ((payload or {}).get("actions") or []) if item.get("action_id") != action_id]
+    return payload
+
+
 def render_pending_actions_markdown(actions_payload):
     lines = [
         "# Pending Actions",
         "",
-        "- Mode: approval-gated draft actions only. No write actions are enabled.",
+        "- Mode: approval-gated actions only. Write actions require explicit approval plus fresh re-verification.",
         "",
     ]
     actions = (actions_payload or {}).get("actions") or []
@@ -8616,6 +8670,47 @@ def write_pending_actions_outputs(actions_payload):
     md_path = DEFAULT_ACTIONS_DIR / "pending_actions.md"
     md_path.write_text(render_pending_actions_markdown(actions_payload), encoding="utf-8")
     return DEFAULT_PENDING_ACTIONS_PATH, md_path
+
+
+def render_action_history_markdown(history_payload):
+    lines = ["# Action History", ""]
+    entries = (history_payload or {}).get("entries") or []
+    if not entries:
+        lines.extend(["No approved or applied action history entries yet.", ""])
+        return "\n".join(lines)
+    for entry in entries:
+        lines.extend(
+            [
+                f"## {entry.get('action_id')}",
+                "",
+                f"- Type: {entry.get('type')}",
+                f"- Show: {entry.get('show')}",
+                f"- Episode: {short_date(entry.get('episode'))}",
+                f"- Guest: {entry.get('guest')}",
+                f"- Approved at: {entry.get('approved_at')}",
+                f"- Approved by: {entry.get('approved_by')}",
+                f"- Applied at: {entry.get('applied_at')}",
+                f"- Final status: {entry.get('final_status')}",
+                "",
+                "### Re-verification",
+                "",
+                f"```json\n{json.dumps(entry.get('re_verification_result') or {}, indent=2, ensure_ascii=True)}\n```",
+                "",
+                "### External Result",
+                "",
+                f"```json\n{json.dumps(entry.get('external_result') or {}, indent=2, ensure_ascii=True)}\n```",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def write_action_history_outputs(history_payload):
+    DEFAULT_ACTIONS_DIR.mkdir(parents=True, exist_ok=True)
+    write_json(DEFAULT_ACTION_HISTORY_PATH, history_payload)
+    md_path = DEFAULT_ACTIONS_DIR / "action_history.md"
+    md_path.write_text(render_action_history_markdown(history_payload), encoding="utf-8")
+    return DEFAULT_ACTION_HISTORY_PATH, md_path
 
 
 def create_pending_action(args, action_type):
@@ -8800,6 +8895,352 @@ def reconcile_pending_actions(args):
         "pending_actions_path": str(json_path),
         "pending_actions_markdown_path": str(md_path),
         "recent_human_notes_path": str(DEFAULT_RECENT_HUMAN_NOTES_PATH),
+    }
+
+
+def approve_action_locally(action_id, approved_by=None):
+    write_action_history_outputs(load_action_history(DEFAULT_ACTION_HISTORY_PATH))
+    pending_actions = load_pending_actions(DEFAULT_PENDING_ACTIONS_PATH)
+    list_name, index, action = find_pending_action(pending_actions, action_id)
+    if not action:
+        raise RuntimeError(f"Action was not found in the local approval queue: {action_id}")
+    if list_name != "actions":
+        raise RuntimeError(f"Action is not approvable because it is already {action.get('approval_status') or 'inactive'}: {action_id}")
+    if action.get("approval_status") == "approved":
+        json_path, md_path = write_pending_actions_outputs(pending_actions)
+        return action, json_path, md_path
+    if action.get("approval_status") != "pending":
+        raise RuntimeError(f"Only pending actions can be approved. Current status: {action.get('approval_status')}")
+    updated = dict(action)
+    updated["approval_status"] = "approved"
+    updated["approved_at"] = datetime.now(timezone.utc).isoformat()
+    updated["approved_by"] = approved_by or default_operator_name()
+    replace_pending_action(pending_actions, list_name, index, updated)
+    json_path, md_path = write_pending_actions_outputs(pending_actions)
+    return updated, json_path, md_path
+
+
+def resolve_repo_path(value, default=None):
+    text = str(value or "").strip()
+    if not text:
+        path = Path(default) if default is not None else None
+    else:
+        path = Path(text).expanduser()
+    if path is None:
+        return None
+    if not path.is_absolute():
+        path = REPO_ROOT / path
+    return path
+
+
+def load_project_env():
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    load_dotenv(dotenv_path=REPO_ROOT / ".env", override=False)
+
+
+def google_oauth_credentials(scopes, client_env_var, token_env_var, default_client_path, default_token_path):
+    load_project_env()
+    client_path = resolve_repo_path(os.environ.get(client_env_var), default=default_client_path)
+    token_path = resolve_repo_path(os.environ.get(token_env_var), default=default_token_path)
+    try:
+        from google.auth.transport.requests import Request
+        from google.oauth2.credentials import Credentials
+        from google_auth_oauthlib.flow import InstalledAppFlow
+    except ImportError as exc:
+        raise RuntimeError(
+            "Google OAuth write actions require google-auth-oauthlib and google-api-python-client. "
+            "Install dependencies with: pip install -r requirements.txt"
+        ) from exc
+    credentials = None
+    if token_path and token_path.exists():
+        try:
+            credentials = Credentials.from_authorized_user_file(str(token_path), scopes)
+        except ValueError:
+            credentials = None
+    if credentials and not credentials.has_scopes(scopes):
+        credentials = None
+    if credentials and credentials.expired and credentials.refresh_token:
+        try:
+            credentials.refresh(Request())
+        except Exception:
+            credentials = None
+    if not credentials or not credentials.valid:
+        if not client_path or not client_path.exists():
+            raise RuntimeError(
+                f"Google OAuth client JSON was not found: {client_path}. "
+                "A local OAuth Desktop client must exist before approved write actions can run."
+            )
+        flow = InstalledAppFlow.from_client_secrets_file(str(client_path), scopes)
+        credentials = flow.run_local_server(port=0, access_type="offline", prompt="consent")
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    token_path.write_text(credentials.to_json() + "\n", encoding="utf-8")
+    return credentials
+
+
+def gmail_service_for_drafts():
+    credentials = google_oauth_credentials(
+        ["https://www.googleapis.com/auth/gmail.compose"],
+        "GMAIL_OAUTH_CLIENT_JSON",
+        "GMAIL_OAUTH_TOKEN_JSON",
+        DEFAULT_GOOGLE_OAUTH_CLIENT_PATH,
+        DEFAULT_GMAIL_DRAFT_TOKEN_PATH,
+    )
+    try:
+        from googleapiclient.discovery import build
+    except ImportError as exc:
+        raise RuntimeError(
+            "Google Gmail write actions require google-api-python-client. "
+            "Install dependencies with: pip install -r requirements.txt"
+        ) from exc
+    return build("gmail", "v1", credentials=credentials, cache_discovery=False)
+
+
+def calendar_service_for_updates():
+    credentials = google_oauth_credentials(
+        ["https://www.googleapis.com/auth/calendar.events"],
+        "GOOGLE_CALENDAR_OAUTH_CLIENT_JSON",
+        "GOOGLE_CALENDAR_WRITE_TOKEN_JSON",
+        DEFAULT_GOOGLE_OAUTH_CLIENT_PATH,
+        DEFAULT_GOOGLE_CALENDAR_WRITE_TOKEN_PATH,
+    )
+    try:
+        from googleapiclient.discovery import build
+    except ImportError as exc:
+        raise RuntimeError(
+            "Google Calendar write actions require google-api-python-client. "
+            "Install dependencies with: pip install -r requirements.txt"
+        ) from exc
+    return build("calendar", "v3", credentials=credentials, cache_discovery=False)
+
+
+def rerun_audit_for_write_verification(args):
+    report, _, _, _, _, _, manager_dashboard_path, _, _, _, _, _, _ = run_audit(args)
+    manager_dashboard = read_json(manager_dashboard_path, default={})
+    calendar_payload = load_calendar_payload(Path(args.calendar_events))
+    calendar_events = [normalize_calendar_event(event) for event in flatten_calendar_payload(calendar_payload)]
+    recent_human_notes = load_recent_human_notes(DEFAULT_RECENT_HUMAN_NOTES_PATH)
+    return report, manager_dashboard, calendar_events, recent_human_notes
+
+
+def approve_required_action(action_id, expected_type):
+    pending_actions = load_pending_actions(DEFAULT_PENDING_ACTIONS_PATH)
+    list_name, index, action = find_pending_action(pending_actions, action_id)
+    if not action:
+        raise RuntimeError(f"Action was not found in the local approval queue: {action_id}")
+    if list_name == "superseded_actions" or action.get("approval_status") == "superseded":
+        raise RuntimeError(f"Action is superseded and cannot be applied: {action_id}")
+    if action.get("type") != expected_type:
+        raise RuntimeError(f"Action type mismatch. Expected {expected_type}, found {action.get('type')}.")
+    if action.get("approval_status") != "approved":
+        raise RuntimeError(f"Action must be locally approved before apply. Current status: {action.get('approval_status')}")
+    return pending_actions, list_name, index, action
+
+
+def build_gmail_draft_requests(action):
+    drafts = []
+    output = action.get("proposed_output") or {}
+    recipients = [item.get("email") for item in output.get("recipient_list") or [] if item.get("email")]
+    for key, label in (("tonight_email", "night_before_final_details"), ("day_of_reminder_email", "day_of_reminder")):
+        email_payload = output.get(key) or {}
+        if not email_payload.get("subject") or not email_payload.get("body"):
+            continue
+        drafts.append(
+            {
+                "draft_kind": label,
+                "to": recipients,
+                "subject": email_payload.get("subject"),
+                "body": email_payload.get("body"),
+            }
+        )
+    return drafts
+
+
+def create_gmail_draft_via_api(service, request_payload):
+    message = EmailMessage()
+    message["To"] = ", ".join(request_payload.get("to") or [])
+    message["Subject"] = request_payload.get("subject") or ""
+    message.set_content(request_payload.get("body") or "")
+    encoded = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
+    body = {"message": {"raw": encoded}}
+    response = service.users().drafts().create(userId="me", body=body).execute()
+    message_info = response.get("message") or {}
+    return {
+        "draft_id": response.get("id"),
+        "message_id": message_info.get("id"),
+        "thread_id": message_info.get("threadId"),
+        "draft_kind": request_payload.get("draft_kind"),
+        "to": request_payload.get("to") or [],
+        "subject": request_payload.get("subject"),
+    }
+
+
+def build_calendar_patch_payload(action):
+    output = action.get("proposed_output") or {}
+    return {
+        "summary": output.get("proposed_title"),
+        "location": output.get("proposed_location"),
+        "description": output.get("proposed_description"),
+    }
+
+
+def apply_calendar_update_via_api(service, action, calendar_id):
+    event_id = ((action.get("source_data") or {}).get("calendar_event_id")) or ((action.get("proposed_output") or {}).get("target_google_calendar_event") or {}).get("event_id")
+    if not event_id:
+        raise RuntimeError("Approved calendar action is missing the target Google Calendar event ID.")
+    payload = build_calendar_patch_payload(action)
+    response = service.events().patch(calendarId=calendar_id, eventId=event_id, body=payload).execute()
+    return {
+        "event_id": response.get("id"),
+        "html_link": response.get("htmlLink"),
+        "updated": response.get("updated"),
+        "applied_fields": payload,
+    }
+
+
+def ready_verification_result(action, verification):
+    result = dict(verification)
+    if result.get("outcome") == "Superseded by Guest Status Change":
+        return result
+    result["outcome"] = "Ready if explicitly approved"
+    result["reason"] = "Fresh read-only verification found no guest-status change that would block this approved action."
+    return result
+
+
+def action_history_entry(action, verification, external_result, final_status):
+    return {
+        "action_id": action.get("action_id"),
+        "type": action.get("type"),
+        "show": action.get("show"),
+        "show_key": action.get("show_key"),
+        "episode": action.get("episode"),
+        "episode_date": action.get("episode_date"),
+        "guest": action.get("guest"),
+        "approved_at": action.get("approved_at"),
+        "approved_by": action.get("approved_by"),
+        "applied_at": datetime.now(timezone.utc).isoformat(),
+        "source_evidence": action.get("source_data"),
+        "re_verification_result": verification,
+        "external_result": external_result,
+        "final_status": final_status,
+    }
+
+
+def append_action_history(entry):
+    history = load_action_history(DEFAULT_ACTION_HISTORY_PATH)
+    entries = list(history.get("entries") or [])
+    entries.insert(0, entry)
+    history["entries"] = entries
+    json_path, md_path = write_action_history_outputs(history)
+    return history, json_path, md_path
+
+
+def record_superseded_action_and_remove(pending_actions, action, verification):
+    superseded = supersede_pending_action(action, verification, datetime.now(timezone.utc).isoformat())
+    superseded_actions = list(pending_actions.get("superseded_actions") or [])
+    superseded_actions.insert(0, superseded)
+    pending_actions["superseded_actions"] = superseded_actions
+    remove_pending_action(pending_actions, action.get("action_id"))
+    json_path, md_path = write_pending_actions_outputs(pending_actions)
+    history_entry = action_history_entry(action, verification, {"mode": "blocked_before_write"}, "superseded")
+    history, history_json_path, history_md_path = append_action_history(history_entry)
+    return superseded, json_path, md_path, history_json_path, history_md_path
+
+
+def execute_approved_gmail_draft_action(args, action_id, dry_run=False):
+    pending_actions, _, _, action = approve_required_action(action_id, "email_draft")
+    report, manager_dashboard, calendar_events, recent_human_notes = rerun_audit_for_write_verification(args)
+    verification = ready_verification_result(
+        action,
+        verify_pending_action_before_write(action, report, manager_dashboard, calendar_events, recent_human_notes),
+    )
+    if verification.get("outcome") == "Superseded by Guest Status Change":
+        return {
+            "blocked": True,
+            "reason": verification.get("reason"),
+            "verification": verification,
+            "action": action,
+            "superseded": record_superseded_action_and_remove(pending_actions, action, verification),
+        }
+    draft_requests = build_gmail_draft_requests(action)
+    if dry_run:
+        return {
+            "blocked": False,
+            "dry_run": True,
+            "action": action,
+            "verification": verification,
+            "external_result": {
+                "mode": "dry-run",
+                "would_create_draft_count": len(draft_requests),
+                "drafts": draft_requests,
+            },
+        }
+    service = gmail_service_for_drafts()
+    created = [create_gmail_draft_via_api(service, payload) for payload in draft_requests]
+    updated = dict(action)
+    updated["execution_status"] = "draft_created"
+    updated["draft_created_at"] = datetime.now(timezone.utc).isoformat()
+    updated["gmail_draft_metadata"] = created
+    remove_pending_action(pending_actions, action_id)
+    write_pending_actions_outputs(pending_actions)
+    history_entry = action_history_entry(updated, verification, {"mode": "gmail_draft_created", "drafts": created}, "draft_created")
+    _, history_json_path, history_md_path = append_action_history(history_entry)
+    return {
+        "blocked": False,
+        "dry_run": False,
+        "action": updated,
+        "verification": verification,
+        "external_result": {"mode": "gmail_draft_created", "drafts": created},
+        "history_paths": (history_json_path, history_md_path),
+    }
+
+
+def execute_approved_calendar_update_action(args, action_id, dry_run=False):
+    pending_actions, _, _, action = approve_required_action(action_id, "calendar_update")
+    report, manager_dashboard, calendar_events, recent_human_notes = rerun_audit_for_write_verification(args)
+    verification = ready_verification_result(
+        action,
+        verify_pending_action_before_write(action, report, manager_dashboard, calendar_events, recent_human_notes),
+    )
+    if verification.get("outcome") == "Superseded by Guest Status Change":
+        return {
+            "blocked": True,
+            "reason": verification.get("reason"),
+            "verification": verification,
+            "action": action,
+            "superseded": record_superseded_action_and_remove(pending_actions, action, verification),
+        }
+    patch_payload = build_calendar_patch_payload(action)
+    if dry_run:
+        return {
+            "blocked": False,
+            "dry_run": True,
+            "action": action,
+            "verification": verification,
+            "external_result": {
+                "mode": "dry-run",
+                "target_event_id": ((action.get("source_data") or {}).get("calendar_event_id")),
+                "calendar_patch": patch_payload,
+            },
+        }
+    service = calendar_service_for_updates()
+    result = apply_calendar_update_via_api(service, action, args.calendar_id)
+    updated = dict(action)
+    updated["execution_status"] = "calendar_updated"
+    updated["calendar_updated_at"] = datetime.now(timezone.utc).isoformat()
+    remove_pending_action(pending_actions, action_id)
+    write_pending_actions_outputs(pending_actions)
+    history_entry = action_history_entry(updated, verification, {"mode": "calendar_updated", **result}, "calendar_updated")
+    _, history_json_path, history_md_path = append_action_history(history_entry)
+    return {
+        "blocked": False,
+        "dry_run": False,
+        "action": updated,
+        "verification": verification,
+        "external_result": {"mode": "calendar_updated", **result},
+        "history_paths": (history_json_path, history_md_path),
     }
 
 
@@ -10252,18 +10693,94 @@ def main():
     parser.add_argument("--episode-date", help="Episode date in YYYY-MM-DD format for draft action generation.")
     parser.add_argument("--draft-calendar-update", action="store_true", help="Prepare an approval-gated Google Calendar update draft for a single show episode.")
     parser.add_argument("--draft-hannah-emails", action="store_true", help="Prepare approval-gated Hannah SOP email drafts for a single show episode.")
-    parser.add_argument("--apply-approved-calendar-update", metavar="ACTION_ID", help="Future stub. Currently disabled and fails safely.")
-    parser.add_argument("--send-approved-email", metavar="ACTION_ID", help="Future stub. Currently disabled and fails safely.")
+    parser.add_argument("--approve-action", metavar="ACTION_ID", help="Mark a local pending action as approved so it becomes eligible for an explicit write command.")
+    parser.add_argument("--create-approved-gmail-draft", metavar="ACTION_ID", help="Create Gmail drafts for an approved email_draft action after fresh re-verification.")
+    parser.add_argument("--apply-approved-calendar-update", metavar="ACTION_ID", help="Apply an approved calendar_update action to the matched Google Calendar event after fresh re-verification.")
+    parser.add_argument("--send-approved-email", metavar="ACTION_ID", help="Deprecated alias. Email sending remains disabled; use --create-approved-gmail-draft for draft creation only.")
     parser.add_argument("--apply-approved-rules", action="store_true", help="Future stub. Currently disabled and fails safely.")
+    parser.add_argument("--dry-run", action="store_true", help="Preview an approved write action without changing Gmail, Google Calendar, or local action state.")
+    parser.add_argument("--approved-by", help="Optional local operator name to record when approving an action.")
     args = parser.parse_args()
 
     if args.apply_approved_rules:
         print("Rule automation is not enabled yet.", file=sys.stderr)
         sys.exit(1)
 
-    if args.apply_approved_calendar_update or args.send_approved_email:
-        print("Write actions are not enabled yet.", file=sys.stderr)
+    if args.send_approved_email:
+        print("Email sending is not enabled. Use --create-approved-gmail-draft for draft creation only.", file=sys.stderr)
         sys.exit(1)
+
+    if args.approve_action:
+        try:
+            action_record, json_path, md_path = approve_action_locally(args.approve_action, approved_by=args.approved_by)
+        except RuntimeError as exc:
+            print(f"Approval failed: {exc}", file=sys.stderr)
+            sys.exit(1)
+        print("Action approved locally.")
+        print(f"  Action ID: {action_record.get('action_id')}")
+        print(f"  Type: {action_record.get('type')}")
+        print(f"  Approval status: {action_record.get('approval_status')}")
+        print(f"  Approved at: {action_record.get('approved_at')}")
+        print(f"  Approved by: {action_record.get('approved_by')}")
+        print(f"  Pending actions JSON: {json_path}")
+        print(f"  Pending actions Markdown: {md_path}")
+        print("  Mode: local approval state only; no external systems were modified.")
+        return
+
+    if args.create_approved_gmail_draft:
+        try:
+            result = execute_approved_gmail_draft_action(args, args.create_approved_gmail_draft, dry_run=args.dry_run)
+        except RuntimeError as exc:
+            print(f"Gmail draft action failed safely: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if result.get("blocked"):
+            print("Approved Gmail draft action was canceled safely.")
+            print(f"  Action ID: {result['action'].get('action_id')}")
+            print(f"  Reason: {result.get('reason')}")
+            print("  External result: no Gmail draft was created.")
+            return
+        print("Approved Gmail draft action verified.")
+        print(f"  Action ID: {result['action'].get('action_id')}")
+        print(f"  Re-verification outcome: {result['verification'].get('outcome')}")
+        print(f"  Re-verification reason: {result['verification'].get('reason')}")
+        if args.dry_run:
+            external = result.get("external_result") or {}
+            print("  Dry run: no Gmail drafts were created.")
+            print(f"  Would create drafts: {external.get('would_create_draft_count', 0)}")
+            for item in external.get("drafts") or []:
+                print(f"    - {item.get('draft_kind')}: to={', '.join(item.get('to') or [])} | subject={item.get('subject')}")
+        else:
+            drafts = (result.get("external_result") or {}).get("drafts") or []
+            print(f"  Gmail drafts created: {len(drafts)}")
+            for item in drafts:
+                print(f"    - {item.get('draft_kind')}: draft_id={item.get('draft_id')} | subject={item.get('subject')}")
+        return
+
+    if args.apply_approved_calendar_update:
+        try:
+            result = execute_approved_calendar_update_action(args, args.apply_approved_calendar_update, dry_run=args.dry_run)
+        except RuntimeError as exc:
+            print(f"Calendar update action failed safely: {exc}", file=sys.stderr)
+            sys.exit(1)
+        if result.get("blocked"):
+            print("Approved calendar update was canceled safely.")
+            print(f"  Action ID: {result['action'].get('action_id')}")
+            print(f"  Reason: {result.get('reason')}")
+            print("  External result: no Google Calendar event was updated.")
+            return
+        print("Approved calendar update verified.")
+        print(f"  Action ID: {result['action'].get('action_id')}")
+        print(f"  Re-verification outcome: {result['verification'].get('outcome')}")
+        print(f"  Re-verification reason: {result['verification'].get('reason')}")
+        external = result.get("external_result") or {}
+        if args.dry_run:
+            print("  Dry run: no Google Calendar event was updated.")
+            print(f"  Target event ID: {external.get('target_event_id')}")
+            print(f"  Proposed patch: {json.dumps(external.get('calendar_patch') or {}, ensure_ascii=True)}")
+        else:
+            print(f"  Google Calendar event updated: {external.get('event_id')}")
+            print(f"  Event link: {external.get('html_link')}")
+        return
 
     if args.draft_calendar_update or args.draft_hannah_emails:
         if not args.show_key or args.show_key == "all":
