@@ -102,3 +102,22 @@ Every guest-facing email after event publication should include clear timing, St
 - `scripts/show-launch.py` should parse local appointment JSON through `parse_appointment()` before launch.
 - `scripts/show-launch.py` must not carry real GHL token defaults in source.
 - Email-flow validation should run successfully before process updates are considered ready.
+
+## Deconstructing Data Script Memory
+
+- Deconstructing Data episodes may have a Google Doc script created before the show.
+- The script link changes every episode.
+- When a script exists, treat it as a production source of truth for:
+- final episode title
+- formatted topics
+- StreamYard link
+- pre-show timing
+- live timing
+- host intro
+- guest intro
+- closing language
+- production notes
+- Do not rely only on the original HighLevel submission if a script exists.
+- For Deconstructing Data drafts, look up or request the per-episode script URL first.
+- If the script provides title, topics, StreamYard link, or timing, prefer the script over raw submitted HighLevel fields.
+- Check for obvious whitespace and punctuation issues before using script copy in guest-facing drafts.

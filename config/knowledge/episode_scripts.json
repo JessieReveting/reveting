@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "purpose": "Read-only per-episode script evidence used when a production script exists and should outrank raw submitted booking text for guest-facing drafts.",
+  "scripts": [
+    {
+      "show_key": "deconstructing-data",
+      "episode_date": "2026-07-16",
+      "guest_name": "Nina Jagannathan",
+      "script_url": "https://docs.google.com/document/d/1OWVnSTRy9CL-2VU5li0S_4DEoMzg7bEvaD3nS9He3A0/edit?tab=t.0",
+      "source": "human provided",
+      "verified_by": "Jessie",
+      "verified_at": "2026-07-07",
+      "notes": "Deconstructing Data scripts are per-episode production source material when available. Populate title/topics/timing/link overrides here as they become known from the script."
+    }
+  ]
+}

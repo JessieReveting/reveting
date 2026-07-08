@@ -10,6 +10,7 @@ This script never modifies Google Calendar, HighLevel, or email.
 
 import argparse
 import csv
+import difflib
 import json
 import re
 import sys
@@ -24,6 +25,9 @@ DISCOVERY_DIR = REPO_ROOT / "data" / "discovery"
 DEFAULT_CALENDAR_EVENTS_PATH = REPO_ROOT / "data" / "calendar" / "ww_reveting_events.json"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "data" / "audit"
 DEFAULT_COMPLETED_TASKS_PATH = DEFAULT_OUTPUT_DIR / "completed_tasks.json"
+DEFAULT_RECENT_HUMAN_NOTES_PATH = DEFAULT_OUTPUT_DIR / "recent_human_notes.json"
+DEFAULT_ACTIONS_DIR = REPO_ROOT / "data" / "actions"
+DEFAULT_PENDING_ACTIONS_PATH = DEFAULT_ACTIONS_DIR / "pending_actions.json"
 DEFAULT_RULES_PATH = REPO_ROOT / "config" / "operations_rules.json"
 DEFAULT_PRODUCTION_TIMELINE_RULES_PATH = REPO_ROOT / "config" / "production_timeline_rules.json"
 DEFAULT_KNOWLEDGE_DIR = REPO_ROOT / "config" / "knowledge"
@@ -111,6 +115,7 @@ KNOWLEDGE_FILE_DEFAULTS = {
     "known_decisions": ("known_decisions.json", {"version": "1.0", "decisions": []}),
     "known_patterns": ("known_patterns.json", {"version": "1.0", "patterns": []}),
     "linkedin_events": ("linkedin_events.json", {"version": "1.0", "events": []}),
+    "episode_scripts": ("episode_scripts.json", {"version": "1.0", "scripts": []}),
     "show_preferences": ("show_preferences.json", {"version": "1.0", "shows": {}}),
 }
 COMPLETED_TASKS_DEFAULT = {
@@ -151,6 +156,17 @@ COMPLETION_STATUSES = (
     "Still open",
     "Needs human review",
 )
+RECENT_HUMAN_NOTES_DEFAULT = {
+    "version": "1.0",
+    "purpose": "Recent human-verified operational notes used as local read-only evidence during final approval checks. These notes do not modify external systems.",
+    "notes": [],
+}
+PENDING_ACTIONS_DEFAULT = {
+    "version": "1.0",
+    "purpose": "Approval-gated draft actions prepared from read-only audit evidence. These actions must not be applied automatically.",
+    "actions": [],
+    "superseded_actions": [],
+}
 
 
 def read_json(path, default):
@@ -207,6 +223,31 @@ def load_completed_tasks(path):
     tasks = payload.get("tasks")
     if not isinstance(tasks, list):
         payload["tasks"] = []
+    return payload
+
+
+def load_recent_human_notes(path):
+    ensure_json_file(path, RECENT_HUMAN_NOTES_DEFAULT)
+    payload = read_json(path, default=RECENT_HUMAN_NOTES_DEFAULT)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Recent human notes file must contain a JSON object: {path}")
+    notes = payload.get("notes")
+    if not isinstance(notes, list):
+        payload["notes"] = []
+    return payload
+
+
+def load_pending_actions(path):
+    ensure_json_file(path, PENDING_ACTIONS_DEFAULT)
+    payload = read_json(path, default=PENDING_ACTIONS_DEFAULT)
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"Pending actions file must contain a JSON object: {path}")
+    actions = payload.get("actions")
+    if not isinstance(actions, list):
+        payload["actions"] = []
+    superseded = payload.get("superseded_actions")
+    if not isinstance(superseded, list):
+        payload["superseded_actions"] = []
     return payload
 
 
@@ -451,6 +492,35 @@ def source_ref(path, html_output_dir=None):
             except ValueError:
                 ref["href"] = str(path)
     return ref
+
+
+def slugify(value):
+    text = normalize_text(value).replace(" ", "-")
+    return text or "unknown"
+
+
+def plain_text_from_html(value):
+    text = str(value or "")
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</p\s*>", "\n\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<p[^>]*>", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"</li\s*>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<li[^>]*>", "- ", text, flags=re.IGNORECASE)
+    text = unescape(TAG_RE.sub("", text))
+    text = text.replace("\r", "")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def lines_diff(before, after, from_label="before", to_label="after", limit=240):
+    before_lines = plain_text_from_html(before).splitlines()
+    after_lines = plain_text_from_html(after).splitlines()
+    diff = list(difflib.unified_diff(before_lines, after_lines, fromfile=from_label, tofile=to_label, lineterm=""))
+    if not diff:
+        return ["No proposed change."]
+    if len(diff) > limit:
+        diff = diff[:limit] + ["... diff truncated ..."]
+    return diff
 
 
 def linkedin_event_guest_tokens(guests):
@@ -704,6 +774,23 @@ def contains_person(text, name=None, email=None):
     if len(tokens) == 1:
         return tokens[0] in text
     return tokens[0] in text and tokens[-1] in text
+
+
+def email_matches_guest_name(email, guest_name):
+    normalized_email = normalize_email(email)
+    if not normalized_email or not guest_name:
+        return False
+    local = normalized_email.split("@", 1)[0]
+    local_text = normalize_text(local.replace(".", " ").replace("_", " ").replace("-", " "))
+    tokens = name_tokens(guest_name)
+    if not tokens:
+        return False
+    if contains_person(local_text, name=guest_name, email=normalized_email):
+        return True
+    first = tokens[0]
+    last = tokens[-1]
+    compact_local = local_text.replace(" ", "")
+    return last in local_text and (first in local_text or compact_local.startswith((first[:1] + last).lower()))
 
 
 def display_guest_name(guest):
@@ -5970,6 +6057,10 @@ def linkedin_events_from_knowledge(knowledge):
     return rule_list(knowledge_payload(knowledge, "linkedin_events"), "events")
 
 
+def episode_scripts_from_knowledge(knowledge):
+    return rule_list(knowledge_payload(knowledge, "episode_scripts"), "scripts")
+
+
 def knowledge_operational_records(knowledge):
     records = []
     for source, items in (
@@ -7682,6 +7773,1036 @@ def build_completion_verification(completed_tasks_payload, schedule, work_queue,
     }
 
 
+def load_action_context(args):
+    report, manager_dashboard, calendar_events, rules, completed_tasks, completed_tasks_path = load_daily_brief_sources(args)
+    knowledge = load_knowledge(Path(args.knowledge_dir))
+    if getattr(args, "episode_date", None):
+        now_local = datetime.fromisoformat(f"{args.episode_date}T00:00:00").replace(tzinfo=LOCAL_TIMEZONE)
+    else:
+        now_local = daily_now(args.now)
+    brief = build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local, completed_tasks, completed_tasks_path)
+    episodes, appointments_by_id, submissions_by_id, custom_field_map_by_id = load_show_context(args.show_key, Path(args.discovery_dir))
+    return {
+        "report": report,
+        "manager_dashboard": manager_dashboard,
+        "calendar_events": calendar_events,
+        "rules": rules,
+        "knowledge": knowledge,
+        "brief": brief,
+        "now_local": now_local,
+        "episodes": episodes,
+        "appointments_by_id": appointments_by_id,
+        "submissions_by_id": submissions_by_id,
+        "custom_field_map_by_id": custom_field_map_by_id,
+    }
+
+
+def schedule_selection_score(item):
+    score = 0
+    if item.get("highlevel_status_display") == "PR Representative Booking / Guest Represented":
+        score += 50
+    if item.get("highlevel_status_display") == "Human-confirmed active":
+        score += 40
+    if item.get("highlevel_status_display") == "Known exception":
+        score += 20
+    if item.get("calendar_status") == "Needs Verification" or item.get("highlevel_status_display") == "Needs Verification":
+        score -= 60
+    if item.get("calendar_event_found"):
+        score += 20
+    if item.get("guest_names"):
+        score += 10
+    if (item.get("represented_guest_summary") or {}).get("represented_guest"):
+        score += 15
+    if item.get("source") == "HighLevel discovery":
+        score += 10
+    return score
+
+
+def select_schedule_item_for_action(schedule, show_key, episode_date):
+    matches = [
+        item
+        for item in schedule or []
+        if item.get("show_key") == show_key and date_key(item.get("date_time") or item.get("episode_time")) == episode_date
+    ]
+    if not matches:
+        raise RuntimeError(f"No scheduled item found for show `{show_key}` on {episode_date} in the current daily brief window.")
+    ranked = sorted(matches, key=lambda item: (schedule_selection_score(item), item.get("date_time") or item.get("episode_time") or ""), reverse=True)
+    return ranked[0], ranked
+
+
+def episode_override_record(knowledge, show_key, episode_date, event_id=None):
+    override = {}
+    for record in known_exceptions_from_knowledge(knowledge):
+        if not isinstance(record, dict):
+            continue
+        if record.get("show_key") != show_key:
+            continue
+        if date_key(record.get("episode_date") or record.get("episode_time")) != episode_date:
+            continue
+        if event_id and record.get("calendar_event_id") and record.get("calendar_event_id") != event_id:
+            continue
+        if any(
+            record.get(key)
+            for key in (
+                "confirmed_guest_names",
+                "confirmed_guest_emails",
+                "title_override",
+                "topics_override",
+                "streamyard_url",
+                "linkedin_event_url",
+                "facebook_url",
+                "youtube_url",
+                "episode_script_url",
+            )
+        ):
+            override = dict(record)
+            break
+    for record in episode_scripts_from_knowledge(knowledge):
+        if not isinstance(record, dict):
+            continue
+        if record.get("show_key") != show_key:
+            continue
+        if date_key(record.get("episode_date") or record.get("episode_time")) != episode_date:
+            continue
+        if event_id and record.get("calendar_event_id") and record.get("calendar_event_id") != event_id:
+            continue
+        if not any(
+            record.get(key)
+            for key in ("script_url", "title_override", "topics_override", "streamyard_url", "preshow_time_override", "live_time_override")
+        ):
+            continue
+        if not override:
+            override = {}
+        override.setdefault("episode_script_url", record.get("script_url"))
+        override.setdefault("script_source", record.get("source"))
+        override.setdefault("script_verified_by", record.get("verified_by"))
+        override.setdefault("script_verified_at", record.get("verified_at"))
+        override.setdefault("script_notes", record.get("notes"))
+        for key in ("title_override", "topics_override", "streamyard_url", "preshow_time_override", "live_time_override"):
+            if record.get(key):
+                override[key] = record.get(key)
+    return override
+
+
+def find_calendar_event_by_id(calendar_events, event_id):
+    for event in calendar_events or []:
+        if event.get("id") == event_id:
+            return event
+    return None
+
+
+def appointment_with_custom_fields(appointment, custom_field_map_by_id):
+    if not appointment:
+        return None
+    enriched = dict(appointment)
+    enriched["contact_custom_fields"] = contact_custom_fields(appointment, custom_field_map_by_id)
+    return enriched
+
+
+def override_guest_names(override_record):
+    values = (override_record or {}).get("confirmed_guest_names")
+    return unique_text_list(values if isinstance(values, list) else [])
+
+
+def override_guest_emails(override_record):
+    values = (override_record or {}).get("confirmed_guest_emails")
+    return unique_text_list(values if isinstance(values, list) else [])
+
+
+def override_topics(override_record):
+    values = (override_record or {}).get("topics_override")
+    cleaned = [clean_script_copy(value) for value in (values if isinstance(values, list) else [])]
+    return unique_text_list([value for value in cleaned if value])
+
+
+def override_canceled_emails(override_record):
+    values = (override_record or {}).get("canceled_guest_emails")
+    return {normalize_email(value) for value in (values if isinstance(values, list) else []) if normalize_email(value)}
+
+
+def clean_script_copy(value):
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    text = re.sub(r"\s+", " ", text)
+    text = re.sub(r"\s+([,.;:!?])", r"\1", text)
+    return text.strip()
+
+
+def override_script_url(override_record):
+    return clean_url((override_record or {}).get("episode_script_url") or (override_record or {}).get("script_url") or "")
+
+
+def find_relevant_appointment(appointments_by_id, episode_date, event=None):
+    candidates = list((appointments_by_id or {}).values())
+    if not candidates:
+        return None
+    target = parse_datetime(event.get("start")) if event and event.get("start") else None
+    event_text_normalized = event_full_text(event) if event else ""
+    event_text_raw = plain_text_from_html((event.get("description") or "") + "\n" + (event.get("location") or "") + "\n" + (event.get("title") or "")).lower() if event else ""
+
+    def sort_key(item):
+        item_time = parse_datetime(item.get("start_time"))
+        same_day = 0 if date_key(item_time) == episode_date else 1
+        diff = minutes_between(item_time, target) if item_time and target else 999999
+        match_score = 0
+        guest_name = item.get("guest_name")
+        guest_email = normalize_email(item.get("guest_email"))
+        if contains_person(event_text_normalized, name=guest_name, email=guest_email):
+            match_score += 5
+        if email_matches_guest_name(guest_email, event.get("title") if event else ""):
+            match_score += 2
+        payload = item.get("enriched_contact_payload") or {}
+        for field in payload.get("customFields") or []:
+            value = str((field or {}).get("value") or "").strip()
+            if not value:
+                continue
+            if value.lower() in event_text_raw:
+                match_score += 3
+                break
+            for url in RAW_URL_RE.findall(value):
+                if clean_url(url) and clean_url(url) in event_text_raw:
+                    match_score += 3
+                    break
+        return (-match_score, same_day, diff, item.get("appointment_id") or "")
+
+    candidates.sort(key=sort_key)
+    if not candidates:
+        return None
+    best = candidates[0]
+    best_time = parse_datetime(best.get("start_time"))
+    best_diff = minutes_between(best_time, target) if best_time and target else None
+    best_payload = best.get("enriched_contact_payload") or {}
+    best_match = 0
+    if contains_person(event_text_normalized, name=best.get("guest_name"), email=normalize_email(best.get("guest_email"))):
+        best_match += 5
+    for field in best_payload.get("customFields") or []:
+        value = str((field or {}).get("value") or "").strip()
+        if value and value.lower() in event_text_raw:
+            best_match += 3
+            break
+        for url in RAW_URL_RE.findall(value):
+            if clean_url(url) and clean_url(url) in event_text_raw:
+                best_match += 3
+                break
+    if best_match <= 0 and (best_diff is None or best_diff > 180):
+        return None
+    return best
+
+
+def source_data_refs_for_action(show_key):
+    refs = [
+        f"data/discovery/{show_key}_episodes.json",
+        f"data/discovery/{show_key}_appointments.json",
+        f"data/discovery/{show_key}_form_submissions.json",
+        "data/calendar/ww_reveting_events.json",
+        "config/knowledge/known_exceptions.json",
+        "config/knowledge/linkedin_events.json",
+    ]
+    if show_key == "deconstructing-data":
+        refs.append("config/knowledge/episode_scripts.json")
+    return refs
+
+
+def preferred_guest_name(schedule_item, appointment=None, event=None, override_record=None):
+    names = override_guest_names(override_record) or (schedule_item.get("guest_names") or [])
+    if names:
+        return ", ".join(names)
+    represented = (schedule_item.get("represented_guest_summary") or {}).get("represented_guest")
+    if represented:
+        return represented
+    if appointment:
+        guest = appointment_with_custom_fields(appointment, {})
+        context = represented_guest_context(guest, schedule_item.get("show_name") or "", event=event)
+        if context.get("represented_guest_name"):
+            return context["represented_guest_name"]
+        return appointment.get("guest_name")
+    return "Unknown guest"
+
+
+def preferred_guest_email(schedule_item, appointment=None, event=None, guest_name=None, override_record=None):
+    summary = schedule_item.get("represented_guest_summary") or {}
+    override_emails = override_guest_emails(override_record)
+    if override_emails:
+        return override_emails[0]
+    represented_email = normalize_email(summary.get("represented_guest_email"))
+    if represented_email:
+        return represented_email
+    guest_name = guest_name or preferred_guest_name(schedule_item, appointment=appointment, event=event, override_record=override_record)
+    for attendee in (event.get("attendees") or []) if event else []:
+        email = normalize_email(attendee.get("email"))
+        display_name = attendee.get("display_name") or attendee.get("displayName") or ""
+        if guest_name and (
+            contains_person(normalize_text(display_name + " " + email), name=guest_name, email=email)
+            or email_matches_guest_name(email, guest_name)
+        ):
+            return email
+    if appointment:
+        contact_email = normalize_email(appointment.get("guest_email"))
+        if contact_email and contact_email != normalize_email(summary.get("highlevel_submitter_email")):
+            return contact_email
+    return ""
+
+
+def support_contact_email(schedule_item, appointment=None, override_record=None):
+    summary = schedule_item.get("represented_guest_summary") or {}
+    canceled_emails = override_canceled_emails(override_record)
+    contact_email = normalize_email(summary.get("highlevel_submitter_email"))
+    if contact_email in canceled_emails:
+        return ""
+    if contact_email:
+        return contact_email
+    if appointment:
+        appointment_email = normalize_email(appointment.get("guest_email"))
+        if appointment_email in canceled_emails:
+            return ""
+        return appointment_email
+    return ""
+
+
+def event_times_summary(event, rules, show_key):
+    start = event.get("start")
+    if not start:
+        return {"pre_show": "TBD", "go_live": "TBD", "three_zone": "TBD"}
+    show_tz = ZoneInfo(show_rule(rules, show_key).get("timezone") or "America/New_York")
+    start_local = start.astimezone(show_tz)
+    preshow = start_local
+    go_live = start_local + timedelta(minutes=int(show_rule(rules, show_key).get("preshow_offset_minutes", DEFAULT_PRESHOW_MINUTES)))
+    eastern = f"{preshow.astimezone(ZoneInfo('America/New_York')).strftime('%-I:%M %p ET')} pre-show / {go_live.astimezone(ZoneInfo('America/New_York')).strftime('%-I:%M %p ET')} live"
+    central = f"{preshow.astimezone(ZoneInfo('America/Chicago')).strftime('%-I:%M %p CT')} pre-show / {go_live.astimezone(ZoneInfo('America/Chicago')).strftime('%-I:%M %p CT')} live"
+    pacific = f"{preshow.astimezone(ZoneInfo('America/Los_Angeles')).strftime('%-I:%M %p PT')} pre-show / {go_live.astimezone(ZoneInfo('America/Los_Angeles')).strftime('%-I:%M %p PT')} live"
+    return {
+        "pre_show": preshow.strftime("%-I:%M %p %Z"),
+        "go_live": go_live.strftime("%-I:%M %p %Z"),
+        "three_zone": f"{eastern}; {central}; {pacific}",
+        "date_label": start_local.strftime("%A, %B %-d, %Y"),
+    }
+
+
+def override_timing_summary(override_record, fallback):
+    if not isinstance(override_record, dict):
+        return fallback
+    pre_show = clean_script_copy(override_record.get("preshow_time_override"))
+    go_live = clean_script_copy(override_record.get("live_time_override"))
+    if not pre_show and not go_live:
+        return fallback
+    result = dict(fallback)
+    if pre_show:
+        result["pre_show"] = pre_show
+    if go_live:
+        result["go_live"] = go_live
+    parts = []
+    if pre_show:
+        parts.append(f"{pre_show} pre-show")
+    if go_live:
+        parts.append(f"{go_live} live")
+    if parts:
+        result["three_zone"] = " / ".join(parts)
+    return result
+
+
+def show_distribution_destinations(rules, show_key):
+    values = show_rule(rules, show_key).get("distribution_destinations")
+    return [str(value).strip() for value in values if str(value).strip()] if isinstance(values, list) else []
+
+
+def show_hannah_email_cadence(rules, show_key):
+    values = show_rule(rules, show_key).get("hannah_email_cadence")
+    return values if isinstance(values, list) else []
+
+
+def final_title_candidate(schedule_item, appointment):
+    override_record = schedule_item.get("episode_override_record") or {}
+    if override_record.get("title_override"):
+        return clean_script_copy(override_record.get("title_override"))
+    custom_fields = (appointment or {}).get("contact_custom_fields") or []
+    titles = field_values_for_labels(custom_fields, ("title", "episode"))
+    if titles:
+        return titles[0]
+    return None
+
+
+def safe_topics_for_guest_email(schedule_item, appointment):
+    override_values = override_topics(schedule_item.get("episode_override_record") or {})
+    if override_values:
+        return override_values
+    custom_fields = (appointment or {}).get("contact_custom_fields") or []
+    raw_topics = field_values_for_labels(custom_fields, ("topic",))
+    if not raw_topics:
+        return []
+    return []
+
+
+def original_submission_block(event):
+    text = plain_text_from_html(event.get("description") if event else "")
+    marker = "Original Submission from the Guest"
+    if marker in text:
+        return text[text.index(marker):].strip()
+    return ""
+
+
+def build_calendar_description_draft(schedule_item, event, rules, appointment=None):
+    show_name = schedule_item.get("show_name")
+    show_key = schedule_item.get("show_key")
+    override_record = schedule_item.get("episode_override_record") or {}
+    guest_name = preferred_guest_name(schedule_item, appointment=appointment, event=event, override_record=override_record)
+    guest_names = override_guest_names(override_record) or unique_text_list(schedule_item.get("guest_names") or [guest_name])
+    guest_linkedin = ""
+    summary = schedule_item.get("represented_guest_summary") or {}
+    if (schedule_item.get("calendar_linkedin_urls") or []):
+        guest_linkedin = (schedule_item.get("calendar_linkedin_urls") or [""])[0]
+    if not guest_linkedin and appointment:
+        linkedin_values = field_values_for_labels((appointment.get("contact_custom_fields") or []), ("linkedin",))
+        if linkedin_values:
+            guest_linkedin = linkedin_values[0]
+    linkedin_event_url = override_record.get("linkedin_event_url") or (schedule_item.get("linkedin_event_summary") or {}).get("linkedin_event_url") or ((schedule_item.get("linkedin_urls") or [""])[0] if schedule_item.get("linkedin_urls") else "")
+    streamyard_url = override_record.get("streamyard_url") or ((schedule_item.get("streamyard_urls") or [""])[0] if schedule_item.get("streamyard_urls") else "")
+    facebook_url = override_record.get("facebook_url") or ""
+    youtube_url = override_record.get("youtube_url") or ""
+    script_url = override_script_url(override_record)
+    event_title = event.get("title") if event else ""
+    final_title = final_title_candidate(schedule_item, appointment) or event_title
+    timing = override_timing_summary(override_record, event_times_summary(event, rules, schedule_item.get("show_key")))
+    topics = safe_topics_for_guest_email(schedule_item, appointment)
+    destinations = show_distribution_destinations(rules, show_key)
+    lines = [
+        f"{show_name} with {guest_name}",
+        "",
+        f"Location: {streamyard_url or 'StreamYard URL TBD'}",
+        "",
+        "Calendar Description:",
+        f"Thank you for booking {show_name}. This event follows the Reveting livestream SOP and is prepared for manual approval before any external update.",
+        "",
+        "Promote the Event:",
+    ]
+    if linkedin_event_url:
+        lines.append(f"- LinkedIn event: {linkedin_event_url}")
+        lines.append("- Please invite your LinkedIn audience and accept any guest speaker request if prompted.")
+    else:
+        lines.append("- LinkedIn event URL pending final verification and approval.")
+    if destinations:
+        lines.extend(["", "Broadcast Destinations:"])
+        for destination in destinations:
+            if normalize_text(destination) == "linkedin":
+                continue
+            if normalize_text(destination) == "facebook" and facebook_url:
+                lines.append(f"- {destination}: {facebook_url}")
+            elif normalize_text(destination) == "youtube" and youtube_url:
+                lines.append(f"- {destination}: {youtube_url}")
+            else:
+                lines.append(f"- {destination}: Pending final verification and approval.")
+    lines.extend(
+        [
+            "",
+            "Logistics:",
+            f"- Date: {timing.get('date_label')}",
+            f"- Timing: {timing.get('three_zone')}",
+            f"- StreamYard: {streamyard_url or 'Pending final StreamYard verification'}",
+        ]
+    )
+    if guest_linkedin:
+        lines.extend(["", f"Guest LinkedIn: {guest_linkedin}"])
+    if guest_names:
+        lines.extend(["", f"Guest names: {', '.join(guest_names)}"])
+    if final_title:
+        lines.extend(["", f"Final episode title: {final_title}"])
+    if topics:
+        lines.extend(["", "Edited topics:"] + [f"- {topic}" for topic in topics])
+    else:
+        lines.extend(["", "Edited topics: Pending final approval. Do not copy raw submitted topics into guest-facing sections."])
+    if script_url:
+        lines.extend(["", f"Episode script source: {script_url}"])
+    lines.extend(
+        [
+            "",
+            "Support:",
+            "- If you have questions, email ea@reveting.com.",
+        ]
+    )
+    original = original_submission_block(event)
+    if original:
+        lines.extend(["", "Original submission preserved below for operator reference only:", original])
+    return "\n".join(lines).strip()
+
+
+def calendar_links_to_add(schedule_item, event, appointment=None):
+    current_text = plain_text_from_html((event.get("description") or "") + "\n" + (event.get("location") or ""))
+    override_record = schedule_item.get("episode_override_record") or {}
+    links = []
+    linkedin_event_url = override_record.get("linkedin_event_url") or (schedule_item.get("linkedin_event_summary") or {}).get("linkedin_event_url")
+    if linkedin_event_url and clean_url(linkedin_event_url) not in current_text:
+        links.append({"label": "LinkedIn event URL", "url": linkedin_event_url})
+    for label, url in (
+        ("Facebook URL", override_record.get("facebook_url")),
+        ("YouTube URL", override_record.get("youtube_url")),
+        ("Episode script URL", override_script_url(override_record)),
+    ):
+        if url and clean_url(url) not in current_text:
+            links.append({"label": label, "url": url})
+    if appointment:
+        linkedin_values = field_values_for_labels((appointment.get("contact_custom_fields") or []), ("linkedin",))
+        if linkedin_values:
+            url = linkedin_values[0]
+            if clean_url(url) not in current_text:
+                links.append({"label": "Guest LinkedIn URL", "url": url})
+    streamyard_url = (schedule_item.get("streamyard_urls") or [""])[0] if schedule_item.get("streamyard_urls") else ""
+    if streamyard_url and clean_url(streamyard_url) not in current_text:
+        links.append({"label": "StreamYard URL", "url": streamyard_url})
+    deduped = []
+    seen = set()
+    for item in links:
+        key = clean_url(item.get("url"))
+        if key and key not in seen:
+            seen.add(key)
+            deduped.append(item)
+    return deduped
+
+
+def calendar_attendees_to_add(schedule_item, event, appointment=None):
+    override_record = schedule_item.get("episode_override_record") or {}
+    existing = set(event.get("attendee_emails") or []) if event else set()
+    canceled_emails = override_canceled_emails(override_record)
+    additions = []
+    summary = schedule_item.get("represented_guest_summary") or {}
+    for label, email in (
+        ("Represented guest", normalize_email(summary.get("represented_guest_email"))),
+        ("Submitter/contact", normalize_email(summary.get("highlevel_submitter_email"))),
+    ):
+        if email and email not in existing and email not in canceled_emails:
+            additions.append({"label": label, "email": email})
+    if appointment:
+        for email in extract_emails(appointment.get("guest_email")):
+            if email and email not in existing and email not in canceled_emails:
+                additions.append({"label": "HighLevel contact email", "email": email})
+    deduped = []
+    seen = set()
+    for item in additions:
+        email = normalize_email(item.get("email"))
+        if email and email not in seen:
+            seen.add(email)
+            deduped.append(item)
+    return deduped
+
+
+def calendar_update_risk_level(schedule_item, links_to_add, attendees_to_add, proposed_location):
+    if attendees_to_add:
+        return "High"
+    if schedule_item.get("highlevel_status_display") in {"Needs Verification", "PR Representative Booking / Guest Represented"}:
+        return "High"
+    if "TBD" in (proposed_location or "") or not proposed_location:
+        return "Medium"
+    if links_to_add:
+        return "Medium"
+    return "Low"
+
+
+def build_calendar_update_action(context, schedule_item):
+    event = find_calendar_event_by_id(context["calendar_events"], schedule_item.get("calendar_event_id"))
+    if not event:
+        raise RuntimeError("No matching Google Calendar event was found for this schedule item.")
+    override_record = schedule_item.get("episode_override_record") or {}
+    appointment = appointment_with_custom_fields(
+        find_relevant_appointment(context["appointments_by_id"], date_key(schedule_item.get("date_time") or schedule_item.get("episode_time")), event=event),
+        context["custom_field_map_by_id"],
+    )
+    proposed_title = event.get("title") or f"{schedule_item.get('show_name')} with {preferred_guest_name(schedule_item, appointment=appointment, event=event, override_record=override_record)}"
+    proposed_location = override_record.get("streamyard_url") or ((schedule_item.get("streamyard_urls") or [""])[0] if schedule_item.get("streamyard_urls") else "StreamYard URL TBD")
+    proposed_description = build_calendar_description_draft(schedule_item, event, context["rules"], appointment=appointment)
+    links_to_add = calendar_links_to_add(schedule_item, event, appointment=appointment)
+    attendees_to_add = calendar_attendees_to_add(schedule_item, event, appointment=appointment)
+    diff_sections = {
+        "title": lines_diff(event.get("title"), proposed_title, "current title", "proposed title"),
+        "location": lines_diff(event.get("location"), proposed_location, "current location", "proposed location"),
+        "description": lines_diff(event.get("description"), proposed_description, "current description", "proposed description"),
+    }
+    risk = calendar_update_risk_level(schedule_item, links_to_add, attendees_to_add, proposed_location)
+    guest_name = preferred_guest_name(schedule_item, appointment=appointment, event=event, override_record=override_record)
+    return {
+        "type": "calendar_update",
+        "show": schedule_item.get("show_name"),
+        "show_key": schedule_item.get("show_key"),
+        "episode": schedule_item.get("date_time") or schedule_item.get("episode_time"),
+        "episode_date": date_key(schedule_item.get("date_time") or schedule_item.get("episode_time")),
+        "guest": guest_name,
+        "source_data": {
+            "calendar_event_id": event.get("id"),
+            "calendar_event_url": event.get("url"),
+            "current_title": event.get("title"),
+            "current_location": event.get("location"),
+            "current_description": plain_text_from_html(event.get("description")),
+            "episode_script_url": override_script_url(override_record),
+            "episode_script_source": override_record.get("script_source"),
+            "issue_codes": [item.get("code") for item in (schedule_item.get("issues") or [])],
+            "source_json_files": source_data_refs_for_action(schedule_item.get("show_key")),
+        },
+        "proposed_output": {
+            "target_google_calendar_event": {
+                "event_id": event.get("id"),
+                "title": event.get("title"),
+                "url": event.get("url"),
+            },
+            "proposed_title": proposed_title,
+            "proposed_location": proposed_location,
+            "proposed_description": proposed_description,
+            "links_to_add": links_to_add,
+            "attendees_to_add": attendees_to_add,
+            "before_after_diff": diff_sections,
+        },
+        "risk_level": risk,
+        "approval_required": "Yes - guest-facing calendar edits remain disabled until explicitly approved.",
+        "approval_status": "pending",
+    }
+
+
+def email_recipient_candidates(schedule_item, event, appointment=None):
+    summary = schedule_item.get("represented_guest_summary") or {}
+    override_record = schedule_item.get("episode_override_record") or {}
+    canceled_emails = override_canceled_emails(override_record)
+    recipients = []
+    guest_name = preferred_guest_name(schedule_item, appointment=appointment, event=event, override_record=override_record)
+    guest_email = preferred_guest_email(schedule_item, appointment=appointment, event=event, guest_name=guest_name, override_record=override_record)
+    contact_email = support_contact_email(schedule_item, appointment=appointment, override_record=override_record)
+    if guest_email:
+        recipients.append({"label": "Primary guest", "email": guest_email})
+    for email in override_guest_emails(override_record)[1:]:
+        if email and not any(item.get("email") == email for item in recipients):
+            recipients.append({"label": "Primary guest", "email": email})
+    if contact_email and contact_email != guest_email and contact_email not in canceled_emails:
+        recipients.append({"label": "Submitter/PR contact", "email": contact_email})
+    for attendee in event.get("attendees") or []:
+        email = normalize_email(attendee.get("email"))
+        display_name = attendee.get("display_name") or ""
+        if not email or internal_email(email) or any(item.get("email") == email for item in recipients):
+            continue
+        if guest_name and (
+            contains_person(normalize_text(display_name + " " + email), name=guest_name, email=email)
+            or email_matches_guest_name(email, guest_name)
+        ):
+            recipients.append({"label": "Guest-side attendee", "email": email})
+    return recipients
+
+
+def build_hannah_email_body(kind, schedule_item, event, appointment, rules):
+    show_name = schedule_item.get("show_name")
+    show_key = schedule_item.get("show_key")
+    override_record = schedule_item.get("episode_override_record") or {}
+    guest_name = preferred_guest_name(schedule_item, appointment=appointment, event=event, override_record=override_record)
+    final_title = final_title_candidate(schedule_item, appointment) or event.get("title") or f"{show_name} with {guest_name}"
+    timing = override_timing_summary(override_record, event_times_summary(event, rules, schedule_item.get("show_key")))
+    streamyard_url = override_record.get("streamyard_url") or ((schedule_item.get("streamyard_urls") or [""])[0] if schedule_item.get("streamyard_urls") else "")
+    linkedin_event_url = override_record.get("linkedin_event_url") or (schedule_item.get("linkedin_event_summary") or {}).get("linkedin_event_url") or ""
+    facebook_url = override_record.get("facebook_url") or ""
+    youtube_url = override_record.get("youtube_url") or ""
+    script_url = override_script_url(override_record)
+    topics = safe_topics_for_guest_email(schedule_item, appointment)
+    destinations = show_distribution_destinations(rules, show_key)
+    topic_block = "\n".join(f"- {topic}" for topic in topics) if topics else "- Final talking points pending approval. Do not use raw submitted topics."
+    non_linkedin_destinations = [destination for destination in destinations if normalize_text(destination) != "linkedin"]
+    destination_block = ""
+    script_block = f"Episode script source:\n{script_url}\n\n" if script_url else ""
+    if non_linkedin_destinations:
+        destination_block = (
+            "Broadcast destinations:\n"
+            + "\n".join(
+                f"- {destination}: "
+                f"{facebook_url if normalize_text(destination) == 'facebook' and facebook_url else youtube_url if normalize_text(destination) == 'youtube' and youtube_url else '[Pending final verification]'}"
+                for destination in non_linkedin_destinations
+            )
+            + "\n\n"
+        )
+    if kind == "tonight":
+        subject = f"Tonight on {show_name}: final details for {guest_name}"
+        body = (
+            f"Hi {guest_name},\n\n"
+            f"You're scheduled for {show_name} tonight.\n\n"
+            f"Episode title:\n{final_title}\n\n"
+            f"Timing:\n"
+            f"- Pre-show: {timing.get('pre_show')}\n"
+            f"- Go live: {timing.get('go_live')}\n"
+            f"- Multi-time-zone reference: {timing.get('three_zone')}\n\n"
+            f"StreamYard link:\n{streamyard_url or '[Pending final StreamYard approval]'}\n\n"
+            f"LinkedIn event:\n{linkedin_event_url or '[Pending final LinkedIn event verification]'}\n\n"
+            f"{destination_block}"
+            f"Talking points:\n{topic_block}\n\n"
+            f"{script_block}"
+            f"Please join at pre-show time so the team can complete the tech check.\n\n"
+            f"Best,\nHannah\nReveting Production"
+        )
+        return subject, body
+    subject = f"Today: your {show_name} reminder and join details"
+    body = (
+        f"Hi {guest_name},\n\n"
+        f"Quick reminder that we go live today for {show_name}.\n\n"
+        f"Today's timing:\n"
+        f"- Pre-show: {timing.get('pre_show')}\n"
+        f"- Go live: {timing.get('go_live')}\n"
+        f"- Multi-time-zone reference: {timing.get('three_zone')}\n\n"
+        f"Join link:\n{streamyard_url or '[Pending final StreamYard approval]'}\n\n"
+        f"{destination_block}"
+        f"{script_block}"
+        f"If the StreamYard link or final logistics change, we'll send an approved update before the show.\n\n"
+        f"Best,\nHannah\nReveting Production"
+    )
+    return subject, body
+
+
+def email_draft_risk_level(schedule_item, event):
+    if not (schedule_item.get("streamyard_urls") or []):
+        return "High"
+    if not ((schedule_item.get("linkedin_event_summary") or {}).get("linkedin_event_url") or (schedule_item.get("calendar_linkedin_urls") or [])):
+        return "High"
+    if schedule_item.get("highlevel_status_display") in {"Needs Verification", "PR Representative Booking / Guest Represented"}:
+        return "High"
+    return "Medium"
+
+
+def build_hannah_email_action(context, schedule_item):
+    event = find_calendar_event_by_id(context["calendar_events"], schedule_item.get("calendar_event_id"))
+    if not event:
+        raise RuntimeError("No matching Google Calendar event was found for this schedule item.")
+    override_record = schedule_item.get("episode_override_record") or {}
+    appointment = appointment_with_custom_fields(
+        find_relevant_appointment(context["appointments_by_id"], date_key(schedule_item.get("date_time") or schedule_item.get("episode_time")), event=event),
+        context["custom_field_map_by_id"],
+    )
+    tonight_subject, tonight_body = build_hannah_email_body("tonight", schedule_item, event, appointment, context["rules"])
+    dayof_subject, dayof_body = build_hannah_email_body("day_of", schedule_item, event, appointment, context["rules"])
+    recipients = email_recipient_candidates(schedule_item, event, appointment=appointment)
+    guest_name = preferred_guest_name(schedule_item, appointment=appointment, event=event, override_record=override_record)
+    source_evidence = [
+        "Google Calendar event timing",
+        "Google Calendar attendee list",
+        "Current calendar description",
+    ]
+    if appointment:
+        source_evidence.append("HighLevel appointment/contact context")
+        if appointment.get("contact_custom_fields"):
+            source_evidence.append("HighLevel custom fields")
+    if (schedule_item.get("linkedin_event_summary") or {}).get("linkedin_event_url"):
+        source_evidence.append("Known LinkedIn event evidence")
+    if override_script_url(override_record):
+        source_evidence.append("Episode script knowledge evidence")
+    elif schedule_item.get("show_key") == "deconstructing-data":
+        source_evidence.append("Episode script lookup still needed before final guest-facing approval")
+    return {
+        "type": "email_draft",
+        "show": schedule_item.get("show_name"),
+        "show_key": schedule_item.get("show_key"),
+        "episode": schedule_item.get("date_time") or schedule_item.get("episode_time"),
+        "episode_date": date_key(schedule_item.get("date_time") or schedule_item.get("episode_time")),
+        "guest": guest_name,
+        "source_data": {
+            "calendar_event_id": event.get("id"),
+            "calendar_event_url": event.get("url"),
+            "episode_script_url": override_script_url(override_record),
+            "episode_script_source": override_record.get("script_source"),
+            "issue_codes": [item.get("code") for item in (schedule_item.get("issues") or [])],
+            "source_evidence_used": source_evidence,
+            "source_json_files": source_data_refs_for_action(schedule_item.get("show_key")),
+        },
+        "proposed_output": {
+            "workflow_cadence": show_hannah_email_cadence(context["rules"], schedule_item.get("show_key")),
+            "recipient_list": recipients,
+            "tonight_email": {
+                "subject": tonight_subject,
+                "body": tonight_body,
+            },
+            "day_of_reminder_email": {
+                "subject": dayof_subject,
+                "body": dayof_body,
+            },
+        },
+        "risk_level": email_draft_risk_level(schedule_item, event),
+        "approval_required": "Yes - guest-facing email drafts remain disabled until explicitly approved.",
+        "approval_status": "pending",
+    }
+
+
+def action_id_for_record(action_type, show_key, episode_date, guest_name):
+    return f"{action_type}-{slugify(show_key)}-{slugify(episode_date)}-{slugify(guest_name)}"
+
+
+def upsert_pending_action(pending_actions, action_record):
+    actions = list((pending_actions or {}).get("actions") or [])
+    action_id = action_id_for_record(action_record.get("type"), action_record.get("show_key"), action_record.get("episode_date"), action_record.get("guest"))
+    action_record["action_id"] = action_id
+    action_record.setdefault("created_at", datetime.now(timezone.utc).isoformat())
+    replaced = False
+    for index, existing in enumerate(actions):
+        if existing.get("action_id") == action_id or (
+            existing.get("type") == action_record.get("type")
+            and existing.get("show_key") == action_record.get("show_key")
+            and existing.get("episode_date") == action_record.get("episode_date")
+        ):
+            action_record["created_at"] = existing.get("created_at") or action_record["created_at"]
+            actions[index] = action_record
+            replaced = True
+            break
+    if not replaced:
+        actions.append(action_record)
+    pending_actions["actions"] = sorted(actions, key=lambda item: item.get("created_at") or "", reverse=True)
+    return action_record, pending_actions
+
+
+def render_pending_actions_markdown(actions_payload):
+    lines = [
+        "# Pending Actions",
+        "",
+        "- Mode: approval-gated draft actions only. No write actions are enabled.",
+        "",
+    ]
+    actions = (actions_payload or {}).get("actions") or []
+    if not actions:
+        lines.extend(["## Active Approval Queue", "", "No active pending actions.", ""])
+    else:
+        lines.extend(["## Active Approval Queue", ""])
+        for action in actions:
+            lines.extend(
+                [
+                    f"## {action.get('action_id')}",
+                    "",
+                    f"- Type: {action.get('type')}",
+                    f"- Show: {action.get('show')}",
+                    f"- Episode: {short_date(action.get('episode'))}",
+                    f"- Guest: {action.get('guest')}",
+                    f"- Risk level: {action.get('risk_level')}",
+                    f"- Approval status: {action.get('approval_status')}",
+                    f"- Created at: {action.get('created_at')}",
+                    f"- Approval required: {action.get('approval_required')}",
+                    f"- Final verification outcome: {md_escape(((action.get('final_read_only_verification') or {}).get('outcome') or 'Pending verification'))}",
+                    "",
+                    "### Source Data",
+                    "",
+                    f"```json\n{json.dumps(action.get('source_data') or {}, indent=2, ensure_ascii=True)}\n```",
+                    "",
+                    "### Proposed Output",
+                    "",
+                    f"```json\n{json.dumps(action.get('proposed_output') or {}, indent=2, ensure_ascii=True)}\n```",
+                    "",
+                ]
+            )
+    superseded = (actions_payload or {}).get("superseded_actions") or []
+    lines.extend(["## Superseded Actions", ""])
+    if not superseded:
+        lines.extend(["No actions have been superseded by guest status changes.", ""])
+        return "\n".join(lines)
+    for action in superseded:
+        lines.extend(
+            [
+                f"## {action.get('action_id')}",
+                "",
+                f"- Type: {action.get('type')}",
+                f"- Show: {action.get('show')}",
+                f"- Episode: {short_date(action.get('episode'))}",
+                f"- Guest: {action.get('guest')}",
+                f"- Risk level: {action.get('risk_level')}",
+                f"- Approval status: {action.get('approval_status')}",
+                f"- Created at: {action.get('created_at')}",
+                f"- Superseded at: {action.get('superseded_at')}",
+                f"- Superseded reason: {action.get('superseded_reason')}",
+                "",
+                "### Final Verification",
+                "",
+                f"```json\n{json.dumps(action.get('final_read_only_verification') or {}, indent=2, ensure_ascii=True)}\n```",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def write_pending_actions_outputs(actions_payload):
+    DEFAULT_ACTIONS_DIR.mkdir(parents=True, exist_ok=True)
+    write_json(DEFAULT_PENDING_ACTIONS_PATH, actions_payload)
+    md_path = DEFAULT_ACTIONS_DIR / "pending_actions.md"
+    md_path.write_text(render_pending_actions_markdown(actions_payload), encoding="utf-8")
+    return DEFAULT_PENDING_ACTIONS_PATH, md_path
+
+
+def create_pending_action(args, action_type):
+    context = load_action_context(args)
+    schedule_item, candidates = select_schedule_item_for_action(
+        (context["brief"].get("next_7_days_schedule") or []),
+        args.show_key,
+        args.episode_date,
+    )
+    schedule_item = dict(schedule_item)
+    schedule_item["episode_override_record"] = episode_override_record(
+        context["knowledge"],
+        args.show_key,
+        args.episode_date,
+        schedule_item.get("calendar_event_id"),
+    )
+    if action_type == "calendar_update":
+        action_record = build_calendar_update_action(context, schedule_item)
+    else:
+        action_record = build_hannah_email_action(context, schedule_item)
+    action_record["selection_context"] = {
+        "selected_calendar_event_id": schedule_item.get("calendar_event_id"),
+        "candidate_count_for_show_date": len(candidates),
+    }
+    pending_actions = load_pending_actions(DEFAULT_PENDING_ACTIONS_PATH)
+    saved_record, payload = upsert_pending_action(pending_actions, action_record)
+    json_path, md_path = write_pending_actions_outputs(payload)
+    return saved_record, json_path, md_path
+
+
+def recent_human_notes_for_action(notes_payload, action):
+    matches = []
+    for note in (notes_payload or {}).get("notes") or []:
+        if not isinstance(note, dict):
+            continue
+        if normalize_text(note.get("show_key")) != normalize_text(action.get("show_key")):
+            continue
+        if date_key(note.get("episode_date") or note.get("episode_time")) != date_key(action.get("episode_date") or action.get("episode")):
+            continue
+        guest_name = note.get("guest_name") or note.get("guest")
+        if guest_name and normalize_text(guest_name) != normalize_text(action.get("guest")):
+            continue
+        matches.append(note)
+    return matches
+
+
+def issue_matches_action(issue, action):
+    if normalize_text(issue.get("show_key")) != normalize_text(action.get("show_key")):
+        return False
+    action_event_id = ((action.get("source_data") or {}).get("calendar_event_id")) or action.get("calendar_event_id")
+    issue_event_id = issue.get("calendar_event_id") or ((issue.get("relevant_raw_ids") or {}).get("google_calendar_event_id"))
+    if action_event_id and issue_event_id and action_event_id == issue_event_id:
+        return True
+    issue_date = date_key(issue.get("episode_time"))
+    action_date = date_key(action.get("episode_date") or action.get("episode"))
+    return issue_date == action_date
+
+
+def attendee_status_snapshot(event):
+    snapshot = []
+    for attendee in event.get("attendees") or []:
+        email = normalize_email(attendee.get("email"))
+        if not email or internal_email(email):
+            continue
+        snapshot.append(
+            {
+                "email": email,
+                "display_name": attendee.get("display_name") or "",
+                "response_status": attendee.get("response_status") or "unknown",
+            }
+        )
+    return snapshot
+
+
+def action_guest_status_change(issue_codes, recent_notes):
+    status_values = {
+        normalize_text(note.get("guest_status") or note.get("status"))
+        for note in recent_notes
+        if isinstance(note, dict)
+    }
+    status_values.discard("")
+    if status_values & {"canceled", "cancelled", "rescheduled", "replaced"}:
+        return True, "Recent human notes record the guest as canceled, rescheduled, or replaced."
+    if issue_codes & {"show_needs_guest_replacement", "canceled_or_rescheduled_guest"}:
+        return True, "Fresh audit issues show the guest was canceled, rescheduled, or needs replacement."
+    return False, ""
+
+
+def verify_pending_action_before_write(action, report, manager_dashboard, calendar_events, recent_human_notes_payload):
+    matched_issues = [issue for issue in report.get("issues") or [] if issue_matches_action(issue, action)]
+    issue_codes = {issue.get("code") for issue in matched_issues if issue.get("code")}
+    current_event = find_calendar_event_by_id(calendar_events, (action.get("source_data") or {}).get("calendar_event_id"))
+    recent_notes = recent_human_notes_for_action(recent_human_notes_payload, action)
+    represented_findings = []
+    known_exception_findings = []
+    replacement_findings = []
+    for key, bucket in (
+        ("represented_guest_findings", represented_findings),
+        ("known_exception_findings", known_exception_findings),
+        ("human_confirmed_active_findings", known_exception_findings),
+        ("needs_guest_replacement_findings", replacement_findings),
+        ("needs_human_follow_up_findings", replacement_findings),
+    ):
+        for finding in manager_dashboard.get(key) or []:
+            if issue_matches_action(finding, action):
+                bucket.append(finding)
+    guest_changed, guest_change_reason = action_guest_status_change(issue_codes, recent_notes)
+    matched_schedule_statuses = []
+    for issue in matched_issues:
+        trust = issue.get("trust") or {}
+        if trust.get("operational_status"):
+            matched_schedule_statuses.append(trust.get("operational_status"))
+    verification = {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "required_before_any_write_action": True,
+        "checks": {
+            "highlevel_booking_status": sorted(issue_codes) or ["no matching issue code found"],
+            "google_calendar_attendee_status": attendee_status_snapshot(current_event) if current_event else [],
+            "known_human_exceptions": [
+                {
+                    "issue_code": item.get("issue_code") or item.get("code"),
+                    "summary": item.get("issue") or item.get("message"),
+                }
+                for item in known_exception_findings[:5]
+            ],
+            "recent_human_notes": recent_notes,
+            "guest_replacement_status": [
+                {
+                    "issue_code": item.get("issue_code") or item.get("code"),
+                    "summary": item.get("issue") or item.get("message"),
+                }
+                for item in replacement_findings[:5]
+            ],
+        },
+        "current_operational_statuses": unique_text_list(matched_schedule_statuses),
+        "outcome": "Needs Human Review Before Approval",
+        "reason": "Final verification is required before any future calendar update or email send.",
+    }
+    if guest_changed:
+        verification["outcome"] = "Superseded by Guest Status Change"
+        verification["reason"] = guest_change_reason
+    return verification
+
+
+def supersede_pending_action(action, verification, superseded_at):
+    record = dict(action)
+    record["approval_status"] = "superseded"
+    record["superseded_reason"] = "Superseded by Guest Status Change."
+    record["superseded_at"] = superseded_at
+    record["final_read_only_verification"] = verification
+    return record
+
+
+def reconcile_pending_actions(args):
+    pending_actions = load_pending_actions(DEFAULT_PENDING_ACTIONS_PATH)
+    report, manager_dashboard, calendar_events, rules, completed_tasks, completed_tasks_path = load_daily_brief_sources(args)
+    recent_human_notes = load_recent_human_notes(DEFAULT_RECENT_HUMAN_NOTES_PATH)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    active_actions = []
+    superseded_actions = list(pending_actions.get("superseded_actions") or [])
+    superseded_by_id = {item.get("action_id"): item for item in superseded_actions if item.get("action_id")}
+    superseded_now = []
+    for action in pending_actions.get("actions") or []:
+        verification = verify_pending_action_before_write(action, report, manager_dashboard, calendar_events, recent_human_notes)
+        if verification.get("outcome") == "Superseded by Guest Status Change":
+            record = supersede_pending_action(action, verification, now_iso)
+            superseded_by_id[record.get("action_id")] = record
+            superseded_now.append(record)
+            continue
+        action["final_read_only_verification"] = verification
+        active_actions.append(action)
+    payload = {
+        **pending_actions,
+        "actions": sorted(active_actions, key=lambda item: item.get("created_at") or "", reverse=True),
+        "superseded_actions": sorted(superseded_by_id.values(), key=lambda item: item.get("superseded_at") or item.get("created_at") or "", reverse=True),
+    }
+    json_path, md_path = write_pending_actions_outputs(payload)
+    return {
+        "active_actions": payload.get("actions") or [],
+        "superseded_actions": payload.get("superseded_actions") or [],
+        "superseded_now": superseded_now,
+        "pending_actions_path": str(json_path),
+        "pending_actions_markdown_path": str(md_path),
+        "recent_human_notes_path": str(DEFAULT_RECENT_HUMAN_NOTES_PATH),
+    }
+
+
 def brief_item_flags(item):
     flags = []
     if not item.get("calendar_event_found"):
@@ -8057,6 +9178,32 @@ def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules,
     return payload
 
 
+def render_pending_action_review_markdown(review):
+    active = review.get("active_actions") or []
+    superseded = review.get("superseded_actions") or []
+    lines = [
+        "## Approval-Gated Action Review",
+        "",
+        f"- Active approval-queue actions: {len(active)}",
+        f"- Superseded actions: {len(superseded)}",
+        f"- Pending actions file: {md_escape(review.get('pending_actions_path') or str(DEFAULT_PENDING_ACTIONS_PATH))}",
+        f"- Recent human notes file: {md_escape(review.get('recent_human_notes_path') or str(DEFAULT_RECENT_HUMAN_NOTES_PATH))}",
+        "- Safety rule: draft generation never guarantees the action should still be performed at approval time.",
+        "",
+    ]
+    superseded_now = review.get("superseded_now") or []
+    if superseded_now:
+        lines.append("### Newly Superseded")
+        lines.append("")
+        for item in superseded_now:
+            lines.append(
+                f"- {md_escape(item.get('show'))} - {md_escape(short_date(item.get('episode')))} - {md_escape(item.get('guest'))}: "
+                f"{md_escape((item.get('final_read_only_verification') or {}).get('reason') or item.get('superseded_reason'))}"
+            )
+        lines.append("")
+    return lines
+
+
 def render_brief_finding_lines(findings, empty_label):
     if not findings:
         return [empty_label]
@@ -8199,6 +9346,7 @@ def render_daily_brief_markdown(brief):
         "",
     ]
     lines.extend(render_work_queue_markdown(work_queue))
+    lines.extend(render_pending_action_review_markdown(brief.get("pending_action_review") or {}))
     lines.extend(
         [
             "## Completion Verification",
@@ -8431,6 +9579,25 @@ def render_daily_operations_brief_html(brief):
     completion_tracking = brief.get("completion_tracking") or {}
     completion_summary = completion_tracking.get("summary") or {}
     completion_counts = completion_summary.get("counts_by_status") or {}
+    pending_review = brief.get("pending_action_review") or {}
+    superseded_now = pending_review.get("superseded_now") or []
+    pending_review_html = (
+        "<section class=\"card\">"
+        f"<p><strong>Active approval-queue actions:</strong> {len(pending_review.get('active_actions') or [])} "
+        f"<strong>Superseded actions:</strong> {len(pending_review.get('superseded_actions') or [])}</p>"
+        f"<p><strong>Pending actions file:</strong> {html_text(pending_review.get('pending_actions_path') or str(DEFAULT_PENDING_ACTIONS_PATH), 260)}</p>"
+        f"<p><strong>Recent human notes file:</strong> {html_text(pending_review.get('recent_human_notes_path') or str(DEFAULT_RECENT_HUMAN_NOTES_PATH), 260)}</p>"
+        "<p class=\"muted\">Draft generation never guarantees the action should still be performed at approval time. Final read-only verification is required before any future write action.</p>"
+        + (
+            "<ul>" + "".join(
+                f"<li>{html_text(item.get('show'), 120)} - {html_text(short_date(item.get('episode')), 120)} - {html_text(item.get('guest'), 120)}: "
+                f"{html_text((item.get('final_read_only_verification') or {}).get('reason') or item.get('superseded_reason'), 320)}</li>"
+                for item in superseded_now
+            ) + "</ul>"
+            if superseded_now else ""
+        )
+        + "</section>"
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -8506,6 +9673,9 @@ def render_daily_operations_brief_html(brief):
     <h2>Operations Copilot Work Queue</h2>
     {render_work_queue_html(brief.get('work_queue') or {})}
 
+    <h2>Approval-Gated Action Review</h2>
+    {pending_review_html}
+
     <h2>Completion Verification</h2>
     <section class="grid">
       <div class="card"><div class="metric">{completion_summary.get('total_claims', 0)}</div><div class="label">Completion claims reviewed</div></div>
@@ -8571,6 +9741,7 @@ def generate_daily_brief(args):
     report, manager_dashboard, calendar_events, rules, completed_tasks, completed_tasks_path = load_daily_brief_sources(args)
     now_local = daily_now(args.now)
     brief = build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local, completed_tasks, completed_tasks_path)
+    brief["pending_action_review"] = reconcile_pending_actions(args)
     md_path = output_dir / "daily_operations_brief.md"
     html_path = output_dir / "daily_operations_brief.html"
     md_path.write_text(render_daily_brief_markdown(brief), encoding="utf-8")
@@ -9078,12 +10249,48 @@ def main():
     parser.add_argument("--include-past", action="store_true", help="Include past episodes/events in the audit")
     parser.add_argument("--now", help="Override current time with an ISO timestamp for repeatable audits")
     parser.add_argument("--daily-brief", action="store_true", help="Generate the Daily Operations Brief from existing local audit outputs only.")
+    parser.add_argument("--episode-date", help="Episode date in YYYY-MM-DD format for draft action generation.")
+    parser.add_argument("--draft-calendar-update", action="store_true", help="Prepare an approval-gated Google Calendar update draft for a single show episode.")
+    parser.add_argument("--draft-hannah-emails", action="store_true", help="Prepare approval-gated Hannah SOP email drafts for a single show episode.")
+    parser.add_argument("--apply-approved-calendar-update", metavar="ACTION_ID", help="Future stub. Currently disabled and fails safely.")
+    parser.add_argument("--send-approved-email", metavar="ACTION_ID", help="Future stub. Currently disabled and fails safely.")
     parser.add_argument("--apply-approved-rules", action="store_true", help="Future stub. Currently disabled and fails safely.")
     args = parser.parse_args()
 
     if args.apply_approved_rules:
         print("Rule automation is not enabled yet.", file=sys.stderr)
         sys.exit(1)
+
+    if args.apply_approved_calendar_update or args.send_approved_email:
+        print("Write actions are not enabled yet.", file=sys.stderr)
+        sys.exit(1)
+
+    if args.draft_calendar_update or args.draft_hannah_emails:
+        if not args.show_key or args.show_key == "all":
+            print("Draft action generation requires --show-key for a single show.", file=sys.stderr)
+            sys.exit(1)
+        if not args.episode_date:
+            print("Draft action generation requires --episode-date in YYYY-MM-DD format.", file=sys.stderr)
+            sys.exit(1)
+        action_type = "calendar_update" if args.draft_calendar_update else "email_draft"
+        try:
+            action_record, json_path, md_path = create_pending_action(args, action_type)
+        except RuntimeError as exc:
+            print(f"Draft action generation failed: {exc}", file=sys.stderr)
+            sys.exit(1)
+        print("Approval-gated draft action prepared.")
+        print(f"  Action ID: {action_record.get('action_id')}")
+        print(f"  Type: {action_record.get('type')}")
+        print(f"  Show: {action_record.get('show')}")
+        print(f"  Episode date: {action_record.get('episode_date')}")
+        print(f"  Guest: {action_record.get('guest')}")
+        print(f"  Risk level: {action_record.get('risk_level')}")
+        print(f"  Approval status: {action_record.get('approval_status')}")
+        print(f"  Approval required: {action_record.get('approval_required')}")
+        print(f"  Pending actions JSON: {json_path}")
+        print(f"  Pending actions Markdown: {md_path}")
+        print("  Mode: read-only; no external systems were modified.")
+        return
 
     if args.daily_brief:
         try:

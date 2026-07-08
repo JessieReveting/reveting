@@ -27,6 +27,30 @@
       "suggested_rule_update": "Support manually confirmed replacement guests who bypass HighLevel and recommend adding them to HighLevel later."
     },
     {
+      "id": "winsday-linkedin-first-streamyard-second",
+      "show_key": "winsday",
+      "pattern_type": "production_workflow",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "WinsDay production is gated through LinkedIn first because LinkedIn provides the privacy-policy flow. After LinkedIn is created, the show is added to StreamYard with additional destinations including Facebook and YouTube.",
+      "observed_issue_codes": ["guest_topics_pending", "sop_required_assets_missing"],
+      "confirmation_count": 1,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "When guests are confirmed, draft the WinsDay production sequence in this order: LinkedIn, StreamYard, Google Calendar, Hannah night-before email, Hannah day-of reminder, completion verification."
+    },
+    {
+      "id": "draft-generation-does-not-imply-approval",
+      "show_key": "*",
+      "pattern_type": "approval_workflow",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "Generating a calendar draft or Hannah email draft does not mean the action should be performed. Guest status can change between draft generation and approval, so a final read-only verification is required before any future write action.",
+      "observed_issue_codes": ["show_needs_guest_replacement", "canceled_or_rescheduled_guest", "calendar_event_needs_confirmation"],
+      "confirmation_count": 2,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Before any future write action, re-verify HighLevel booking status, Google Calendar attendee status, known human exceptions, recent human notes, and replacement state. Supersede stale drafts instead of presenting them as today's work."
+    },
+    {
       "id": "calendar-event-related-canceled-highlevel-context",
       "show_key": "beyond-the-cart",
       "pattern_type": "verification_workflow",
@@ -61,6 +85,30 @@
       "confirmation_count": 1,
       "minimum_confirmations_for_rule_recommendation": 2,
       "suggested_rule_update": "Classify HighLevel/calendar mismatches as Needs Human Verification unless near-term and no alternate calendar/manual confirmation is known."
+    },
+    {
+      "id": "pr-representative-booking-guest-represented",
+      "show_key": "beyond-the-cart",
+      "pattern_type": "guest_identity_inference",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "A HighLevel submitter/contact may be a PR representative, assistant, agency contact, or booking submitter while the actual guest is represented by LinkedIn URL, episode title, topics, custom fields, attendee clues, or the Google Calendar title.",
+      "observed_issue_codes": ["calendar_event_without_booking", "calendar_event_needs_confirmation", "pr_representative_booking_guest_represented"],
+      "confirmation_count": 1,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Infer represented guests from LinkedIn URL, episode title, topics, calendar title, attendee clues, and custom fields before flagging a PR-rep-booked event as orphaned."
+    },
+    {
+      "id": "linkedin-event-manual-evidence-source",
+      "show_key": "*",
+      "pattern_type": "external_evidence_source",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "If a LinkedIn event is already posted but missing from Google Calendar, the audit should accept a verified read-only/manual evidence source and classify the calendar as needing an update rather than classifying the LinkedIn event as missing.",
+      "observed_issue_codes": ["linkedin_event_exists_calendar_needs_update", "sop_required_assets_missing"],
+      "confirmation_count": 1,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Support manual/read-only LinkedIn event evidence now, and add read-only LinkedIn event lookup later if StreamYard or LinkedIn credentials/API access become available."
     },
     {
       "id": "show-needs-guest-replacement-within-30-days",

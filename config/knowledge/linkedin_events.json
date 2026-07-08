@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "purpose": "Read-only/manual evidence for LinkedIn event URLs when the URL is not yet present in Google Calendar.",
+  "events": [
+    {
+      "show_key": "beyond-the-cart",
+      "episode_date": "2026-07-07",
+      "guest_name": "Tim Berney",
+      "linkedin_event_url": "https://www.linkedin.com/events/7437834130127745024/",
+      "source": "human verified",
+      "verified_by": "Jessie",
+      "verified_at": "2026-07-06",
+      "notes": "Event already posted; calendar needs to be updated and SOP emails sent."
+    }
+  ]
+}

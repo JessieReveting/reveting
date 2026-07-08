@@ -14,6 +14,16 @@
           "confidence": "high",
           "rule_recommendation_threshold": 2,
           "suggested_rule_update": "For Deconstructing Data, treat 4:00 PM ET calendar start as valid pre-show if description states livestream begins at 4:15 PM ET."
+        },
+        {
+          "id": "episode-script-is-production-source-when-present",
+          "preference_type": "source_of_truth_resolution",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Deconstructing Data may have a per-episode Google Doc script created before the show. When that script exists, treat it as a production source of truth for final title, formatted topics, StreamYard link, and timing instead of relying only on the raw HighLevel submission.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "For Deconstructing Data drafts, look up the episode script URL first and prefer script fields over raw HighLevel title/topics when the script is available."
         }
       ]
     },
@@ -29,6 +39,36 @@
           "confidence": "high",
           "rule_recommendation_threshold": 2,
           "suggested_rule_update": "Support manually confirmed replacement guests who bypass HighLevel and recommend adding them to HighLevel later."
+        },
+        {
+          "id": "linkedin-first-privacy-flow",
+          "preference_type": "production_workflow",
+          "decision_outcome": "new SOP discovered",
+          "summary": "WinsDay is gated through LinkedIn first because LinkedIn provides the privacy-policy flow. After LinkedIn is created, the show is added to StreamYard with additional destinations including Facebook and YouTube.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "For WinsDay, order draft-first operator workflow as LinkedIn -> StreamYard -> Google Calendar -> Hannah emails -> completion verification."
+        },
+        {
+          "id": "winsday-calendar-description-destinations",
+          "preference_type": "calendar_description",
+          "decision_outcome": "new SOP discovered",
+          "summary": "WinsDay calendar location should be StreamYard, and the calendar description should include StreamYard, LinkedIn, Facebook, YouTube, title, topics, guest names, and logistics.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Use a WinsDay-specific calendar draft template that lists all destination links and day-of logistics."
+        },
+        {
+          "id": "winsday-hannah-email-cadence",
+          "preference_type": "email_workflow",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Hannah sends the final-details email the night before and the reminder email on the day of show for WinsDay.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Label WinsDay email drafts as night-before final details and day-of reminder."
         }
       ]
     },

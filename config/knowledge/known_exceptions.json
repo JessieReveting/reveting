@@ -23,7 +23,7 @@
       "trust_category": "Known Exception",
       "trust_dashboard_bucket": "Known Calendar Ownership Exception",
       "guest_status": "human_confirmed_active",
-      "suppress_matching_issues": true,
+      "suppress_matching_issues": false,
       "recommended_action": "No urgent production fix needed. Later, clean up ownership so the invite lives on ww@reveting.com instead of Jessie's personal calendar.",
       "created_from": "human verification",
       "created_at": "2026-07-01",
@@ -101,28 +101,89 @@
       "suggested_rule_update": "Support manually confirmed guests who bypass HighLevel and recommend adding them to HighLevel later."
     },
     {
-      "id": "beyond-the-cart-tim-berney-human-confirmed-active-2026-07-07",
-      "show_key": "beyond-the-cart",
-      "episode_date": "2026-07-07",
-      "calendar_event_id": "5ea62gm4dcj496qvg4cv6peqeb",
-      "guest_name": "Tim Berney",
-      "issue_codes": ["calendar_event_needs_confirmation", "calendar_event_without_booking"],
+      "id": "winsday-july-8-human-confirmed-guest-resolution-2026-07-08",
+      "show_key": "winsday",
+      "episode_date": "2026-07-08",
+      "calendar_event_id": "29qpmbb9s9uclben9r4vq9ua6k_20260708T234500Z",
+      "guest_name": "Charlie Sells / Jeff Chen",
+      "issue_codes": [
+        "guest_topics_pending",
+        "sop_required_assets_missing",
+        "form_submission_not_exactly_linked",
+        "required_custom_fields_missing_from_description"
+      ],
       "decision_outcome": "intentional business exception",
-      "decision_summary": "Tim Berney is confirmed active. HighLevel incorrectly showed cancellation context under PR rep Samantha, and Jessie updated HighLevel.",
-      "operator_guidance": "Do not treat Tim as stale or orphaned. If related PR/cancellation context appears again, classify as Needs Human Verification unless a human-confirmed active exception exists.",
+      "decision_summary": "July 8 WinsDay is human-confirmed as Charlie Sells and Jeff Chen. Daniel Burrus and Jennifer Burrus canceled/rescheduled and should not be inferred as July 8 guests.",
+      "operator_guidance": "Use Charlie Sells and Jeff Chen as the confirmed July 8 guests, even if Jeff is missing from HighLevel because he was a last-minute manual replacement.",
       "status_category": "human_confirmed_active",
       "operational_status": "Human Confirmed Active",
       "trust_category": "Known Exception",
       "trust_dashboard_bucket": "Human Confirmed Active",
       "guest_status": "human_confirmed_active",
+      "suppress_matching_issues": false,
+      "recommended_action": "Use the human-confirmed July 8 WinsDay production package for Charlie Sells and Jeff Chen. Do not route Daniel or Jennifer into guest-facing drafts.",
+      "created_from": "human verification",
+      "created_at": "2026-07-07",
+      "last_confirmed_at": "2026-07-07",
+      "confirmation_count": 1,
+      "expires_on": "2026-07-09",
+      "confirmed_guest_names": [
+        "Charlie Sells",
+        "Jeff Chen"
+      ],
+      "confirmed_guest_emails": [
+        "charlie@clarityovereverything.com",
+        "jeff@odysseyfilms.uk"
+      ],
+      "canceled_guest_names": [
+        "Daniel Burrus",
+        "Jennifer Burrus"
+      ],
+      "canceled_guest_emails": [
+        "jennifer@burrus.com"
+      ],
+      "title_override": "Building Trust and Clarity in the Age of Human-AI Marketing",
+      "topics_override": [
+        "Clarity as a discipline, not a destination",
+        "The gift of curiosity in sales, marketing, and brand building",
+        "Why AI adoption fails when people treat tools like shortcuts",
+        "Building your personal brand with AI without losing your voice"
+      ],
+      "streamyard_url": "https://streamyard.com/6aftv344ym",
+      "linkedin_event_url": "https://www.linkedin.com/video/live/urn:li:ugcPost:7480405437998182400/",
+      "facebook_url": "https://www.facebook.com/events/1595814642129540",
+      "youtube_url": "https://www.youtube.com/watch?v=sS_HqNcBVgA",
+      "suggested_rule_update": "Support human-confirmed manual replacement guest resolution that overrides stale HighLevel/PR-context guest inference for guest-facing drafts."
+    },
+    {
+      "id": "beyond-the-cart-tim-berney-human-confirmed-active-2026-07-07",
+      "show_key": "beyond-the-cart",
+      "episode_date": "2026-07-07",
+      "calendar_event_id": "5ea62gm4dcj496qvg4cv6peqeb",
+      "guest_name": "Tim Berney",
+      "issue_codes": ["calendar_event_needs_confirmation", "calendar_event_without_booking", "pr_representative_booking_guest_represented"],
+      "decision_outcome": "intentional business exception",
+      "decision_summary": "Samantha Rubenstein is the HighLevel submitter/contact, but the represented guest is Tim Berney and the calendar event is valid.",
+      "operator_guidance": "Treat Samantha as the submitter/contact and Tim Berney as the represented guest. Do not flag Tim as stale or orphaned when the booking contains Tim guest evidence.",
+      "status_category": "pr_representative_booking_guest_represented",
+      "operational_status": "PR Representative Booking / Guest Represented",
+      "trust_category": "PR Representative Booking / Guest Represented",
+      "trust_dashboard_bucket": "PR Representative Booking / Guest Represented",
+      "guest_status": "pr_representative_booking_guest_represented",
       "suppress_matching_issues": true,
-      "recommended_action": "No calendar cleanup needed for Tim Berney. Keep as human-confirmed active.",
+      "recommended_action": "No calendar cleanup needed for Tim Berney. Keep Samantha as submitter/contact context and Tim as the represented guest.",
+      "details": {
+        "highlevel_submitter_contact": "Samantha Rubenstein",
+        "represented_guest": "Tim Berney",
+        "represented_guest_confidence": "High",
+        "represented_guest_evidence": ["LinkedIn URL", "calendar title", "episode title", "custom fields"]
+      },
       "created_from": "human verification",
       "created_at": "2026-07-02",
       "last_confirmed_at": "2026-07-02",
       "confirmation_count": 1,
       "expires_on": "2026-07-08",
-      "suggested_rule_update": "Support human-confirmed active exceptions for calendar events that temporarily disagree with HighLevel PR/cancellation context."
+      "suggested_rule_update": "Support PR representative bookings where the submitter/contact differs from the represented guest shown in calendar and custom-field evidence."
     },
     {
       "id": "cherry-willow-wayne-elsey-human-confirmed-active-2026-07-07",

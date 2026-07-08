@@ -785,9 +785,39 @@
       "preshow_offset_minutes": 15,
       "episode_duration_minutes": 60,
       "expected_guest_count": 2,
+      "workflow_gate": "linkedin_first",
+      "calendar_location_policy": "streamyard",
+      "distribution_destinations": ["LinkedIn", "Facebook", "YouTube"],
+      "calendar_description_sections": [
+        "StreamYard",
+        "LinkedIn",
+        "Facebook",
+        "YouTube",
+        "title",
+        "topics",
+        "guest names",
+        "logistics"
+      ],
+      "hannah_email_cadence": [
+        {"key": "night_before_final_details", "label": "Night-before final details email"},
+        {"key": "day_of_reminder", "label": "Day-of reminder email"}
+      ],
+      "future_automation_candidates": [
+        "LinkedIn event/live description draft",
+        "StreamYard setup field draft",
+        "Google Calendar update draft",
+        "Hannah night-before email draft",
+        "Hannah day-of reminder draft",
+        "Completion verification checklist draft"
+      ],
+      "future_integrations_to_explore": [
+        "StreamYard event creation",
+        "Canva image generation or Canva brief generation",
+        "LinkedIn headshot lookup or manual headshot collection",
+        "AI-generated show graphics with human approval"
+      ],
       "required_attendee_emails": [],
       "required_field_keywords": {},
-      "calendar_description_sections": [],
       "sop_assets": [],
       "post_production_workflow": []
     }
