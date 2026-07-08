@@ -136,6 +136,51 @@
           "suggested_rule_update": "Consider a manual-confirmation source file if this happens again."
         }
       ]
+    },
+    "breach-of-protocol": {
+      "show_name": "Breach of Protocol",
+      "preferences": [
+        {
+          "id": "editorial-brief-is-source-of-truth",
+          "preference_type": "source_of_truth_resolution",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Breach of Protocol is a research-driven editorial workflow. The approved news story and episode brief are the production source of truth, not HighLevel guest booking records.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Treat the approved news story and episode brief as the first-class source of truth for Breach of Protocol, with optional guest support layered on later."
+        },
+        {
+          "id": "default-hosts-are-recurring",
+          "preference_type": "host_resolution",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Steven Oliphant, Samuel Kushner, and Thomas Phillips are the default recurring hosts unless a human explicitly changes the lineup.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Pre-fill Breach of Protocol weekly production drafts with the three recurring hosts unless an override is provided."
+        },
+        {
+          "id": "story-selection-requires-human-approval",
+          "preference_type": "editorial_approval_gate",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Candidate stories may be researched and scored, but the system must never auto-select the lead, supporting, optional third, or backup story without human approval.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Keep Breach of Protocol story selection approval-gated even after future editorial tooling is added."
+        },
+        {
+          "id": "final-assets-blocked-until-story-approval",
+          "preference_type": "asset_generation_gate",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Do not generate final production assets for Breach of Protocol until the story package is approved. Research and structured drafts are allowed, but final assets stay blocked.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Allow editorial research queues and asset skeletons, but keep final LinkedIn, StreamYard, email, and calendar actions blocked until story approval."
+        }
+      ]
     }
   }
 }

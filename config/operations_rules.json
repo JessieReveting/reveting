@@ -6,7 +6,8 @@
     "david-daily",
     "beyond-the-cart",
     "deconstructing-data",
-    "winsday"
+    "winsday",
+    "breach-of-protocol"
   ],
   "audit_window_days_ahead": 180,
   "preshow_offset_minutes": 15,
@@ -820,6 +821,107 @@
       "required_field_keywords": {},
       "sop_assets": [],
       "post_production_workflow": []
+    },
+    "breach-of-protocol": {
+      "show_name": "Breach of Protocol",
+      "client_name": "Ridgeback Network Defense",
+      "workflow_model": "editorial_research",
+      "source_of_truth_model": "approved_news_story_then_episode_brief",
+      "highlevel_required_for_readiness": false,
+      "guest_workflow_enabled": false,
+      "guest_support_mode": "future_optional",
+      "timezone": "America/New_York",
+      "day_of_week": "Friday",
+      "show_time_et": "3:00 PM",
+      "preshow_offset_minutes": 15,
+      "episode_duration_minutes": 60,
+      "expected_guest_count": 0,
+      "recurring_hosts": [
+        "Steven Oliphant",
+        "Samuel Kushner",
+        "Thomas Phillips"
+      ],
+      "editorial_workflow_phases": [
+        "Episode Brief",
+        "News Research",
+        "Story Selection",
+        "Production Assets",
+        "Capture the Flag",
+        "Producer Run of Show",
+        "Post Production"
+      ],
+      "editorial_story_slots": [
+        "Lead Story",
+        "Supporting Story",
+        "Optional Third Story",
+        "Backup Story"
+      ],
+      "production_asset_groups": [
+        "LinkedIn Event",
+        "LinkedIn Company Post",
+        "Long-form Event Description",
+        "Newsletter",
+        "Topic Banners",
+        "YouTube Title",
+        "YouTube Description",
+        "StreamYard overlays",
+        "StreamYard banners",
+        "Lower thirds",
+        "Producer notes",
+        "CTA graphics"
+      ],
+      "capture_the_flag_assets": [
+        "Question",
+        "Answer",
+        "Supporting explanation",
+        "Graphic requirements",
+        "Reveal timing"
+      ],
+      "producer_run_of_show_sections": [
+        "Opening",
+        "Introductions",
+        "Lead Story",
+        "Supporting Story",
+        "Engineering Discussion",
+        "Capture the Flag",
+        "Audience Questions",
+        "Closing",
+        "CTA"
+      ],
+      "post_production_workflow": [
+        "Podcast upload",
+        "Newsletter recap",
+        "Clips",
+        "Transcript",
+        "Blog",
+        "LinkedIn clips",
+        "Production QA",
+        "Standard CTA"
+      ],
+      "default_cta": {
+        "label": "Schedule a Technical Briefing",
+        "url": "https://ridgebacknet.com",
+        "guidance": "Position Ridgeback's Preemptive Security approach as the recommended next step."
+      },
+      "editorial_rules": [
+        "Every story must explain why it matters.",
+        "Every story must explain what defenders are missing.",
+        "Every story must explain what security leaders should do differently.",
+        "Every story must explain what organizations can apply immediately.",
+        "Emphasize engineering insight over headlines."
+      ],
+      "approval_gates": [
+        "Do not auto-select stories.",
+        "Do not generate final assets before story approval.",
+        "Do not create LinkedIn events automatically.",
+        "Do not create StreamYard broadcasts automatically.",
+        "Do not send emails automatically.",
+        "Do not modify Google Calendar automatically."
+      ],
+      "required_attendee_emails": [],
+      "required_field_keywords": {},
+      "calendar_description_sections": [],
+      "sop_assets": []
     }
   }
 }

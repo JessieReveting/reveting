@@ -4,6 +4,8 @@ Reveting Operations Manager is a read-only AI operations manager and AI operatio
 
 The system is designed to help Reveting understand what is booked, what is scheduled, what is missing, what is risky, and what a human operator should do next without changing production systems automatically.
 
+Not every show begins from the same source of truth. Some shows are booking-driven, while others are editorial-first and start from approved research and an episode brief.
+
 ## Core System Map
 
 ### External System Roles
@@ -34,6 +36,8 @@ Reveting show operations span multiple systems that each represent a different p
 - Google Drive holds working assets and source files
 
 The architecture keeps those roles explicit so the system can compare them without blurring source-of-truth boundaries.
+
+For editorial-first shows such as Breach of Protocol, the first source of truth is the approved story package and episode brief rather than HighLevel booking records.
 
 ## Layer 1: Discovery
 
@@ -160,6 +164,10 @@ The current model is intentionally explicit:
 - Gmail is the best source for communication history
 - Google Drive is the best source for files and assets
 
+There is one important workflow exception:
+
+- Editorial-first shows can use an approved story, episode brief, and production-asset package as the primary source of truth before any guest-booking system is involved
+
 The audit layer exists precisely because these sources do not always agree.
 
 ## Connector Boundary
@@ -199,6 +207,14 @@ Current rule areas include:
 - guest, PR, assistant, and alternate invite handling
 - LinkedIn event and StreamYard readiness expectations
 - production health scoring
+
+Rules can also express workflow family differences, such as:
+
+- guest-booking-first shows
+- editorial-first shows
+- recurring-host defaults
+- story approval gates
+- approval-gated production asset generation
 
 This supports safer iteration and clearer review over time.
 

@@ -13,6 +13,7 @@ Version 1 is read-only. Do not begin Version 2 implementation until explicitly a
 - Production checklist tracking per show and episode.
 - SOP-aware readiness states.
 - Ownership and escalation routing.
+- Editorial-first show workflows such as Breach of Protocol, where approved story packages and episode briefs replace booking-first intake as the production source of truth.
 
 ## Approval Workflows
 
@@ -29,6 +30,13 @@ Possible future actions after approval:
 - Send Gmail messages.
 - Create Drive folders.
 - Send Slack or internal notifications.
+
+Editorial-first future opportunities after approval:
+
+- Maintain a scored editorial research queue.
+- Prepare story-selection packets for approval.
+- Draft cybersecurity production assets after story approval.
+- Keep Capture the Flag assets as a separate approval-gated production block.
 
 ## Historical Reporting
 
@@ -57,4 +65,3 @@ Possible future actions after approval:
 
 - Unified production health across Reveting clients.
 - Drilldowns by client, show, episode, asset, and SOP stage.
-

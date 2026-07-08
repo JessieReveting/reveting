@@ -50,6 +50,7 @@ FALLBACK_SHOW_KEYS = [
     "beyond-the-cart",
     "deconstructing-data",
     "winsday",
+    "breach-of-protocol",
 ]
 
 FALLBACK_INACTIVE_STATUSES = {
@@ -297,6 +298,17 @@ def show_rule(rules, show_key):
     shows = rule_dict(rules, "shows")
     value = shows.get(show_key)
     return value if isinstance(value, dict) else {}
+
+
+def show_workflow_type(rules, show_key):
+    return normalize_text(show_rule(rules, show_key).get("workflow_model") or "guest_booking")
+
+
+def show_requires_highlevel_discovery(rules, show_key):
+    config = show_rule(rules, show_key)
+    if config.get("highlevel_required_for_readiness") is False:
+        return False
+    return show_workflow_type(rules, show_key) not in {"editorial_research", "editorial_first"}
 
 
 def issue_metadata(rules, code):
@@ -1181,6 +1193,8 @@ def count_discovery_file(path):
 def discovery_diagnostic(show_key, discovery_dir, rules, episodes, appointments_by_id, submissions_by_id):
     show_config = show_rule(rules, show_key)
     show_name = configured_show_name(rules, show_key)
+    if not show_requires_highlevel_discovery(rules, show_key):
+        return None
     missing_files = list_missing_discovery_files(show_key, discovery_dir)
     env_vars = {
         "token_env_var": show_config.get("highlevel_token_env_var"),

@@ -121,3 +121,27 @@ Every guest-facing email after event publication should include clear timing, St
 - For Deconstructing Data drafts, look up or request the per-episode script URL first.
 - If the script provides title, topics, StreamYard link, or timing, prefer the script over raw submitted HighLevel fields.
 - Check for obvious whitespace and punctuation issues before using script copy in guest-facing drafts.
+
+## Breach of Protocol Memory
+
+- Breach of Protocol is a first-class Ridgeback Network Defense show.
+- Format: weekly cybersecurity livestream and podcast.
+- Schedule: every Friday.
+- Pre-show: 2:45 PM ET.
+- Live: 3:00 PM ET.
+- The current production model is editorial-first, not guest-booking-first.
+- The source of truth is Approved News Story -> Episode Brief -> Production Assets.
+- Do not require HighLevel guest bookings, booking forms, Hannah guest emails, PR workflows, or guest calendar matching for the default workflow.
+- Default recurring hosts are Steven Oliphant, Samuel Kushner, and Thomas Phillips unless explicitly changed.
+- There are currently no guests, but guest support should remain possible later without changing the underlying workflow model.
+- Candidate story research is an editorial queue only.
+- Never auto-select the lead, supporting, optional third, or backup story.
+- Final production assets stay approval-gated until story approval.
+- Capture the Flag is its own production asset group and should be generated separately from the main run of show.
+- The show must emphasize engineering insight over headlines.
+- Every story should answer:
+- Why does this matter?
+- What are defenders missing?
+- What should security leaders do differently?
+- What can organizations apply immediately?
+- Default CTA: Schedule a Technical Briefing at https://ridgebacknet.com and position Ridgeback's Preemptive Security approach as the recommended next step.

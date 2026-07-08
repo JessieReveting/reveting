@@ -61,6 +61,45 @@
       "min_linked_in_followers": 5000,
       "content_pillars": "E-commerce, DTC, Retail",
       "signature_block": ""
+    },
+    "breach-of-protocol": {
+      "name": "Breach of Protocol",
+      "slug": "bop",
+      "host": "Steven Oliphant, Samuel Kushner, Thomas Phillips",
+      "host_linkedin": "",
+      "producer_email": "ea@reveting.com",
+      "calendar": "Breach of Protocol",
+      "timezone": "America/New_York",
+      "day_of_week": "Friday",
+      "stream_time_et": "3:00 PM",
+      "preshow_time_et": "2:45 PM",
+      "duration_min": 60,
+      "primary_color": "#0B1F33",
+      "accent_color": "#2FB3A3",
+      "channels": {
+        "linkedin": "",
+        "youtube": "",
+        "facebook": "",
+        "twitter": "",
+        "twitch": "",
+        "kick": ""
+      },
+      "podcast_links": {
+        "spotify": "",
+        "apple": "",
+        "youtube": ""
+      },
+      "workflow_model": "editorial_research",
+      "client_name": "Ridgeback Network Defense",
+      "recurring_hosts": [
+        "Steven Oliphant",
+        "Samuel Kushner",
+        "Thomas Phillips"
+      ],
+      "default_cta_url": "https://ridgebacknet.com",
+      "default_cta_summary": "Schedule a Technical Briefing and position Ridgeback's Preemptive Security approach as the recommended next step.",
+      "content_pillars": "Cybersecurity, Security Engineering, Threat Intelligence, Enterprise Defense",
+      "signature_block": "—\nRidgeback Network Defense\nhttps://ridgebacknet.com"
     }
   }
 }
