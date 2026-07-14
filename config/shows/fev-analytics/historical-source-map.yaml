@@ -1,0 +1,22 @@
+show:
+  name: FEV Analytics
+  slug: fev-analytics
+
+sources:
+  - source_type: spreadsheet
+    location: FEV Analytics Outline
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1JWktgCww9BGYXyM3FJpD6fnN5GnqbAsMFdyzvUzlcDg` with sample evidence from `'Guest Outline'!A1:J6`
+    notes: Only sampled row-level evidence currently tied to this show.
+  - source_type: spreadsheet
+    location: FEV Analytics Outline / workbook metadata
+    access_method: Google Sheets metadata read
+    identifier_field: sheet_name
+    current_coverage: Tab-level coverage for `Strategy`, `Content Plan`, and `Ideas`
+    notes: Confirms additional planning tabs exist even though they were not deeply read during the profile phase.
+
+reconciliation_requirements:
+  fields_to_verify: [cadence, destinations, replay workflow, named host ownership, current status]
+  likely_missing_fields: [event links for full season, StreamYard links beyond sample row, guest intake requirements, repurposing rules]
+  blockers: [No repository-side discovery exports or local client folder currently linked to this show]

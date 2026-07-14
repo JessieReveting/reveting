@@ -1,0 +1,16 @@
+show:
+  name: Flex Pilates
+  slug: flex-pilates
+
+sources:
+  - source_type: spreadsheet
+    location: Flex Pilates Outline
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1UlJZaOPNLKzErojf0dkfnRXMWOxRLoz_sp6S2uK-3Us` with evidence from `Sheet1!A1:J6`
+    notes: Primary workbook for host, guest names when present, published state, and YouTube replay links.
+
+reconciliation_requirements:
+  fields_to_verify: [whether solo episodes are allowed, pre-live channel, full cadence, production owner]
+  likely_missing_fields: [guest email capture, event links, repurposing workflow, approval chain]
+  blockers: [No repository-side discovery exports or local client folder currently linked to this show]

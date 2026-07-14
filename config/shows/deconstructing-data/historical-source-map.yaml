@@ -1,0 +1,28 @@
+show:
+  name: Deconstructing Data
+  slug: deconstructing-data
+
+sources:
+  - source_type: spreadsheet
+    location: Bdex | Deconstruction Data OUTLINE
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1WGaQSNQsEIywwKu0_UWsakaxMDs1O4IXSmdZ1tlVTJQ` with operational evidence from `'Event Details '!A1:N8`
+    notes: Primary workbook for episode rows, host/guest structure, published state, event links, calendar invite links, Spotify, download URLs, and StreamYard.
+  - source_type: repository_json
+    location: reveting/data/discovery/deconstructing-data_episodes.json
+    access_method: local repository read
+    identifier_field: show_key
+    current_coverage: Weekly discovery schedule and episode timing coverage for active episodes
+    notes: Best current structured source for cadence and pre-show timing.
+  - source_type: repository_json
+    location: reveting/config/knowledge/show_preferences.json
+    access_method: local repository read
+    identifier_field: show_name
+    current_coverage: Show-specific exceptions and source-of-truth preferences
+    notes: Confirms script-first override behavior when a per-episode script exists.
+
+reconciliation_requirements:
+  fields_to_verify: [primary host naming, exact live destinations beyond Spotify, client approver, script URL field location]
+  likely_missing_fields: [newsletter usage, blog usage, design asset ownership, transcript storage location]
+  blockers: []

@@ -1,0 +1,16 @@
+show:
+  name: Equity Spring Partners
+  slug: equity-spring-partners
+
+sources:
+  - source_type: spreadsheet
+    location: Equity Spring Partners
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1QWq75_XoxT2TX-dAkcIaLHYKnxdO1BAKXFE_QsaK7aw` with evidence from `Sheet1!A1:J6`
+    notes: Primary workbook for guest rows, topics, published state, and LinkedIn event links.
+
+reconciliation_requirements:
+  fields_to_verify: [official show title, current cadence, live time, replay destinations, production owner]
+  likely_missing_fields: [guest form structure, StreamYard usage, repurposing plan, approval chain]
+  blockers: [No repository-side discovery exports or additional client documentation currently linked to this show]

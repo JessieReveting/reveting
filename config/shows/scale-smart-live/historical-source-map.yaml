@@ -1,0 +1,28 @@
+show:
+  name: Scale Smart Live
+  slug: scale-smart-live
+
+sources:
+  - source_type: spreadsheet
+    location: OpsIQ Show with Taja Outline
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1UBZ7oS9IW0Mc0_nbv3EhiWvs2GTCVBBoTSrVmx5pPdw` with row evidence from `'Title/Topics/Guests'!A1:J6`
+    notes: Primary episode and destination source, including LinkedIn events and some YouTube replay links.
+  - source_type: spreadsheet
+    location: OpsIQ Show with Taja Outline / Strategy
+    access_method: Google Sheets bounded range read
+    identifier_field: sheet_name
+    current_coverage: Show-definition evidence from `Strategy!A1:F12`
+    notes: Confirms the show name Scale Smart Live and the operational-readiness positioning.
+  - source_type: spreadsheet
+    location: OpsIQ Show with Taja Outline / Content Plan
+    access_method: Google Sheets bounded range read
+    identifier_field: sheet_name
+    current_coverage: Repurposing and CTA evidence from `'Content Plan'!A1:F12`
+    notes: Best source for assessment CTA and post-show clip expectations.
+
+reconciliation_requirements:
+  fields_to_verify: [current show status, podcast distribution, exact event-creation toolchain, client approver]
+  likely_missing_fields: [guest intake form, headshot policy, release permissions, transcript storage]
+  blockers: [No repository-side discovery exports or local client folder currently linked to this show]

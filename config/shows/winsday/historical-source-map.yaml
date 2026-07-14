@@ -1,0 +1,28 @@
+show:
+  name: WinsDay
+  slug: winsday
+
+sources:
+  - source_type: spreadsheet
+    location: WinsDay Guests
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1SjRcZfOB2Gv8G0eG87UTsfp6Tf706HiMcDpWOvjYLSs` with evidence from `'Event Info'!A1:N6`
+    notes: Primary workbook for two-guest episodes, Guru of the Week, multi-destination event links, StreamYard, and emailed guest state.
+  - source_type: repository_json
+    location: reveting/data/discovery/winsday_episodes.json
+    access_method: local repository read
+    identifier_field: show_key
+    current_coverage: Active weekly episode schedule and distinct-guest evidence
+    notes: Best structured source for multi-guest scheduling and readiness logic.
+  - source_type: repository_json
+    location: reveting/config/operations_rules.json and reveting/config/knowledge/show_preferences.json
+    access_method: local repository read
+    identifier_field: show_name
+    current_coverage: Show-specific SOP, LinkedIn-first sequencing, and Hannah email cadence
+    notes: Critical reconciliation source because not all readiness logic is visible in the workbook.
+
+reconciliation_requirements:
+  fields_to_verify: [owner of newsletter send, Spotify requirement, current clip volume, manual override recording process]
+  likely_missing_fields: [guest phone, headshot, release permissions, structured transcript archive]
+  blockers: []

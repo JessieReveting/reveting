@@ -1,0 +1,34 @@
+show:
+  name: Breach of Protocol
+  slug: breach-of-protocol
+
+sources:
+  - source_type: repository_yaml
+    location: reveting/clients/ridgeback-network-defense/client-profile.yaml
+    access_method: local repository read
+    identifier_field: show.slug
+    current_coverage: Core client and show constants for name, hosts, day, and live time
+    notes: Best single-file show definition for the current Ridgeback operating model.
+  - source_type: repository_markdown
+    location: reveting/clients/ridgeback-network-defense/operations/weekly-workflow.md
+    access_method: local repository read
+    identifier_field: heading
+    current_coverage: Weekly publishing and replay cycle
+    notes: Best source for the operational rhythm outside guest-booking systems.
+  - source_type: repository_yaml
+    location: reveting/clients/ridgeback-network-defense/automation/workbook-manifest.yaml
+    access_method: local repository read
+    identifier_field: show.slug
+    current_coverage: Episode queue through the current planned season
+    notes: Best structured source for the editorial episode run without reading the spreadsheet again.
+  - source_type: repository_json
+    location: reveting/config/operations_rules.json and reveting/config/knowledge/show_preferences.json
+    access_method: local repository read
+    identifier_field: show_name
+    current_coverage: Approval gates, editorial source-of-truth rules, and recurring-host defaults
+    notes: Critical reconciliation layer because Breach of Protocol should not be measured as a guest-booking show.
+
+reconciliation_requirements:
+  fields_to_verify: [current podcast distribution requirements, exact quote-graphic and clip counts, named client approver]
+  likely_missing_fields: [formal transcript archive, website replay archive, optional guest-support fields if that mode is enabled later]
+  blockers: []

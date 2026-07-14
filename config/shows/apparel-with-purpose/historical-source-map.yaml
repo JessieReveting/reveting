@@ -1,0 +1,28 @@
+show:
+  name: Apparel with Purpose
+  slug: apparel-with-purpose
+
+sources:
+  - source_type: spreadsheet
+    location: Cherry Willow Livetsream
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `11H7573VGrwM6Hvqg3nvyPYCpfO30KMhZNVnPb4l0djc` with operational evidence from `Sheet1!A1:J6` and `Sheet1!K6:L8`
+    notes: Primary workbook for guest rows, emailed guest state, LinkedIn event links, and StreamYard links.
+  - source_type: repository_json
+    location: reveting/data/discovery/cherry-willow_episodes.json
+    access_method: local repository read
+    identifier_field: show_key
+    current_coverage: Current active cadence and upcoming episode dates
+    notes: Best source for monthly Tuesday schedule validation.
+  - source_type: repository_json
+    location: reveting/config/knowledge/show_preferences.json
+    access_method: local repository read
+    identifier_field: show_name
+    current_coverage: Show-specific human-reviewed exception states
+    notes: Captures replacement-guest and confirmation-follow-up logic that does not appear cleanly in workbook rows.
+
+reconciliation_requirements:
+  fields_to_verify: [guest confirmation status logic, active replay destinations, exact calendar invite process, named client approver]
+  likely_missing_fields: [guest phone, headshot, release permissions, transcript archive]
+  blockers: []

@@ -1,0 +1,16 @@
+show:
+  name: Warm Blooded Founders
+  slug: warm-blooded-founders
+
+sources:
+  - source_type: spreadsheet
+    location: Chris Sherrick - Warm Blooded Founders
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1DpjmGp1mtr76PWP5XoonPbmvh9984OrkAuJfz9z_Uqc` with evidence from `Sheet1!A1:J6`
+    notes: Primary workbook for guest topics, LinkedIn URLs, StreamYard links, and published state.
+
+reconciliation_requirements:
+  fields_to_verify: [event destinations, cadence over full season, replay archive, named production owner]
+  likely_missing_fields: [guest intake fields beyond LinkedIn URL, approval chain, repurposing workflow, calendar invite policy]
+  blockers: [No repository-side discovery exports or local client folder currently linked to this show]

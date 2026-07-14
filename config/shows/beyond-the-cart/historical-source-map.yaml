@@ -1,0 +1,28 @@
+show:
+  name: Beyond the Cart
+  slug: beyond-the-cart
+
+sources:
+  - source_type: spreadsheet
+    location: OmniRocket Beyond The Cart Schedule Outline
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1XxMIAQDxPFjW6sevsZ-Q-RpRIatJxNU6ffe1c6GSkyM` with episode evidence from `'Title/Topics/Guests'!A1:J6`
+    notes: Primary workbook for date, guest, CTA, published state, and outreach status.
+  - source_type: spreadsheet
+    location: OmniRocket Beyond The Cart Schedule Outline / Definition and Content strategy
+    access_method: Google Sheets bounded range reads
+    identifier_field: sheet_name
+    current_coverage: Strategic and content-system evidence from `Definition!A1:F10` and `'Content strategy'!A1:F12`
+    notes: Best source for show purpose, Spotify CTA, and expected clip reuse.
+  - source_type: repository_json
+    location: reveting/data/discovery/beyond-the-cart_episodes.json
+    access_method: local repository read
+    identifier_field: show_key
+    current_coverage: Active biweekly schedule and appointment timing
+    notes: Best structured source for cadence normalization.
+
+reconciliation_requirements:
+  fields_to_verify: [host LinkedIn destination, StreamYard requirement, YouTube usage, client approver]
+  likely_missing_fields: [guest headshots, release permissions, website replay archive, transcript storage]
+  blockers: []

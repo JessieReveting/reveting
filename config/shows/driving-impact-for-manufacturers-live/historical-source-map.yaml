@@ -1,0 +1,16 @@
+show:
+  name: Driving Impact for Manufacturers Live
+  slug: driving-impact-for-manufacturers-live
+
+sources:
+  - source_type: spreadsheet
+    location: NWIRC
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1UN9_caAWtFqpsnY5tc1kkHRAfuZBYt9fGc8Qa2I84Rs` with evidence from `Sheet1!A1:J6`
+    notes: Primary workbook for host, topics, LinkedIn event links, and YouTube replay links.
+
+reconciliation_requirements:
+  fields_to_verify: [official show title, exact live time, StreamYard usage, production ownership]
+  likely_missing_fields: [guest intake requirements, repurposing system, approval workflow, transcript archive]
+  blockers: [No repository-side discovery exports or local client folder currently linked to this show]

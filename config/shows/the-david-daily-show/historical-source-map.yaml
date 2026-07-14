@@ -1,0 +1,28 @@
+show:
+  name: The David Daily Show
+  slug: the-david-daily-show
+
+sources:
+  - source_type: spreadsheet
+    location: The David Daily Show - OUTLINE - 2026 TDDS OPERATIONS
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1odwvWVKQJDQ9i74aRXFx4rArSAKqPCj3T6VximU0ZpI` with row evidence from `TDDS!A1:N6`
+    notes: Primary workbook for episode rows and the five-email guest workflow.
+  - source_type: repository_json
+    location: reveting/data/discovery/david-daily_episodes.json
+    access_method: local repository read
+    identifier_field: show_key
+    current_coverage: Active weekly schedule and pre-show timing
+    notes: Best structured timing source for current episodes.
+  - source_type: repository_json
+    location: reveting/config/shows.json
+    access_method: local repository read
+    identifier_field: slug
+    current_coverage: Core show constants for host, day, time, and duration
+    notes: Best repository constant file for Thursday 11:00 AM ET live time and 10:45 AM ET pre-show.
+
+reconciliation_requirements:
+  fields_to_verify: [current LinkedIn event usage, replay destinations, client approver, post-production email owner]
+  likely_missing_fields: [headshot policy, release permissions, blog or newsletter requirements, transcript archive]
+  blockers: []

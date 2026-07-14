@@ -1,0 +1,28 @@
+show:
+  name: Alchemize with Alanna
+  slug: alchemize-with-alanna
+
+sources:
+  - source_type: spreadsheet
+    location: Alchemize with Alanna Outline
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1MlMxZ8hScuJmMqRGe9kinuaXn4qs0yRu8TJEpajDA80` with operational evidence from `'Title/Topics/Guests'!A1:J6`
+    notes: Primary row-level source for host, guest, CTA, published state, and episode structure.
+  - source_type: spreadsheet
+    location: Alchemize with Alanna Outline / Defining Alchemise with Alanna
+    access_method: Google Sheets bounded range read
+    identifier_field: sheet_name
+    current_coverage: Show-definition evidence from `'Defining Alchemise with Alanna'!A1:F10`
+    notes: Best source for positioning and what the show is meant to demonstrate.
+  - source_type: spreadsheet
+    location: Alchemize with Alanna Outline / Content Strategy
+    access_method: Google Sheets bounded range read
+    identifier_field: sheet_name
+    current_coverage: Monthly structure evidence from `'Content Strategy'!A1:F12`
+    notes: Confirms two live shows per month and post-show clip plus conversion flow.
+
+reconciliation_requirements:
+  fields_to_verify: [current publishing destinations, current cadence, live-event tooling, client approver workflow]
+  likely_missing_fields: [event links, StreamYard links, replay archive, newsletter usage]
+  blockers: [No repository-side discovery export or client folder currently linked to this show]

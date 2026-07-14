@@ -1,0 +1,28 @@
+show:
+  name: Trauma Translator
+  slug: trauma-translator
+
+sources:
+  - source_type: spreadsheet
+    location: The Trauma Translator Outline
+    access_method: Google Sheets connector metadata plus bounded range reads
+    identifier_field: source_spreadsheet_id
+    current_coverage: Spreadsheet ID `1RcG4m4gL3e5Hyl11S0Cv02nKGW9D0rjTH2EemelqKhc` with operational evidence from `Outline!A1:N6`
+    notes: Primary workbook for guest and solo episode rows, LinkedIn events, StreamYard links, and Spotify column usage.
+  - source_type: spreadsheet
+    location: The Trauma Translator Outline / Content Strategy
+    access_method: Google Sheets bounded range read
+    identifier_field: sheet_name
+    current_coverage: Strategic definition from `'Content Strategy'!A1:F10`
+    notes: Confirms weekly Thursday livestream positioning and platform purpose.
+  - source_type: spreadsheet
+    location: The Trauma Translator Outline / Content Plan
+    access_method: Google Sheets bounded range read
+    identifier_field: sheet_name
+    current_coverage: Weekly content-engine evidence from `'Content Plan'!A1:F12`
+    notes: Best source for repurposing expectations and solo-versus-guest operational rhythm.
+
+reconciliation_requirements:
+  fields_to_verify: [current show status, exact live time, replay destinations beyond LinkedIn/Spotify, current owner of production]
+  likely_missing_fields: [guest intake form, newsletter usage, blog archive, calendar invite policy]
+  blockers: [No repository-side show folder or discovery export currently linked to this slug]
