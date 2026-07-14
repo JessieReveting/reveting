@@ -1,0 +1,283 @@
+generated_on: 2026-07-14
+purpose: Compact source inventory for show-profile generation. Use this file to map workbook evidence and existing repo artifacts before updating individual show profiles.
+sources:
+  - show_slug: deconstructing-data
+    show_name: Deconstructing Data
+    client: BDEX
+    current_status: active
+    confidence: high
+    source_spreadsheet_id: 1WGaQSNQsEIywwKu0_UWsakaxMDs1O4IXSmdZ1tlVTJQ
+    source_spreadsheet_title: Bdex | Deconstruction Data OUTLINE
+    source_tabs:
+      - Event Details
+      - What BDEX is
+      - Social Schedule
+    repository_path: data/discovery/deconstructing-data_*.json
+    evidence:
+      - source: spreadsheet
+        location: "'Event Details '!A1:N8"
+        note: Header includes recording date, host, guest, published state, event link, calendar invite, Spotify, full download URL, and StreamYard.
+      - source: repo
+        location: data/discovery/deconstructing-data_episodes.json
+        note: Discovery schedule shows weekly Thursday episodes starting 2026-07-02 at 4:00 PM ET pre-show.
+      - source: repo
+        location: config/knowledge/show_preferences.json
+        note: Per-episode script can override raw booking data when present.
+  - show_slug: trauma-translator
+    show_name: Trauma Translator
+    client: Why Go Project
+    current_status: historical
+    confidence: medium
+    source_spreadsheet_id: 1RcG4m4gL3e5Hyl11S0Cv02nKGW9D0rjTH2EemelqKhc
+    source_spreadsheet_title: The Trauma Translator Outline
+    source_tabs:
+      - Outline
+      - Content Strategy
+      - Content Plan
+    repository_path: null
+    evidence:
+      - source: spreadsheet
+        location: Outline!A1:N6
+        note: Outline tracks guest and solo episodes, LinkedIn event links, StreamYard links, and a Spotify field.
+      - source: spreadsheet
+        location: "'Content Strategy'!A1:F10"
+        note: Strategy states Trauma Translator is a weekly Thursday livestream and long-form visibility engine.
+      - source: spreadsheet
+        location: "'Content Plan'!A1:F12"
+        note: Weekly engine includes guest/context post, livestream day, clips, and supporting insight posts.
+  - show_slug: alchemize-with-alanna
+    show_name: Alchemize with Alanna
+    client: Alanna
+    current_status: historical
+    confidence: medium
+    source_spreadsheet_id: 1MlMxZ8hScuJmMqRGe9kinuaXn4qs0yRu8TJEpajDA80
+    source_spreadsheet_title: Alchemize with Alanna Outline
+    source_tabs:
+      - Title/Topics/Guests
+      - Defining Alchemise with Alanna
+      - Content Strategy
+      - Competitor Analysis
+      - Content Editing/ Review
+      - Ideas Brain Dump
+      - Guests to Prioritize in the event of Cancelation
+    repository_path: null
+    evidence:
+      - source: spreadsheet
+        location: "'Title/Topics/Guests'!A1:J6"
+        note: Episode grid tracks host, guest, topics, CTA, and published state.
+      - source: spreadsheet
+        location: "'Defining Alchemise with Alanna'!A1:F10"
+        note: Show is positioned as a live and recorded thought-leadership engine for high-stakes leadership decisions.
+      - source: spreadsheet
+        location: "'Content Strategy'!A1:F12"
+        note: Monthly system uses two live shows, guest promotion, live day, clips, insight posts, and conversion posts.
+  - show_slug: apparel-with-purpose
+    show_name: Apparel with Purpose
+    client: Cherry Willow
+    current_status: active
+    confidence: high
+    source_spreadsheet_id: 11H7573VGrwM6Hvqg3nvyPYCpfO30KMhZNVnPb4l0djc
+    source_spreadsheet_title: Cherry Willow Livetsream
+    source_tabs:
+      - Sheet1
+    repository_path: data/discovery/cherry-willow_*.json
+    evidence:
+      - source: spreadsheet
+        location: Sheet1!A1:J6 and Sheet1!K6:L8
+        note: Outline tracks guest episodes, emailed guest state, LinkedIn event links, and StreamYard links.
+      - source: repo
+        location: data/discovery/cherry-willow_episodes.json
+        note: Discovery schedule shows monthly Tuesday episodes at 6:00 PM ET on 2026-07-21, 2026-08-18, and 2026-09-15.
+      - source: repo
+        location: config/knowledge/show_preferences.json
+        note: Current operating exceptions revolve around guest confirmation and replacement status.
+  - show_slug: beyond-the-cart
+    show_name: Beyond the Cart
+    client: OmniRocket LLC
+    current_status: active
+    confidence: high
+    source_spreadsheet_id: 1XxMIAQDxPFjW6sevsZ-Q-RpRIatJxNU6ffe1c6GSkyM
+    source_spreadsheet_title: OmniRocket Beyond The Cart Schedule Outline
+    source_tabs:
+      - Title/Topics/Guests
+      - Definition
+      - Content strategy
+      - Ideas Brain Dump
+      - CALENDAR COPY PASTE
+    repository_path: data/discovery/beyond-the-cart_*.json
+    evidence:
+      - source: spreadsheet
+        location: "'Title/Topics/Guests'!A1:J6"
+        note: Episode grid shows Tuesday PST recordings, guests, published state, and outreach status.
+      - source: spreadsheet
+        location: Definition!A1:F10 and "'Content strategy'!A1:F12"
+        note: Show is a biweekly live eCommerce growth show with guest promotion, clip reuse, and Spotify podcast CTA.
+      - source: repo
+        location: data/discovery/beyond-the-cart_episodes.json
+        note: Discovery schedule confirms biweekly Tuesday cadence in 2026.
+  - show_slug: fev-analytics
+    show_name: FEV Analytics
+    client: FEV Analytics
+    current_status: historical
+    confidence: low
+    source_spreadsheet_id: 1JWktgCww9BGYXyM3FJpD6fnN5GnqbAsMFdyzvUzlcDg
+    source_spreadsheet_title: FEV Analytics Outline
+    source_tabs:
+      - Guest Outline
+      - Strategy
+      - Content Plan
+      - Ideas
+    repository_path: null
+    evidence:
+      - source: spreadsheet
+        location: "'Guest Outline'!A1:J6"
+        note: Single visible sample row shows guest-based analytics episode planning with published and emailed guest fields.
+      - source: spreadsheet
+        location: metadata
+        note: Workbook includes strategy and content plan tabs, but only minimal episode evidence was needed for profile creation.
+  - show_slug: equity-spring-partners
+    show_name: Equity Spring Partners
+    client: Equity Spring Partners
+    current_status: historical
+    confidence: low
+    source_spreadsheet_id: 1QWq75_XoxT2TX-dAkcIaLHYKnxdO1BAKXFE_QsaK7aw
+    source_spreadsheet_title: Equity Spring Partners
+    source_tabs:
+      - Sheet1
+    repository_path: null
+    evidence:
+      - source: spreadsheet
+        location: Sheet1!A1:J6
+        note: Guest-based finance show uses episode title, topics, LinkedIn URLs, published state, and LinkedIn event links.
+  - show_slug: scale-smart-live
+    show_name: Scale Smart Live
+    client: OpsIQ
+    current_status: historical
+    confidence: medium
+    source_spreadsheet_id: 1UBZ7oS9IW0Mc0_nbv3EhiWvs2GTCVBBoTSrVmx5pPdw
+    source_spreadsheet_title: OpsIQ Show with Taja Outline
+    source_tabs:
+      - Title/Topics/Guests
+      - Strategy
+      - Content Plan
+      - Ideas Brain Dump
+    repository_path: null
+    evidence:
+      - source: spreadsheet
+        location: "'Title/Topics/Guests'!A1:J6"
+        note: Episode grid shows recurring Tuesday 5:00 PM ET live events, guests, LinkedIn event links, and some YouTube replay links.
+      - source: spreadsheet
+        location: Strategy!A1:F12
+        note: Strategy names the show Scale Smart Live and positions it as a biweekly operational-readiness thought-leadership engine.
+      - source: spreadsheet
+        location: "'Content Plan'!A1:F12"
+        note: Content plan includes promo, insight post, video clip, carousel/text post, and assessment CTA.
+  - show_slug: warm-blooded-founders
+    show_name: Warm Blooded Founders
+    client: Chris Sherrick
+    current_status: historical
+    confidence: low
+    source_spreadsheet_id: 1DpjmGp1mtr76PWP5XoonPbmvh9984OrkAuJfz9z_Uqc
+    source_spreadsheet_title: Chris Sherrick - Warm Blooded Founders
+    source_tabs:
+      - Sheet1
+    repository_path: null
+    evidence:
+      - source: spreadsheet
+        location: Sheet1!A1:J6
+        note: Guest-based founder show tracks title, topics, guest LinkedIn URL, StreamYard link, and published state.
+  - show_slug: driving-impact-for-manufacturers-live
+    show_name: Driving Impact for Manufacturers Live
+    client: NWIRC
+    current_status: historical
+    confidence: low
+    source_spreadsheet_id: 1UN9_caAWtFqpsnY5tc1kkHRAfuZBYt9fGc8Qa2I84Rs
+    source_spreadsheet_title: NWIRC
+    source_tabs:
+      - Sheet1
+    repository_path: null
+    evidence:
+      - source: spreadsheet
+        location: Sheet1!A1:J6
+        note: Episodes use Robin Teller as host, include LinkedIn and YouTube event links, and show a manufacturing/automation theme.
+  - show_slug: flex-pilates
+    show_name: Flex Pilates
+    client: Flex Pilates
+    current_status: historical
+    confidence: low
+    source_spreadsheet_id: 1UlJZaOPNLKzErojf0dkfnRXMWOxRLoz_sp6S2uK-3Us
+    source_spreadsheet_title: Flex Pilates Outline
+    source_tabs:
+      - Sheet1
+    repository_path: null
+    evidence:
+      - source: spreadsheet
+        location: Sheet1!A1:J6
+        note: Wellness show uses host Mari, guest planning, published state, and YouTube replay links.
+  - show_slug: the-david-daily-show
+    show_name: The David Daily Show
+    client: David Daily
+    current_status: active
+    confidence: high
+    source_spreadsheet_id: 1odwvWVKQJDQ9i74aRXFx4rArSAKqPCj3T6VximU0ZpI
+    source_spreadsheet_title: The David Daily Show - OUTLINE - 2026 TDDS OPERATIONS
+    source_tabs:
+      - TDDS
+      - EPISODE FILES
+      - Strategy
+      - TDDS Breakdown
+      - Content Strategy
+      - RESOURCES
+    repository_path: data/discovery/david-daily_*.json
+    evidence:
+      - source: spreadsheet
+        location: TDDS!A1:N6
+        note: Main sheet tracks episode plan, guest, published state, and a five-email sequence including post-production email.
+      - source: repo
+        location: data/discovery/david-daily_episodes.json
+        note: Discovery schedule shows weekly Thursday 10:45 AM ET pre-show slots beginning 2026-08-06.
+      - source: repo
+        location: config/shows.json
+        note: Core config states Thursday 11:00 AM ET live time with 10:45 AM ET pre-show.
+  - show_slug: winsday
+    show_name: WinsDay
+    client: Reveting
+    current_status: active
+    confidence: high
+    source_spreadsheet_id: 1SjRcZfOB2Gv8G0eG87UTsfp6Tf706HiMcDpWOvjYLSs
+    source_spreadsheet_title: WinsDay Guests
+    source_tabs:
+      - Event Info
+      - Strategy (what it is and isn't)
+      - Content Plan
+      - Sheet4
+    repository_path: data/discovery/winsday_*.json
+    evidence:
+      - source: spreadsheet
+        location: "'Event Info'!A1:N6"
+        note: Outline tracks two guests, Guru of the Week, event links for Facebook/LinkedIn/YouTube, StreamYard links, and email state.
+      - source: repo
+        location: data/discovery/winsday_episodes.json
+        note: Discovery episodes show recurring two-guest Wednesday 8:00 PM ET scheduling.
+      - source: repo
+        location: config/operations_rules.json and config/knowledge/show_preferences.json
+        note: Current SOP is LinkedIn-first, StreamYard-backed, multi-guest, and includes Hannah email cadence.
+  - show_slug: breach-of-protocol
+    show_name: Breach of Protocol
+    client: Ridgeback Network Defense
+    current_status: active
+    confidence: high
+    source_spreadsheet_id: null
+    source_spreadsheet_title: null
+    source_tabs: []
+    repository_path: clients/ridgeback-network-defense
+    evidence:
+      - source: repo
+        location: clients/ridgeback-network-defense/client-profile.yaml
+        note: Ridgeback client profile declares Breach of Protocol as a Friday 3:00 PM ET editorial-first show.
+      - source: repo
+        location: clients/ridgeback-network-defense/operations/weekly-workflow.md
+        note: Weekly workflow defines replay, event post, company post, Friday reminders, and replay distribution.
+      - source: repo
+        location: config/operations_rules.json and config/knowledge/show_preferences.json
+        note: Show is approval-gated, editorial-first, recurring-host, and does not use guest booking as the readiness source of truth.
