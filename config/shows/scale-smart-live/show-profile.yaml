@@ -1,0 +1,101 @@
+show:
+  name: Scale Smart Live
+  slug: scale-smart-live
+  client: OpsIQ
+  status: historical
+  description: Biweekly operational-readiness show for founders preparing to scale, raise capital, or withstand growth pressure.
+  source_spreadsheet_id: 1UBZ7oS9IW0Mc0_nbv3EhiWvs2GTCVBBoTSrVmx5pPdw
+  source_tabs: [Title/Topics/Guests, Strategy, Content Plan, Ideas Brain Dump]
+  repository_path: null
+  confidence: medium
+schedule:
+  cadence: biweekly
+  day_of_week: Tuesday
+  live_time: 5:00 PM
+  timezone: America/New_York
+  seasonality: late-2025 biweekly sequence in workbook
+  notes: The strategy tab explicitly names Scale Smart Live as the thought-leadership engine behind OpsIQ.
+people:
+  hosts: [Taja Graham]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: unknown
+  calendar_invite_required: unknown
+  streamyard_required: unknown
+  event_creation_required: true
+  recording_required: true
+  replay_required: true
+  approval_required: true
+publishing_channels:
+  linkedin_event: required
+  linkedin_company_page: optional
+  linkedin_host_profiles: optional
+  spotify: unknown
+  youtube: required
+  podcast_distribution: unknown
+  website: optional
+  newsletter: unknown
+  blog: unknown
+  shorts: required
+repurposing:
+  clips: {status: required, expected_quantity: 1-2}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: optional}
+  quote_graphics: {status: optional}
+  carousel: {status: optional}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: Reveting
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: Reveting
+definition_of_done:
+  episode: [Guest confirmed, LinkedIn event live, replay destination ready, assessment CTA aligned, clip published]
+  weekly_cycle: [Show-week promo and clip cycle complete, off-week assessment content published]
+  season: [Biweekly readiness positioning stays intact without drifting into generic founder advice]
+health_scoring:
+  included_categories: [planning, publishing, repurposing, metadata, guest_records, automation]
+  excluded_categories: []
+  notes: Assessment CTA and operational-readiness positioning are part of the show's real operating model.
+evidence:
+  - claim: The episode grid shows recurring Tuesday 5:00 PM ET guest events and some YouTube replay links.
+    source: spreadsheet
+    location: "'Title/Topics/Guests'!A1:J6"
+    confidence: high
+  - claim: OpsIQ's strategy names the show Scale Smart Live and frames it as a biweekly thought-leadership engine.
+    source: spreadsheet
+    location: Strategy!A1:F12
+    confidence: high
+  - claim: The content plan expects promo, insight, clip, and assessment CTA posts.
+    source: spreadsheet
+    location: "'Content Plan'!A1:F12"
+    confidence: high
+unknowns: [Current podcast distribution, exact event-creation tooling, named client approver]

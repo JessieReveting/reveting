@@ -1,0 +1,101 @@
+show:
+  name: Apparel with Purpose
+  slug: apparel-with-purpose
+  client: Cherry Willow
+  status: active
+  description: Monthly guest-based Cherry Willow livestream focused on purpose-driven impact stories across sport, community, and social good.
+  source_spreadsheet_id: 11H7573VGrwM6Hvqg3nvyPYCpfO30KMhZNVnPb4l0djc
+  source_tabs: [Sheet1]
+  repository_path: data/discovery/cherry-willow_*.json
+  confidence: high
+schedule:
+  cadence: monthly
+  day_of_week: Tuesday
+  live_time: 6:00 PM
+  timezone: America/New_York
+  seasonality: monthly 2026 schedule visible in discovery data
+  notes: Known near-term workflow risk is guest confirmation and replacement follow-up.
+people:
+  hosts: [Matt Fogarty]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: true
+  calendar_invite_required: unknown
+  streamyard_required: true
+  event_creation_required: true
+  recording_required: true
+  replay_required: true
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: required
+  linkedin_company_page: optional
+  linkedin_host_profiles: optional
+  spotify: unknown
+  youtube: unknown
+  podcast_distribution: unknown
+  website: unknown
+  newsletter: unknown
+  blog: unknown
+  shorts: optional
+repurposing:
+  clips: {status: optional, expected_quantity: unknown}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: optional}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: unknown
+  company: unknown
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: unknown
+  bio: unknown
+  headshot: unknown
+  assistant_or_pr_contact: unknown
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: Reveting
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: Reveting
+definition_of_done:
+  episode: [Guest confirmed, guest email sent, LinkedIn event live, StreamYard link ready, published state updated]
+  weekly_cycle: [Next monthly guest confirmed, current episode assets updated, readiness exceptions resolved]
+  season: [Monthly queue maintained and guest replacement risks resolved before live week]
+health_scoring:
+  included_categories: [planning, publishing, repurposing, metadata, guest_records, automation]
+  excluded_categories: []
+  notes: Guest replacement and guest-confirmation states are part of this show's real operating model.
+evidence:
+  - claim: The workbook tracks guest episodes, emailed guest state, LinkedIn events, and StreamYard links.
+    source: spreadsheet
+    location: Sheet1!A1:J6 and Sheet1!K6:L8
+    confidence: high
+  - claim: The current schedule is monthly on Tuesdays at 6:00 PM ET.
+    source: repo
+    location: data/discovery/cherry-willow_episodes.json
+    confidence: high
+  - claim: Current operating logic includes guest confirmation and replacement follow-up states.
+    source: repo
+    location: config/knowledge/show_preferences.json
+    confidence: high
+unknowns: [Current replay destinations, exact guest form fields, named client approver]

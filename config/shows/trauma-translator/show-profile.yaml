@@ -1,0 +1,101 @@
+show:
+  name: Trauma Translator
+  slug: trauma-translator
+  client: Why Go Project
+  status: historical
+  description: Weekly trauma-informed livestream and content engine translating healing, behavior, and nervous-system concepts into practical language.
+  source_spreadsheet_id: 1RcG4m4gL3e5Hyl11S0Cv02nKGW9D0rjTH2EemelqKhc
+  source_tabs: [Outline, Content Strategy, Content Plan]
+  repository_path: null
+  confidence: medium
+schedule:
+  cadence: weekly
+  day_of_week: Thursday
+  live_time: unknown
+  timezone: America/New_York
+  seasonality: workbook shows late-2025 to early-2026 weekly operation
+  notes: Show supports both guest episodes and Lauren-led solo episodes.
+people:
+  hosts: [Lauren Friedman]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: optional
+  booking_form_required: unknown
+  calendar_invite_required: unknown
+  streamyard_required: true
+  event_creation_required: true
+  recording_required: true
+  replay_required: true
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: required
+  linkedin_company_page: optional
+  linkedin_host_profiles: optional
+  spotify: optional
+  youtube: unknown
+  podcast_distribution: optional
+  website: optional
+  newsletter: unknown
+  blog: unknown
+  shorts: required
+repurposing:
+  clips: {status: required, expected_quantity: 2-4}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: required, expected_quantity: 3-4}
+  replay_post: {status: optional}
+  quote_graphics: {status: optional}
+  carousel: {status: optional}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: optional}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: [guest_profile_or_solo_flag]
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: Reveting
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: Reveting
+definition_of_done:
+  episode: [Episode framed, livestream created, StreamYard ready, guest or solo status confirmed, replay clip selected]
+  weekly_cycle: [Thursday live completed, one high-impact clip published, supporting context posts published]
+  season: [Weekly visibility system stays consistent and aligned with trauma-translation positioning]
+health_scoring:
+  included_categories: [planning, publishing, repurposing, metadata, guest_records, automation]
+  excluded_categories: []
+  notes: Guest-record checks should not fail solo episodes when the workbook explicitly marks SOLO.
+evidence:
+  - claim: The workbook tracks LinkedIn events, StreamYard links, Spotify, and guest or solo episode state.
+    source: spreadsheet
+    location: Outline!A1:N6
+    confidence: high
+  - claim: Trauma Translator is a weekly Thursday livestream and broader visibility engine.
+    source: spreadsheet
+    location: "'Content Strategy'!A1:F10"
+    confidence: high
+  - claim: The weekly content engine depends on clips and supporting posts after each livestream.
+    source: spreadsheet
+    location: "'Content Plan'!A1:F12"
+    confidence: high
+unknowns: [Current live time, current platform mix beyond LinkedIn and StreamYard, whether the show is paused or permanently concluded]

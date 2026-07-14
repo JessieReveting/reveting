@@ -1,0 +1,101 @@
+show:
+  name: The David Daily Show
+  slug: the-david-daily-show
+  client: David Daily
+  status: active
+  description: Weekly guest-based business and technology livestream built around David Goecke interviews and a structured email-driven production flow.
+  source_spreadsheet_id: 1odwvWVKQJDQ9i74aRXFx4rArSAKqPCj3T6VximU0ZpI
+  source_tabs: [TDDS, EPISODE FILES, Strategy, TDDS Breakdown, Content Strategy, RESOURCES]
+  repository_path: data/discovery/david-daily_*.json
+  confidence: high
+schedule:
+  cadence: weekly
+  day_of_week: Thursday
+  live_time: 11:00 AM
+  timezone: America/New_York
+  seasonality: rolling weekly schedule in discovery data
+  notes: Core config uses a 10:45 AM ET pre-show and a 60-minute episode block.
+people:
+  hosts: [David Goecke]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: true
+  calendar_invite_required: unknown
+  streamyard_required: unknown
+  event_creation_required: unknown
+  recording_required: true
+  replay_required: true
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: optional
+  linkedin_company_page: required
+  linkedin_host_profiles: optional
+  spotify: unknown
+  youtube: unknown
+  podcast_distribution: unknown
+  website: unknown
+  newsletter: unknown
+  blog: unknown
+  shorts: optional
+repurposing:
+  clips: {status: optional, expected_quantity: unknown}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: optional}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: Reveting
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: Reveting
+definition_of_done:
+  episode: [Guest confirmed, outline row complete, five-email sequence advanced as needed, live episode recorded, published status updated]
+  weekly_cycle: [Next Thursday guest ready, email follow-up sequence maintained, replay and metadata fields complete]
+  season: [Weekly schedule stays filled and the guest production sequence remains current]
+health_scoring:
+  included_categories: [planning, publishing, repurposing, metadata, guest_records, automation]
+  excluded_categories: []
+  notes: Email-sequence completeness is a real show-specific readiness signal for TDDS.
+evidence:
+  - claim: The TDDS workbook tracks episode planning plus Email 1 through Email 5 including post-production.
+    source: spreadsheet
+    location: TDDS!A1:N6
+    confidence: high
+  - claim: Current discovery data shows weekly Thursday pre-show slots beginning on 2026-08-06.
+    source: repo
+    location: data/discovery/david-daily_episodes.json
+    confidence: high
+  - claim: Core show config sets a Thursday 11:00 AM ET live time and 10:45 AM ET pre-show.
+    source: repo
+    location: config/shows.json
+    confidence: high
+unknowns: [Current replay destinations, current LinkedIn event usage, named client approver]

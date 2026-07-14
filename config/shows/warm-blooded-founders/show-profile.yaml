@@ -1,0 +1,93 @@
+show:
+  name: Warm Blooded Founders
+  slug: warm-blooded-founders
+  client: Chris Sherrick
+  status: historical
+  description: Founder interview show centered on authenticity, mindset, leadership, and the human side of growth.
+  source_spreadsheet_id: 1DpjmGp1mtr76PWP5XoonPbmvh9984OrkAuJfz9z_Uqc
+  source_tabs: [Sheet1]
+  repository_path: null
+  confidence: low
+schedule:
+  cadence: biweekly
+  day_of_week: Tuesday
+  live_time: 8:00 PM
+  timezone: America/New_York
+  seasonality: visible 2025 cadence across February to April
+  notes: Evidence is limited to the main outline tab.
+people:
+  hosts: [Chris Sherrick]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: unknown
+  calendar_invite_required: unknown
+  streamyard_required: true
+  event_creation_required: unknown
+  recording_required: true
+  replay_required: unknown
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: unknown
+  linkedin_company_page: optional
+  linkedin_host_profiles: optional
+  spotify: unknown
+  youtube: unknown
+  podcast_distribution: unknown
+  website: unknown
+  newsletter: unknown
+  blog: unknown
+  shorts: unknown
+repurposing:
+  clips: {status: unknown, expected_quantity: unknown}
+  company_posts: {status: unknown, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: unknown}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: unknown}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: unknown
+  production: Reveting
+  editing: Reveting
+  social_copy: unknown
+  design: unknown
+  scheduling: Reveting
+  publishing: unknown
+  reporting: unknown
+definition_of_done:
+  episode: [Guest booked, topics finalized, StreamYard ready, published flag updated]
+  weekly_cycle: [Biweekly guest pipeline maintained]
+  season: [Sufficient evidence gathered before any restart or automation]
+health_scoring:
+  included_categories: [planning, metadata, guest_records]
+  excluded_categories: [publishing, repurposing, automation]
+  notes: This profile stays intentionally conservative because only the outline tab was sampled.
+evidence:
+  - claim: The workbook tracks founder-focused guest episodes, guest LinkedIn URLs, StreamYard links, and published state.
+    source: spreadsheet
+    location: Sheet1!A1:J6
+    confidence: high
+unknowns: [Event destinations, replay workflow, repurposing system, current status beyond historical inference]

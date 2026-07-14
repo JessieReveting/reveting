@@ -1,0 +1,101 @@
+show:
+  name: Deconstructing Data
+  slug: deconstructing-data
+  client: BDEX
+  status: active
+  description: Weekly BDEX livestream built around guest interviews on data, analytics, AI, and operating strategy.
+  source_spreadsheet_id: 1WGaQSNQsEIywwKu0_UWsakaxMDs1O4IXSmdZ1tlVTJQ
+  source_tabs: [Event Details, What BDEX is, Social Schedule]
+  repository_path: data/discovery/deconstructing-data_*.json
+  confidence: high
+schedule:
+  cadence: weekly
+  day_of_week: Thursday
+  live_time: 4:15 PM
+  timezone: America/New_York
+  seasonality: rolling weekly schedule in discovery data
+  notes: Calendar and discovery data use a 4:00 PM ET pre-show with livestream beginning at 4:15 PM ET.
+people:
+  hosts: [Jessie Lizak, David]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: true
+  calendar_invite_required: true
+  streamyard_required: true
+  event_creation_required: true
+  recording_required: true
+  replay_required: true
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: required
+  linkedin_company_page: optional
+  linkedin_host_profiles: optional
+  spotify: required
+  youtube: optional
+  podcast_distribution: required
+  website: unknown
+  newsletter: unknown
+  blog: unknown
+  shorts: optional
+repurposing:
+  clips: {status: optional, expected_quantity: unknown}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: optional}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: unknown
+  company: unknown
+  email: required
+  phone: unknown
+  linkedin_url: required
+  website: unknown
+  bio: unknown
+  headshot: unknown
+  assistant_or_pr_contact: unknown
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: Reveting
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: Reveting
+definition_of_done:
+  episode: [Guest confirmed, calendar invite exists, StreamYard link exists, LinkedIn event exists, recording captured, replay destinations updated]
+  weekly_cycle: [Next guest row planned, current episode run live, replay assets linked, metadata fields complete]
+  season: [Rolling episode queue maintained, discovery data stays current, health audit passes without unresolved readiness gaps]
+health_scoring:
+  included_categories: [planning, publishing, repurposing, metadata, guest_records, automation]
+  excluded_categories: []
+  notes: Treat the pre-show timing rule and episode script override as show-specific audit logic.
+evidence:
+  - claim: Deconstructing Data uses guest, event, Spotify, download, and StreamYard fields in its operating sheet.
+    source: spreadsheet
+    location: "'Event Details '!A1:N8"
+    confidence: high
+  - claim: The current schedule runs weekly on Thursdays with 4:00 PM ET pre-show starts.
+    source: repo
+    location: data/discovery/deconstructing-data_episodes.json
+    confidence: high
+  - claim: Episode scripts can override raw booking details when available.
+    source: repo
+    location: config/knowledge/show_preferences.json
+    confidence: high
+unknowns: [Named client approver, exact repurposing volume targets, whether newsletter or blog outputs are current requirements]

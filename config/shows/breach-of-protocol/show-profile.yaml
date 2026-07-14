@@ -1,0 +1,101 @@
+show:
+  name: Breach of Protocol
+  slug: breach-of-protocol
+  client: Ridgeback Network Defense
+  status: active
+  description: Editorial-first Ridgeback livestream and content engine built from approved cybersecurity story packages rather than guest-booking records.
+  source_spreadsheet_id: null
+  source_tabs: []
+  repository_path: clients/ridgeback-network-defense
+  confidence: high
+schedule:
+  cadence: weekly
+  day_of_week: Friday
+  live_time: 3:00 PM
+  timezone: America/New_York
+  seasonality: active weekly season mapped through episode 77 in the Ridgeback framework
+  notes: Use a 2:45 PM ET pre-show and keep final assets blocked until the story package is approved.
+people:
+  hosts: [Steven Oliphant, Samuel Kushner, Thomas Phillips]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: false
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: false
+  booking_form_required: false
+  calendar_invite_required: false
+  streamyard_required: true
+  event_creation_required: true
+  recording_required: true
+  replay_required: true
+  approval_required: true
+publishing_channels:
+  linkedin_event: required
+  linkedin_company_page: required
+  linkedin_host_profiles: optional
+  spotify: unknown
+  youtube: required
+  podcast_distribution: unknown
+  website: optional
+  newsletter: not_used
+  blog: unknown
+  shorts: required
+repurposing:
+  clips: {status: required, expected_quantity: unknown}
+  company_posts: {status: required, expected_quantity: 3-4}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: required}
+  quote_graphics: {status: required}
+  carousel: {status: optional}
+  poll: {status: optional}
+  newsletter: {status: not_used}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: not_used
+  title: not_used
+  company: not_used
+  email: not_used
+  phone: not_used
+  linkedin_url: not_used
+  website: not_used
+  bio: not_used
+  headshot: not_used
+  assistant_or_pr_contact: not_used
+  release_or_permission: not_used
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: not_used
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: Reveting
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: Reveting
+definition_of_done:
+  episode: [Story package approved, episode brief locked, LinkedIn event published, StreamYard ready, live show completed, replay and clips distributed]
+  weekly_cycle: [Previous replay insight posted, Wednesday event post live, Thursday company post live, Friday reminders and replay published]
+  season: [Approved editorial pipeline maintained across the weekly episode queue without breaking the story-approval gate]
+health_scoring:
+  included_categories: [planning, publishing, repurposing, metadata, automation]
+  excluded_categories: [guest_records]
+  notes: Breach of Protocol should be scored as an editorial workflow, not a guest-booking workflow.
+evidence:
+  - claim: Ridgeback's client profile defines Breach of Protocol as a Friday 3:00 PM ET editorial-first show with recurring hosts.
+    source: repo
+    location: clients/ridgeback-network-defense/client-profile.yaml
+    confidence: high
+  - claim: The weekly workflow includes replay, event post, Thursday company post, Friday reminders, and replay distribution.
+    source: repo
+    location: clients/ridgeback-network-defense/operations/weekly-workflow.md
+    confidence: high
+  - claim: The source-of-truth model is approved news story then episode brief, with final assets gated by human approval.
+    source: repo
+    location: config/operations_rules.json and config/knowledge/show_preferences.json
+    confidence: high
+unknowns: [Current podcast distribution requirements, named client approver, exact clip count target]

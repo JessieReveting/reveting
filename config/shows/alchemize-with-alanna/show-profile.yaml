@@ -1,0 +1,101 @@
+show:
+  name: Alchemize with Alanna
+  slug: alchemize-with-alanna
+  client: Alanna
+  status: historical
+  description: Twice-monthly live thought-leadership show for leaders navigating hard decisions, tension, and high-stakes conversations.
+  source_spreadsheet_id: 1MlMxZ8hScuJmMqRGe9kinuaXn4qs0yRu8TJEpajDA80
+  source_tabs: [Title/Topics/Guests, Defining Alchemise with Alanna, Content Strategy, Competitor Analysis, Content Editing/ Review, Ideas Brain Dump, Guests to Prioritize in the event of Cancelation]
+  repository_path: null
+  confidence: medium
+schedule:
+  cadence: twice monthly
+  day_of_week: mostly Tuesday
+  live_time: 8:00 PM
+  timezone: America/New_York
+  seasonality: workbook shows late-2025 operating cadence with irregular spacing
+  notes: Strategy explicitly calls for two live shows per month plus supporting conversion content.
+people:
+  hosts: [Alanna]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: Alanna
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: unknown
+  calendar_invite_required: unknown
+  streamyard_required: unknown
+  event_creation_required: unknown
+  recording_required: true
+  replay_required: true
+  approval_required: true
+publishing_channels:
+  linkedin_event: unknown
+  linkedin_company_page: required
+  linkedin_host_profiles: optional
+  spotify: unknown
+  youtube: unknown
+  podcast_distribution: unknown
+  website: optional
+  newsletter: unknown
+  blog: unknown
+  shorts: required
+repurposing:
+  clips: {status: required, expected_quantity: 2}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: required, expected_quantity: 3-4}
+  replay_post: {status: optional}
+  quote_graphics: {status: optional}
+  carousel: {status: optional}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: [client_feedback_notes]
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: Reveting
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: Reveting
+definition_of_done:
+  episode: [Guest confirmed, decision-focused episode framing complete, live recording produced, two clips selected, conversion CTA aligned]
+  weekly_cycle: [Show-week promotion runs, post-show insights and clips publish, conversion post closes the cycle]
+  season: [Two monthly live shows remain aligned with Alanna's advisory positioning]
+health_scoring:
+  included_categories: [planning, publishing, repurposing, metadata, guest_records, automation]
+  excluded_categories: []
+  notes: Conversion content matters, but the show should still be scored as a trust-first thought-leadership engine.
+evidence:
+  - claim: The main outline tracks host, guest, topics, CTA, and published state.
+    source: spreadsheet
+    location: "'Title/Topics/Guests'!A1:J6"
+    confidence: high
+  - claim: The show is a live and recorded thought-leadership engine rather than direct promotional content.
+    source: spreadsheet
+    location: "'Defining Alchemise with Alanna'!A1:F10"
+    confidence: high
+  - claim: The monthly content system uses two live shows, clips, insight posts, and conversion moments.
+    source: spreadsheet
+    location: "'Content Strategy'!A1:F12"
+    confidence: high
+unknowns: [Current destination platforms, current live-event tooling, named publishing destination beyond company-page CTA]

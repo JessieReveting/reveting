@@ -1,0 +1,93 @@
+show:
+  name: Equity Spring Partners
+  slug: equity-spring-partners
+  client: Equity Spring Partners
+  status: historical
+  description: Guest-based finance and growth show centered on board-level operating, cash, AI, and business-scaling topics.
+  source_spreadsheet_id: 1QWq75_XoxT2TX-dAkcIaLHYKnxdO1BAKXFE_QsaK7aw
+  source_tabs: [Sheet1]
+  repository_path: null
+  confidence: low
+schedule:
+  cadence: biweekly
+  day_of_week: Monday
+  live_time: unknown
+  timezone: America/New_York
+  seasonality: late-2025 operating run visible in workbook
+  notes: Schedule inference comes from visible October to December 2025 spacing.
+people:
+  hosts: [Bill Dillmeier]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: unknown
+  calendar_invite_required: unknown
+  streamyard_required: unknown
+  event_creation_required: true
+  recording_required: true
+  replay_required: unknown
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: required
+  linkedin_company_page: optional
+  linkedin_host_profiles: optional
+  spotify: unknown
+  youtube: unknown
+  podcast_distribution: unknown
+  website: unknown
+  newsletter: unknown
+  blog: unknown
+  shorts: unknown
+repurposing:
+  clips: {status: unknown, expected_quantity: unknown}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: optional}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: unknown
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: unknown
+definition_of_done:
+  episode: [Guest confirmed, episode topics finalized, LinkedIn event live, published state updated]
+  weekly_cycle: [Biweekly guest and event pipeline maintained]
+  season: [Operating rhythm documented before any reactivation]
+health_scoring:
+  included_categories: [planning, publishing, metadata, guest_records]
+  excluded_categories: [repurposing, automation]
+  notes: LinkedIn-event evidence is strong; broader repurposing evidence is not.
+evidence:
+  - claim: The workbook tracks guest topics, published state, and LinkedIn event links.
+    source: spreadsheet
+    location: Sheet1!A1:J6
+    confidence: high
+unknowns: [Actual show title beyond workbook name, live time, repurposing workflow, current replay destinations]

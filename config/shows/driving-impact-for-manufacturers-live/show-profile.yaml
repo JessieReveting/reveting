@@ -1,0 +1,93 @@
+show:
+  name: Driving Impact for Manufacturers Live
+  slug: driving-impact-for-manufacturers-live
+  client: NWIRC
+  status: historical
+  description: Manufacturing and automation interview show led by Robin Teller with LinkedIn Live and YouTube replay evidence.
+  source_spreadsheet_id: 1UN9_caAWtFqpsnY5tc1kkHRAfuZBYt9fGc8Qa2I84Rs
+  source_tabs: [Sheet1]
+  repository_path: null
+  confidence: low
+schedule:
+  cadence: biweekly
+  day_of_week: Wednesday
+  live_time: unknown
+  timezone: America/New_York
+  seasonality: visible February to March operating sequence
+  notes: Workbook title names the client; show title is inferred from episode naming.
+people:
+  hosts: [Robin Teller]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: unknown
+  calendar_invite_required: unknown
+  streamyard_required: unknown
+  event_creation_required: true
+  recording_required: true
+  replay_required: true
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: required
+  linkedin_company_page: optional
+  linkedin_host_profiles: optional
+  spotify: unknown
+  youtube: required
+  podcast_distribution: unknown
+  website: unknown
+  newsletter: unknown
+  blog: unknown
+  shorts: optional
+repurposing:
+  clips: {status: optional, expected_quantity: unknown}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: optional}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: unknown
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: unknown
+definition_of_done:
+  episode: [Guest booked, LinkedIn live scheduled, YouTube replay destination ready, published state updated]
+  weekly_cycle: [Biweekly manufacturing topic and guest pipeline maintained]
+  season: [Show title and positioning confirmed before any reactivation]
+health_scoring:
+  included_categories: [planning, publishing, metadata, guest_records]
+  excluded_categories: [repurposing, automation]
+  notes: LinkedIn and YouTube are the clearest destination evidence.
+evidence:
+  - claim: Visible episode rows use Robin Teller as host and include LinkedIn and YouTube event links.
+    source: spreadsheet
+    location: Sheet1!A1:J6
+    confidence: high
+unknowns: [Official show title, live time, repurposing requirements, whether streamyard was required]

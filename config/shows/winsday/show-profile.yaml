@@ -1,0 +1,101 @@
+show:
+  name: WinsDay
+  slug: winsday
+  client: Reveting
+  status: active
+  description: Weekly multi-guest livestream and podcast built around two distinct guests, LinkedIn-first production, and cross-platform live distribution.
+  source_spreadsheet_id: 1SjRcZfOB2Gv8G0eG87UTsfp6Tf706HiMcDpWOvjYLSs
+  source_tabs: [Event Info, Strategy (what it is and isn't), Content Plan, Sheet4]
+  repository_path: data/discovery/winsday_*.json
+  confidence: high
+schedule:
+  cadence: weekly
+  day_of_week: Wednesday
+  live_time: 8:00 PM
+  timezone: America/New_York
+  seasonality: rolling weekly schedule in discovery data
+  notes: Final production should stay blocked until two distinct confirmed guests exist unless Jessie approves a solo-guest exception.
+people:
+  hosts: [Jessie Lizak]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: Jessie Lizak
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: true
+  calendar_invite_required: true
+  streamyard_required: true
+  event_creation_required: true
+  recording_required: true
+  replay_required: true
+  approval_required: true
+publishing_channels:
+  linkedin_event: required
+  linkedin_company_page: optional
+  linkedin_host_profiles: optional
+  spotify: optional
+  youtube: required
+  podcast_distribution: optional
+  website: unknown
+  newsletter: required
+  blog: unknown
+  shorts: optional
+repurposing:
+  clips: {status: optional, expected_quantity: unknown}
+  company_posts: {status: optional, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: optional}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: optional}
+  newsletter: {status: required}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: optional
+  linkedin_url: required
+  website: optional
+  bio: optional
+  headshot: optional
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: [guru_of_the_week, promotion_commitment, live_show_acknowledgement]
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: Reveting
+  production: Reveting
+  editing: Reveting
+  social_copy: Reveting
+  design: Reveting
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: Reveting
+definition_of_done:
+  episode: [Two distinct guests confirmed or override approved, LinkedIn event created first, StreamYard destinations ready, calendar updated, Hannah emails handled, live links published]
+  weekly_cycle: [Next guest pair ready, current week event live, destination links complete, newsletter and reminders sent]
+  season: [Weekly two-guest pipeline sustained and readiness exceptions explicitly documented]
+health_scoring:
+  included_categories: [planning, publishing, repurposing, metadata, guest_records, automation]
+  excluded_categories: []
+  notes: WinsDay is the only current multi-guest show and should be audited with a distinct-guest readiness rule.
+evidence:
+  - claim: WinsDay tracks two guests, Guru of the Week, multi-destination event links, StreamYard links, and guest email state.
+    source: spreadsheet
+    location: "'Event Info'!A1:N6"
+    confidence: high
+  - claim: Discovery data shows weekly Wednesday 8:00 PM ET scheduling with multiple guest slots.
+    source: repo
+    location: data/discovery/winsday_episodes.json
+    confidence: high
+  - claim: Current SOP is LinkedIn-first, StreamYard-backed, multi-guest, and uses Hannah email cadence.
+    source: repo
+    location: config/operations_rules.json and config/knowledge/show_preferences.json
+    confidence: high
+unknowns: [Exact clip quantity expectations, current Spotify publishing requirement, named owner of the newsletter send]

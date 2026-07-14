@@ -1,0 +1,113 @@
+shows:
+  - slug: deconstructing-data
+    show_name: Deconstructing Data
+    client: BDEX
+    source_spreadsheet_id: 1WGaQSNQsEIywwKu0_UWsakaxMDs1O4IXSmdZ1tlVTJQ
+    source_tab_names: [Event Details, What BDEX is, Social Schedule]
+    repository_path: data/discovery/deconstructing-data_*.json
+    current_status: active
+    confidence_level: high
+  - slug: trauma-translator
+    show_name: Trauma Translator
+    client: Why Go Project
+    source_spreadsheet_id: 1RcG4m4gL3e5Hyl11S0Cv02nKGW9D0rjTH2EemelqKhc
+    source_tab_names: [Outline, Content Strategy, Content Plan]
+    repository_path: null
+    current_status: historical
+    confidence_level: medium
+  - slug: alchemize-with-alanna
+    show_name: Alchemize with Alanna
+    client: Alanna
+    source_spreadsheet_id: 1MlMxZ8hScuJmMqRGe9kinuaXn4qs0yRu8TJEpajDA80
+    source_tab_names: [Title/Topics/Guests, Defining Alchemise with Alanna, Content Strategy, Competitor Analysis, Content Editing/ Review, Ideas Brain Dump, Guests to Prioritize in the event of Cancelation]
+    repository_path: null
+    current_status: historical
+    confidence_level: medium
+  - slug: apparel-with-purpose
+    show_name: Apparel with Purpose
+    client: Cherry Willow
+    source_spreadsheet_id: 11H7573VGrwM6Hvqg3nvyPYCpfO30KMhZNVnPb4l0djc
+    source_tab_names: [Sheet1]
+    repository_path: data/discovery/cherry-willow_*.json
+    current_status: active
+    confidence_level: high
+  - slug: beyond-the-cart
+    show_name: Beyond the Cart
+    client: OmniRocket LLC
+    source_spreadsheet_id: 1XxMIAQDxPFjW6sevsZ-Q-RpRIatJxNU6ffe1c6GSkyM
+    source_tab_names: [Title/Topics/Guests, Definition, Content strategy, Ideas Brain Dump, CALENDAR COPY PASTE]
+    repository_path: data/discovery/beyond-the-cart_*.json
+    current_status: active
+    confidence_level: high
+  - slug: fev-analytics
+    show_name: FEV Analytics
+    client: FEV Analytics
+    source_spreadsheet_id: 1JWktgCww9BGYXyM3FJpD6fnN5GnqbAsMFdyzvUzlcDg
+    source_tab_names: [Guest Outline, Strategy, Content Plan, Ideas]
+    repository_path: null
+    current_status: historical
+    confidence_level: low
+  - slug: equity-spring-partners
+    show_name: Equity Spring Partners
+    client: Equity Spring Partners
+    source_spreadsheet_id: 1QWq75_XoxT2TX-dAkcIaLHYKnxdO1BAKXFE_QsaK7aw
+    source_tab_names: [Sheet1]
+    repository_path: null
+    current_status: historical
+    confidence_level: low
+  - slug: scale-smart-live
+    show_name: Scale Smart Live
+    client: OpsIQ
+    source_spreadsheet_id: 1UBZ7oS9IW0Mc0_nbv3EhiWvs2GTCVBBoTSrVmx5pPdw
+    source_tab_names: [Title/Topics/Guests, Strategy, Content Plan, Ideas Brain Dump]
+    repository_path: null
+    current_status: historical
+    confidence_level: medium
+  - slug: warm-blooded-founders
+    show_name: Warm Blooded Founders
+    client: Chris Sherrick
+    source_spreadsheet_id: 1DpjmGp1mtr76PWP5XoonPbmvh9984OrkAuJfz9z_Uqc
+    source_tab_names: [Sheet1]
+    repository_path: null
+    current_status: historical
+    confidence_level: low
+  - slug: driving-impact-for-manufacturers-live
+    show_name: Driving Impact for Manufacturers Live
+    client: NWIRC
+    source_spreadsheet_id: 1UN9_caAWtFqpsnY5tc1kkHRAfuZBYt9fGc8Qa2I84Rs
+    source_tab_names: [Sheet1]
+    repository_path: null
+    current_status: historical
+    confidence_level: low
+  - slug: flex-pilates
+    show_name: Flex Pilates
+    client: Flex Pilates
+    source_spreadsheet_id: 1UlJZaOPNLKzErojf0dkfnRXMWOxRLoz_sp6S2uK-3Us
+    source_tab_names: [Sheet1]
+    repository_path: null
+    current_status: historical
+    confidence_level: low
+  - slug: the-david-daily-show
+    show_name: The David Daily Show
+    client: David Daily
+    source_spreadsheet_id: 1odwvWVKQJDQ9i74aRXFx4rArSAKqPCj3T6VximU0ZpI
+    source_tab_names: [TDDS, EPISODE FILES, Strategy, TDDS Breakdown, Content Strategy, RESOURCES]
+    repository_path: data/discovery/david-daily_*.json
+    current_status: active
+    confidence_level: high
+  - slug: winsday
+    show_name: WinsDay
+    client: Reveting
+    source_spreadsheet_id: 1SjRcZfOB2Gv8G0eG87UTsfp6Tf706HiMcDpWOvjYLSs
+    source_tab_names: [Event Info, Strategy (what it is and isn't), Content Plan, Sheet4]
+    repository_path: data/discovery/winsday_*.json
+    current_status: active
+    confidence_level: high
+  - slug: breach-of-protocol
+    show_name: Breach of Protocol
+    client: Ridgeback Network Defense
+    source_spreadsheet_id: null
+    source_tab_names: []
+    repository_path: clients/ridgeback-network-defense
+    current_status: active
+    confidence_level: high

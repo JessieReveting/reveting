@@ -1,0 +1,93 @@
+show:
+  name: Flex Pilates
+  slug: flex-pilates
+  client: Flex Pilates
+  status: historical
+  description: Wellness and movement interview show built around host Mari and YouTube replay publishing.
+  source_spreadsheet_id: 1UlJZaOPNLKzErojf0dkfnRXMWOxRLoz_sp6S2uK-3Us
+  source_tabs: [Sheet1]
+  repository_path: null
+  confidence: low
+schedule:
+  cadence: weekly
+  day_of_week: Thursday
+  live_time: unknown
+  timezone: America/New_York
+  seasonality: visible February to April 2026 sequence
+  notes: Several rows omit guest metadata but keep YouTube replay links.
+people:
+  hosts: [Mari]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: optional
+  booking_form_required: unknown
+  calendar_invite_required: unknown
+  streamyard_required: unknown
+  event_creation_required: unknown
+  recording_required: true
+  replay_required: true
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: unknown
+  linkedin_company_page: unknown
+  linkedin_host_profiles: optional
+  spotify: not_used
+  youtube: required
+  podcast_distribution: not_used
+  website: unknown
+  newsletter: unknown
+  blog: unknown
+  shorts: optional
+repurposing:
+  clips: {status: optional, expected_quantity: unknown}
+  company_posts: {status: unknown, expected_quantity: unknown}
+  host_posts: {status: optional, expected_quantity: unknown}
+  replay_post: {status: required}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: optional}
+guest_requirements:
+  name: optional
+  title: optional
+  company: optional
+  email: unknown
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: unknown
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: unknown
+  production: Reveting
+  editing: Reveting
+  social_copy: unknown
+  design: unknown
+  scheduling: Reveting
+  publishing: Reveting
+  reporting: unknown
+definition_of_done:
+  episode: [Topic finalized, recording completed, YouTube replay link captured, published status updated]
+  weekly_cycle: [Wellness episode cadence maintained with replay publishing]
+  season: [Destination and booking requirements confirmed before any restart]
+health_scoring:
+  included_categories: [planning, publishing, metadata]
+  excluded_categories: [guest_records, repurposing, automation]
+  notes: Guest-record scoring should stay light because some visible rows appear solo or partially filled.
+evidence:
+  - claim: The workbook uses Mari as host and consistently includes YouTube replay links.
+    source: spreadsheet
+    location: Sheet1!A1:J6
+    confidence: high
+unknowns: [Live-event channel before replay, guest booking requirements, broader repurposing workflow]

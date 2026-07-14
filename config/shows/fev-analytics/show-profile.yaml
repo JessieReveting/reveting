@@ -1,0 +1,93 @@
+show:
+  name: FEV Analytics
+  slug: fev-analytics
+  client: FEV Analytics
+  status: historical
+  description: Guest-based analytics and private-markets thought-leadership show with limited surviving episode evidence.
+  source_spreadsheet_id: 1JWktgCww9BGYXyM3FJpD6fnN5GnqbAsMFdyzvUzlcDg
+  source_tabs: [Guest Outline, Strategy, Content Plan, Ideas]
+  repository_path: null
+  confidence: low
+schedule:
+  cadence: unknown
+  day_of_week: unknown
+  live_time: unknown
+  timezone: America/New_York
+  seasonality: only one sample episode was needed for profile creation
+  notes: Minimal workbook sampling was intentionally used to conserve reads.
+people:
+  hosts: [Sheridan Porter]
+  recurring_cohosts: []
+  producer: Reveting producer
+  client_approver: unknown
+  guest_based: true
+episode_workflow:
+  future_episode_planning_required: true
+  guest_booking_required: true
+  booking_form_required: unknown
+  calendar_invite_required: unknown
+  streamyard_required: unknown
+  event_creation_required: unknown
+  recording_required: true
+  replay_required: unknown
+  approval_required: unknown
+publishing_channels:
+  linkedin_event: unknown
+  linkedin_company_page: unknown
+  linkedin_host_profiles: unknown
+  spotify: unknown
+  youtube: unknown
+  podcast_distribution: unknown
+  website: unknown
+  newsletter: unknown
+  blog: unknown
+  shorts: unknown
+repurposing:
+  clips: {status: unknown, expected_quantity: unknown}
+  company_posts: {status: unknown, expected_quantity: unknown}
+  host_posts: {status: unknown, expected_quantity: unknown}
+  replay_post: {status: unknown}
+  quote_graphics: {status: unknown}
+  carousel: {status: unknown}
+  poll: {status: unknown}
+  newsletter: {status: unknown}
+  blog: {status: unknown}
+  transcript_archive: {status: unknown}
+guest_requirements:
+  name: required
+  title: optional
+  company: optional
+  email: required
+  phone: unknown
+  linkedin_url: optional
+  website: optional
+  bio: optional
+  headshot: unknown
+  assistant_or_pr_contact: optional
+  release_or_permission: unknown
+  other_fields: []
+ownership:
+  planning: Reveting
+  guest_booking: Reveting
+  event_creation: unknown
+  production: Reveting
+  editing: Reveting
+  social_copy: unknown
+  design: unknown
+  scheduling: Reveting
+  publishing: unknown
+  reporting: unknown
+definition_of_done:
+  episode: [Guest outline row complete, guest confirmed, published status updated]
+  weekly_cycle: [Enough evidence not available to define a stronger recurring cycle]
+  season: [Use additional workbook reads before reviving this operating model]
+health_scoring:
+  included_categories: [planning, metadata, guest_records]
+  excluded_categories: [publishing, repurposing, automation]
+  notes: This profile is intentionally conservative because only one sample episode row was used.
+evidence:
+  - claim: The workbook tracks guest episode planning, published state, emailed guests, and an event-link field.
+    source: spreadsheet
+    location: "'Guest Outline'!A1:J6"
+    confidence: medium
+unknowns: [Cadence, live destinations, replay workflow, repurposing requirements, current status beyond historical inference]
