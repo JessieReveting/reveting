@@ -1,0 +1,18 @@
+client:
+  name: Ridgeback Network Defense
+  slug: ridgeback-network-defense
+  website: https://ridgebacknet.com
+  brand_summary: Ridgeback helps organizations regain the initiative in cyber conflict through preemptive defense, automated attack interdiction, and active attack disruption.
+show:
+  name: Breach of Protocol
+  slug: breach-of-protocol
+  format: editorial_first
+  publish_day: Friday
+  live_time_et: "3:00 PM"
+  hosts:
+    - Steven Oliphant
+    - Samuel Kushner
+    - Thomas Phillips
+strategy:
+  central_thesis: Cybersecurity should impose cost, uncertainty, and disadvantage on attackers before they can act successfully.
+  primary_cta: Speak with Ridgeback about preemptive defense.

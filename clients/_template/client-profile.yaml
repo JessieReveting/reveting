@@ -1,0 +1,15 @@
+client:
+  name: Client Name
+  slug: client-slug
+  website: https://example.com
+  brand_summary: One-sentence description of the client's market position.
+show:
+  name: Show Name
+  slug: show-slug
+  format: editorial_first
+  publish_day: Friday
+  live_time_et: "3:00 PM"
+  hosts: []
+strategy:
+  central_thesis: Replace with the client's durable strategic point of view.
+  primary_cta: Replace with the default call to action.
