@@ -9,10 +9,15 @@ Example:
 from __future__ import annotations
 
 import argparse
+import json
+import subprocess
 from pathlib import Path
 from typing import Any
 
-import yaml
+try:
+    import yaml  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - environment fallback
+    yaml = None
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -26,6 +31,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_yaml(path: Path) -> Any:
+    if yaml is None:
+        result = subprocess.run(
+            ["ruby", "-e", "require 'yaml'; require 'json'; print JSON.generate(YAML.load_file(ARGV[0]))", str(path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return json.loads(result.stdout)
     with path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle)
 
@@ -69,6 +82,8 @@ def main() -> None:
     episode_files = sorted(episodes_dir.glob("episode-*/episode.yaml"))
     if not episode_files:
         fail("No episode YAML files found.")
+    seen_episode_numbers: set[int] = set()
+    seen_titles: set[str] = set()
     for path in episode_files:
         episode = load_yaml(path)
         required_fields = ["episode_number", "recording_date", "working_title", "hosts", "published", "status"]
@@ -77,6 +92,17 @@ def main() -> None:
             fail(f"{path}: missing fields {missing}")
         if not episode.get("hosts"):
             fail(f"{path}: hosts list cannot be empty.")
+        episode_number = int(episode["episode_number"])
+        if episode_number in seen_episode_numbers:
+            fail(f"{path}: duplicate episode_number {episode_number}.")
+        seen_episode_numbers.add(episode_number)
+        title = str(episode["working_title"]).strip()
+        if title in seen_titles:
+            fail(f"{path}: duplicate working_title {title!r}.")
+        seen_titles.add(title)
+        public_topics = episode.get("public_topics") or []
+        if len(public_topics) != 3:
+            fail(f"{path}: expected exactly 3 durable public_topics, found {len(public_topics)}.")
         validate_status(episode["status"]["episode_status"], episode_status, "episode_status", str(path))
         validate_status(episode["status"]["repurposing_status"], repurposing_status, "repurposing_status", str(path))
 

@@ -1,0 +1,26 @@
+episode_number: 63
+show_slug: breach-of-protocol
+recording_date: 2026-09-04
+published: false
+working_title: Cloud Concentration and the Cost of Shared Failure | Breach of Protocol Episode 63
+strategic_theme: How platform concentration changes the scale and consequence of cyber risk.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - How platform concentration changes the scale and consequence of security failure across many organizations at once
+  - What defenders often overlook when critical workloads depend on a small number of cloud and software providers
+  - How leaders can think about dependency risk without pretending they can eliminate shared exposure entirely
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

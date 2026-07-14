@@ -1,0 +1,26 @@
+episode_number: 68
+show_slug: breach-of-protocol
+recording_date: 2026-10-09
+published: false
+working_title: The Economics of Friction in Cyber Defense | Breach of Protocol Episode 68
+strategic_theme: How cost, uncertainty, and friction shape adversary behavior and defensive advantage.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - How small increases in attacker cost and uncertainty can create outsized defensive advantage
+  - Why adversary economics matter when evaluating whether a control meaningfully changes behavior
+  - How security leaders can design friction that disrupts campaigns without overwhelming their own teams
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

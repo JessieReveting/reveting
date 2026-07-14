@@ -1,0 +1,26 @@
+episode_number: 77
+show_slug: breach-of-protocol
+recording_date: 2026-12-11
+published: false
+working_title: What Comes After Perimeter Thinking | Breach of Protocol Episode 77
+strategic_theme: How future defensive models must evolve beyond perimeter-era assumptions.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - Why modern defense models must move beyond perimeter-era assumptions about trust, control, and observation
+  - What future defensive architectures will require when attackers operate across identity, cloud, software, and partner layers
+  - How leaders can prepare teams for a security model built around contested systems rather than static boundaries
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

@@ -1,0 +1,26 @@
+episode_number: 62
+show_slug: breach-of-protocol
+recording_date: 2026-08-28
+published: false
+working_title: Ransomware as an Operating Model | Breach of Protocol Episode 62
+strategic_theme: Why ransomware succeeds as a disciplined business model and what that means for defense.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - How ransomware campaigns behave like disciplined business operations rather than isolated technical incidents
+  - What recurring patterns reveal about extortion leverage, partner ecosystems, and attacker efficiency
+  - How defenders can raise cost and reduce freedom of action before encryption or public exposure occurs
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

@@ -1,0 +1,26 @@
+episode_number: 59
+show_slug: breach-of-protocol
+recording_date: 2026-08-07
+published: false
+working_title: When Security Metrics Reward the Wrong Behavior | Breach of Protocol Episode 59
+strategic_theme: Why measurement systems can distort security behavior instead of improving readiness.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - Which common security metrics create false confidence instead of better decisions
+  - How measurement frameworks can pull teams toward activity instead of defensive outcomes
+  - What executives and CISOs should track if they want a truer picture of readiness
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

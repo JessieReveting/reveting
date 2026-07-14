@@ -1,0 +1,26 @@
+episode_number: 58
+show_slug: breach-of-protocol
+recording_date: 2026-07-31
+published: false
+working_title: The Window Between Discovery and Damage | Breach of Protocol Episode 58
+strategic_theme: How time gaps between access, detection, and response create preventable advantage for attackers.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - How attackers exploit the time between initial access, detection, and meaningful defensive action
+  - What leaders misunderstand about the speed of damage once a foothold is established
+  - How organizations can shorten the path from signal to strategic intervention
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

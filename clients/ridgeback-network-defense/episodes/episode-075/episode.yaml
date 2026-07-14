@@ -1,0 +1,26 @@
+episode_number: 75
+show_slug: breach-of-protocol
+recording_date: 2026-11-27
+published: false
+working_title: Trust Boundaries in a Platform-Dependent World | Breach of Protocol Episode 75
+strategic_theme: How platform dependence and inherited trust reshape enterprise exposure.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - How modern organizations inherit trust assumptions from platforms, integrations, and identity brokers they do not fully control
+  - What platform dependence reveals about hidden concentration risk, administrative exposure, and recovery complexity
+  - How security leaders can redraw trust boundaries when business operations depend on external ecosystems
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

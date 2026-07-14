@@ -36,6 +36,86 @@ workbook:
           recording_date: 2026-07-24
           published: false
           working_title: When Trust Becomes the Attack Surface | Breach of Protocol Episode 57
+        - episode_number: 58
+          recording_date: 2026-07-31
+          published: false
+          working_title: The Window Between Discovery and Damage | Breach of Protocol Episode 58
+        - episode_number: 59
+          recording_date: 2026-08-07
+          published: false
+          working_title: When Security Metrics Reward the Wrong Behavior | Breach of Protocol Episode 59
+        - episode_number: 60
+          recording_date: 2026-08-14
+          published: false
+          working_title: Resilience Before the Breach Becomes Recovery | Breach of Protocol Episode 60
+        - episode_number: 61
+          recording_date: 2026-08-21
+          published: false
+          working_title: What Boards Need to Hear Before the Incident | Breach of Protocol Episode 61
+        - episode_number: 62
+          recording_date: 2026-08-28
+          published: false
+          working_title: Ransomware as an Operating Model | Breach of Protocol Episode 62
+        - episode_number: 63
+          recording_date: 2026-09-04
+          published: false
+          working_title: Cloud Concentration and the Cost of Shared Failure | Breach of Protocol Episode 63
+        - episode_number: 64
+          recording_date: 2026-09-11
+          published: false
+          working_title: What Automation Should Decide and What Humans Must Own | Breach of Protocol Episode 64
+        - episode_number: 65
+          recording_date: 2026-09-18
+          published: false
+          working_title: Security Architecture for Adversaries Who Adapt | Breach of Protocol Episode 65
+        - episode_number: 66
+          recording_date: 2026-09-25
+          published: false
+          working_title: Third-Party Risk After the Questionnaire | Breach of Protocol Episode 66
+        - episode_number: 67
+          recording_date: 2026-10-02
+          published: false
+          working_title: When Identity Becomes Infrastructure | Breach of Protocol Episode 67
+        - episode_number: 68
+          recording_date: 2026-10-09
+          published: false
+          working_title: The Economics of Friction in Cyber Defense | Breach of Protocol Episode 68
+        - episode_number: 69
+          recording_date: 2026-10-16
+          published: false
+          working_title: Critical Infrastructure and Cascading Cyber Risk | Breach of Protocol Episode 69
+        - episode_number: 70
+          recording_date: 2026-10-23
+          published: false
+          working_title: How Fast Is Fast Enough in Vulnerability Defense? | Breach of Protocol Episode 70
+        - episode_number: 71
+          recording_date: 2026-10-30
+          published: false
+          working_title: Incident Ready Is Not Strategically Ready | Breach of Protocol Episode 71
+        - episode_number: 72
+          recording_date: 2026-11-06
+          published: false
+          working_title: Machine-Speed Conflict and the Human Decisions That Matter | Breach of Protocol Episode 72
+        - episode_number: 73
+          recording_date: 2026-11-13
+          published: false
+          working_title: Active Defense Without Operational Chaos | Breach of Protocol Episode 73
+        - episode_number: 74
+          recording_date: 2026-11-20
+          published: false
+          working_title: How to Read a Threat Week Without Chasing Headlines | Breach of Protocol Episode 74
+        - episode_number: 75
+          recording_date: 2026-11-27
+          published: false
+          working_title: Trust Boundaries in a Platform-Dependent World | Breach of Protocol Episode 75
+        - episode_number: 76
+          recording_date: 2026-12-04
+          published: false
+          working_title: Designing Security Programs for Adversaries, Not Auditors | Breach of Protocol Episode 76
+        - episode_number: 77
+          recording_date: 2026-12-11
+          published: false
+          working_title: What Comes After Perimeter Thinking | Breach of Protocol Episode 77
     - name: Ridgeback
       purpose: Strategic narrative, audiences, content pillars, editorial guardrails, and CTAs.
       maintained_from: clients/ridgeback-network-defense/strategy/

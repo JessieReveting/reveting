@@ -15,7 +15,7 @@ public_topics:
   - How organizations can move from detection-first thinking toward preemptive defense
 breaking_threat_brief:
   status: pending
-  prompt: Select the most important cyberattack, vulnerability, AI development, or security story of the week.
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
 links:
   event: ""
   spotify: ""

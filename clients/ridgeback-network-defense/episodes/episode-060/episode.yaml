@@ -1,0 +1,26 @@
+episode_number: 60
+show_slug: breach-of-protocol
+recording_date: 2026-08-14
+published: false
+working_title: Resilience Before the Breach Becomes Recovery | Breach of Protocol Episode 60
+strategic_theme: Why resilience depends on decisions made before disruption, not only on recovery plans after it.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - Why resilience begins long before an organization activates disaster-recovery plans
+  - What separates operational continuity from security theater during a real crisis
+  - How leaders can build recovery capability without accepting preventable disruption as inevitable
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

@@ -11,13 +11,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import yaml
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
+try:
+    import yaml  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - environment fallback
+    yaml = None
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -47,6 +49,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_yaml(path: Path) -> Any:
+    if yaml is None:
+        result = subprocess.run(
+            ["ruby", "-e", "require 'yaml'; require 'json'; print JSON.generate(YAML.load_file(ARGV[0]))", str(path)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return json.loads(result.stdout)
     with path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle)
 
@@ -206,6 +216,9 @@ def build_payload(manifest: dict[str, Any], workbook_content: dict[str, Any], ep
 
 
 def get_service(service_account_path: str):
+    from google.oauth2 import service_account
+    from googleapiclient.discovery import build
+
     credentials = service_account.Credentials.from_service_account_file(service_account_path, scopes=SCOPES)
     return build("sheets", "v4", credentials=credentials)
 

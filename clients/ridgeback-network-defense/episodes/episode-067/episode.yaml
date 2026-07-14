@@ -1,0 +1,26 @@
+episode_number: 67
+show_slug: breach-of-protocol
+recording_date: 2026-10-02
+published: false
+working_title: When Identity Becomes Infrastructure | Breach of Protocol Episode 67
+strategic_theme: How identity has become a core dependency layer for enterprise security and failure.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - How identity systems have become operational infrastructure rather than just access-control tooling
+  - What trusted identities, privileged pathways, and federated access reveal about systemic security dependence
+  - How leaders can reduce concentration of trust before identity failure becomes enterprise-wide failure
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started

@@ -1,0 +1,26 @@
+episode_number: 69
+show_slug: breach-of-protocol
+recording_date: 2026-10-16
+published: false
+working_title: Critical Infrastructure and Cascading Cyber Risk | Breach of Protocol Episode 69
+strategic_theme: Why cyber risk in critical infrastructure must be treated as interconnected systems risk.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - Why cyber risk in critical infrastructure must be understood as a cascading systems problem, not a single-network problem
+  - What trusted operational dependencies reveal about outage, safety, and public-consequence exposure
+  - How leaders can prioritize defensive decisions when continuity matters as much as confidentiality or theft prevention
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, ransomware campaign, AI development, government action, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started
