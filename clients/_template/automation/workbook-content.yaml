@@ -1,0 +1,43 @@
+ridgeback_tab:
+  title: Client Content Strategy
+  sections:
+    - section: Overview
+      details: Replace with the client's positioning summary.
+  content_pillars:
+    - pillar: Pillar Name
+      purpose: Why this pillar exists.
+      core_audience: Who this pillar serves.
+      sample_topics:
+        - Topic example one
+      cta: Approved CTA
+      formats:
+        - Text post
+social_schedule_tab:
+  title: Show Social Publishing System
+  workbook_purpose: Replace with the purpose of this client's publishing dashboard.
+  rows:
+    - day: Monday
+      content_slot: Previous clip or replay insight
+      goal: Extend the life of the previous episode.
+      focus: Pull forward one durable takeaway.
+      suggested_formats:
+        - Short clip
+      content_pillar: Replace me
+      platform: LinkedIn
+      owner: Internal team
+      asset_needed: Clip and caption
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+  event_publishing_strategy:
+    - rule: Title strategy
+      guidance: Replace with durable title guidance.
+  status_standards:
+    episode_status:
+      - Idea
+      - Planned
+    content_status:
+      - Not Started
+      - Drafting

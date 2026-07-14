@@ -1,0 +1,312 @@
+ridgeback_tab:
+  title: Ridgeback Network Defense Content Strategy
+  sections:
+    - section: Ridgeback Network Defense Overview
+      details: Ridgeback Network Defense focuses on cyber strategy, preemptive defense, automated attack interdiction, and active attack disruption. Its central position is that cybersecurity should impose cost, uncertainty, and disadvantage on attackers before they can act successfully. Ridgeback helps organizations regain the initiative instead of waiting for alerts, incidents, or successful compromise.
+    - section: Core Strategic Narrative
+      details: Traditional cybersecurity programs are often designed around detection, containment, and response. Ridgeback's point of view is that defenders should act earlier. AI is accelerating the tempo of cyber conflict, compressing attacker timelines and exposing the limits of defensive architectures built for a slower era. Ridgeback content should help executives, boards, CISOs, operators, and security teams understand how to move from reactive defense toward preemptive action.
+    - section: Primary Audiences
+      details: |-
+        CEOs and executive leadership
+        Corporate boards
+        CISOs and security leaders
+        Security architects and operators
+        SOC leaders and analysts
+        Critical infrastructure organizations
+        Government and regulated enterprises
+        Cybersecurity strategists and practitioners
+    - section: Voice and Editorial Direction
+      details: |-
+        Strategic
+        Direct
+        Intelligent
+        Credible
+        Clear enough for executives
+        Substantive enough for practitioners
+        Focused on strategy rather than product promotion
+        Willing to challenge conventional cybersecurity assumptions
+    - section: Avoid
+      details: |-
+        Generic fear-based cybersecurity content
+        Overly technical jargon without strategic context
+        Empty AI commentary
+        Vendor-heavy promotional language
+        Claims that one technology solves every security problem
+    - section: Commercial Bridge
+      details: Content should lead audiences toward understanding Ridgeback's approach without turning every post into a sales pitch. Use CTAs such as Follow Ridgeback Network Defense, Watch Breach of Protocol, Join the live discussion, Share the issue with your security leadership team, Evaluate where your organization enters the defensive timeline, and Speak with Ridgeback about preemptive defense.
+  content_pillars:
+    - pillar: Cyber Strategy and Leadership
+      purpose: Help leaders understand the strategic cost of staying reactive.
+      core_audience: CEOs, boards, CISOs
+      sample_topics:
+        - Why speed matters in cyber conflict
+        - How leaders measure defensive initiative
+        - What the board should ask about preemptive security
+      cta: Share the issue with your security leadership team
+      formats:
+        - Executive post
+        - Carousel
+        - Board memo
+        - Short video
+    - pillar: Preemptive Defense
+      purpose: Explain how organizations can act before attackers complete their objectives.
+      core_audience: CISOs, security architects, operators
+      sample_topics:
+        - Detection-first blind spots
+        - Early intervention models
+        - Preemptive control design
+      cta: Evaluate where your organization enters the defensive timeline
+      formats:
+        - Framework post
+        - Clip
+        - Technical explainer
+        - Live discussion teaser
+    - pillar: Automated Attack Interdiction
+      purpose: Show how automation can disrupt attacker progress earlier and more consistently.
+      core_audience: Security leaders, SOC teams, architects
+      sample_topics:
+        - Automating attacker friction
+        - Response speed vs interdiction speed
+        - Operationalizing machine-speed defense
+      cta: Speak with Ridgeback about preemptive defense
+      formats:
+        - Diagram post
+        - How-it-works article
+        - Show segment
+        - Clip
+    - pillar: Active Attack Disruption
+      purpose: Translate active disruption into defensible strategic action, not hype.
+      core_audience: CISOs, practitioners, regulated enterprises
+      sample_topics:
+        - Disrupting attacker paths
+        - Reducing attacker freedom of movement
+        - Operational thresholds for disruption
+      cta: Join the live discussion
+      formats:
+        - Text post
+        - Panel prompt
+        - Clip
+        - Q&A graphic
+    - pillar: AI and the Changing Tempo of Conflict
+      purpose: Interpret AI-driven acceleration without generic futurism.
+      core_audience: Executives, CISOs, strategists
+      sample_topics:
+        - Compressed attacker timelines
+        - AI-enabled reconnaissance and exploitation
+        - What changes when speed becomes the advantage
+      cta: Watch Breach of Protocol
+      formats:
+        - Thought-leadership post
+        - Newsletter
+        - Clip
+        - Event copy
+    - pillar: Board-to-SOC Strategic Alignment
+      purpose: Connect executive risk language to operator reality.
+      core_audience: Boards, CEOs, CISOs, SOC leaders
+      sample_topics:
+        - Board questions that help operators
+        - How SOC metrics support strategy
+        - Closing the strategy-to-operations gap
+      cta: Share the issue with your security leadership team
+      formats:
+        - Carousel
+        - Memo
+        - Roundtable topic
+        - Company-page post
+    - pillar: Current Cyber Threat Analysis
+      purpose: Use current incidents as evidence for strategic lessons.
+      core_audience: Security practitioners, analysts, leaders
+      sample_topics:
+        - What recent attacks reveal about timing
+        - What supply-chain incidents expose
+        - Why trusted access becomes weaponized
+      cta: Follow Ridgeback Network Defense
+      formats:
+        - Breaking brief
+        - Replay insight
+        - Newsletter recap
+        - Live event teaser
+    - pillar: Breach of Protocol Episodes and Clips
+      purpose: Turn each episode into a repeatable engine of strategic content.
+      core_audience: Entire Ridgeback audience mix
+      sample_topics:
+        - Episode takeaways
+        - Clip series themes
+        - Replay insights
+        - Host quotes
+      cta: Watch Breach of Protocol
+      formats:
+        - LinkedIn Live event
+        - Replay post
+        - Short clips
+        - Quote graphic
+social_schedule_tab:
+  title: Breach of Protocol Social Publishing System
+  workbook_purpose: This tab is the operational publishing dashboard for Ridgeback. Build the week around durable strategic themes, then update the Breaking Threat Brief shortly before Friday's show.
+  rows:
+    - day: Monday
+      content_slot: Previous Breach of Protocol clip or replay insight
+      goal: Extend the life of the previous episode.
+      focus: Pull forward one durable strategic takeaway from the last show.
+      suggested_formats:
+        - Short clip
+        - Replay insight post
+        - Quote graphic
+      content_pillar: Breach of Protocol Episodes and Clips
+      platform: LinkedIn
+      owner: Reveting + Ridgeback
+      asset_needed: Clip, caption, replay link
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+    - day: Tuesday
+      content_slot: Scott Fogarty thought-leadership post
+      goal: Advance Ridgeback's strategic point of view.
+      focus: Cyber strategy, leadership, preemptive defense, or the changing tempo of conflict.
+      suggested_formats:
+        - Text post
+        - Carousel
+        - Framework post
+      content_pillar: Cyber Strategy and Leadership
+      platform: LinkedIn personal profile
+      owner: Scott Fogarty
+      asset_needed: Draft copy, optional graphic
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+    - day: Wednesday
+      content_slot: Upcoming Breach of Protocol event post
+      goal: Publish the durable strategic theme for Friday's show.
+      focus: Promote the strategic issue, planned angles, and Breaking Threat Brief placeholder. Do not make the event dependent on one news story.
+      suggested_formats:
+        - LinkedIn event copy
+        - Company-page post
+        - Host teaser
+      content_pillar: Current Cyber Threat Analysis
+      platform: LinkedIn event + company page
+      owner: Reveting
+      asset_needed: Event copy, host notes, CTA
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+    - day: Thursday
+      content_slot: Educational or strategic company-page post
+      goal: Build context before the live discussion.
+      focus: Choose one framework or perspective that supports Friday's theme.
+      suggested_formats:
+        - Carousel
+        - Quote graphic
+        - Short clip
+        - Strategic framework
+        - Board or CISO perspective
+      content_pillar: Board-to-SOC Strategic Alignment
+      platform: LinkedIn company page
+      owner: Ridgeback marketing
+      asset_needed: Graphic or text draft
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+    - day: Friday
+      content_slot: Morning live-show reminder
+      goal: Drive attendance for the 3:00 PM Eastern show.
+      focus: Remind the audience of the strategic theme and why it matters now.
+      suggested_formats:
+        - Text post
+        - Reminder graphic
+      content_pillar: Breach of Protocol Episodes and Clips
+      platform: LinkedIn
+      owner: Hosts + company page
+      asset_needed: Reminder copy, event link
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+    - day: Friday
+      content_slot: Final live reminder and host engagement
+      goal: Convert last-minute viewers into live attendance.
+      focus: Use a short, direct reminder close to airtime.
+      suggested_formats:
+        - Text post
+        - Host comment thread
+      content_pillar: Breach of Protocol Episodes and Clips
+      platform: LinkedIn
+      owner: Hosts
+      asset_needed: Final reminder copy
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+    - day: Friday
+      content_slot: Post-live replay link when available
+      goal: Capture replay demand immediately after the show.
+      focus: Publish replay access and one high-value insight from the conversation.
+      suggested_formats:
+        - Replay post
+        - Clip-ready excerpt
+      content_pillar: Breach of Protocol Episodes and Clips
+      platform: LinkedIn
+      owner: Reveting + Ridgeback
+      asset_needed: Replay link, recap copy
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+    - day: Weekend / Optional
+      content_slot: Replay, poll, breaking cyber news, additional clip, or Scott commentary
+      goal: Extend reach or react to major news without breaking the core cadence.
+      focus: Use only when there is a strong follow-on angle or timely strategic commentary.
+      suggested_formats:
+        - Poll
+        - Additional clip
+        - Commentary post
+        - Replay post
+      content_pillar: Current Cyber Threat Analysis
+      platform: LinkedIn
+      owner: Reveting or Scott Fogarty
+      asset_needed: Optional asset pack
+      draft_status: Not Started
+      approval_status: Not Started
+      scheduled_date: ""
+      published_link: ""
+      repurposing_status: Not Started
+  event_publishing_strategy:
+    - rule: Title strategy
+      guidance: Use durable strategic themes rather than tying the event title entirely to one breaking-news story.
+    - rule: Description structure
+      guidance: Include one durable strategic issue, two or three planned discussion angles, and a clearly labeled Breaking Threat Brief section.
+    - rule: Breaking Threat Brief
+      guidance: Update shortly before the show based on the most important cyber news of the week.
+    - rule: Why this works
+      guidance: The event can be published several days in advance without becoming irrelevant if the weekly news cycle changes.
+  status_standards:
+    episode_status:
+      - Idea
+      - Planned
+      - Event Published
+      - Confirmed
+      - Recorded
+      - Editing
+      - Scheduled
+      - Published
+      - Repurposing
+      - Complete
+    content_status:
+      - Not Started
+      - Drafting
+      - Internal Review
+      - Client Review
+      - Approved
+      - Scheduled
+      - Published
+      - Needs Revision
