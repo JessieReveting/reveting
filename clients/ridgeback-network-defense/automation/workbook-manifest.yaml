@@ -1,0 +1,71 @@
+client:
+  name: Ridgeback Network Defense
+  slug: ridgeback-network-defense
+show:
+  name: Breach of Protocol
+  slug: breach-of-protocol
+workbook:
+  title: Ridgeback | Breach of Protocol OUTLINE
+  spreadsheet_id: 1qc8dG5EbIkDbyH_of0Ra2FuOzM_Ue8eB560X2CaghaI
+  spreadsheet_url: https://docs.google.com/spreadsheets/d/1qc8dG5EbIkDbyH_of0Ra2FuOzM_Ue8eB560X2CaghaI/edit?usp=sharing
+  role: Production dashboard for operators, marketers, and producers.
+  tabs:
+    - name: "Event Details "
+      purpose: Episode schedule, publishing links, and readiness tracking.
+      key_columns:
+        record_marker: A
+        recording_date: B
+        episode_number: C
+        working_title: D
+        topics: E
+        hosts: F
+        guest_name: G
+        guest_linkedin: H
+        published: I
+        event_link: J
+        calendar_invite_status: K
+        spotify_link: L
+        full_download_url: M
+        streamyard_link: N
+      seeded_episodes:
+        - episode_number: 56
+          recording_date: 2026-07-17
+          published: false
+          working_title: The Cost of Moving Second | Breach of Protocol Episode 56
+        - episode_number: 57
+          recording_date: 2026-07-24
+          published: false
+          working_title: When Trust Becomes the Attack Surface | Breach of Protocol Episode 57
+    - name: Ridgeback
+      purpose: Strategic narrative, audiences, content pillars, editorial guardrails, and CTAs.
+      maintained_from: clients/ridgeback-network-defense/strategy/
+    - name: Social Schedule
+      purpose: Weekly content cadence and publishing workflow tracker.
+      maintained_from: clients/ridgeback-network-defense/operations/
+  status_dropdowns:
+    episode_status:
+      - Idea
+      - Planned
+      - Event Published
+      - Confirmed
+      - Recorded
+      - Editing
+      - Scheduled
+      - Published
+      - Repurposing
+      - Complete
+    content_status:
+      - Not Started
+      - Drafting
+      - Internal Review
+      - Client Review
+      - Approved
+      - Scheduled
+      - Published
+      - Needs Revision
+    repurposing_status:
+      - Not Started
+      - Queued
+      - In Progress
+      - Published
+      - Complete
