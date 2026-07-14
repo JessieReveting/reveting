@@ -1,0 +1,26 @@
+episode_number: 57
+show_slug: breach-of-protocol
+recording_date: 2026-07-24
+published: false
+working_title: When Trust Becomes the Attack Surface | Breach of Protocol Episode 57
+strategic_theme: How trusted access, vendors, and platforms become operational leverage for attackers.
+hosts:
+  - Steven Oliphant
+  - Samuel Kushner
+  - Thomas Phillips
+guests: []
+public_topics:
+  - How trusted platforms, vendors, identities, and tools become pathways for attackers
+  - What current incidents reveal about supply-chain risk and enterprise trust assumptions
+  - How security leaders can reduce exposure before trusted access is weaponized
+breaking_threat_brief:
+  status: pending
+  prompt: Select the most important cyberattack, vulnerability, AI development, or security story of the week.
+links:
+  event: ""
+  spotify: ""
+  full_download: ""
+  streamyard: ""
+status:
+  episode_status: Planned
+  repurposing_status: Not Started
