@@ -1,0 +1,4 @@
+interface:
+  display_name: "StreamYard Event Automation"
+  short_description: "Route GHL bookings into live-show production"
+  default_prompt: "Use $streamyard-event-automation to process new GHL bookings into the master sheet, Google Calendar, and StreamYard."

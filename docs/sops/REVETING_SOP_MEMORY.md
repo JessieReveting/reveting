@@ -11,6 +11,9 @@ The full extracted text is kept locally under `docs/sops/source-text/` and ignor
 
 - `ww@reveting.com` is the single source of truth for Reveting livestream and podcast events.
 - Production Assistant owns daily booking monitoring, calendar accuracy, descriptions, correct show naming, and preservation of the original guest submission.
+- Distinguish Operations Tasks from Production Tasks.
+- Operations Tasks unblock production and should appear before Production Tasks in Operations Copilot queues.
+- Production Tasks create or update production assets and should not be generated prematurely when an Operations Task is still open.
 - Before touching a calendar event, confirm show timezone, channel stack, client outline link, standard duration, and pre-show timing from the Total Deliverables Document.
 - Never guess the channel stack or platform links.
 - Never email raw submitted guest topics and never add raw submitted guest topics directly to the calendar.
@@ -122,6 +125,17 @@ Every guest-facing email after event publication should include clear timing, St
 - If the script provides title, topics, StreamYard link, or timing, prefer the script over raw submitted HighLevel fields.
 - Check for obvious whitespace and punctuation issues before using script copy in guest-facing drafts.
 
+## WinsDay Multi-Guest Memory
+
+- WinsDay is currently the only multi-guest show in active operations.
+- WinsDay normally needs two distinct confirmed guests per episode.
+- If the same person appears twice in HighLevel for the same WinsDay date/time, do not count that as two guests.
+- Deduplicate by email first, then normalized full name, then LinkedIn URL if available.
+- If one person fills both slots, classify the episode as `Open Guest Slot / Needs Second Guest`.
+- Treat that state as `Blocked - Awaiting Second Guest`.
+- Do not generate final LinkedIn event copy, final calendar updates, or Hannah guest emails until the second distinct guest is confirmed, unless Jessie explicitly approves a solo-guest episode.
+- While WinsDay is waiting on the second guest, do not require LinkedIn, Facebook, YouTube, or other final destination links yet.
+
 ## Breach of Protocol Memory
 
 - Breach of Protocol is a first-class Ridgeback Network Defense show.
@@ -139,9 +153,30 @@ Every guest-facing email after event publication should include clear timing, St
 - Final production assets stay approval-gated until story approval.
 - Capture the Flag is its own production asset group and should be generated separately from the main run of show.
 - The show must emphasize engineering insight over headlines.
+- Use weekly cybersecurity news as evidence, but do not turn the public discussion topics into simple article headlines or CVE names.
+- The three public discussion topics should usually map to:
+- What changed in the threat landscape this week?
+- What defensive blind spot does this reveal?
+- What should security leaders do differently now?
+- Keep the episode strategic, not just reactive.
+- Make the discussion valuable to CISOs, CIOs, IT leaders, security engineers, MSPs, and business leaders.
+- Keep Ridgeback's Preemptive Security point of view present without making the episode feel like a product pitch.
 - Every story should answer:
 - Why does this matter?
 - What are defenders missing?
 - What should security leaders do differently?
 - What can organizations apply immediately?
 - Default CTA: Schedule a Technical Briefing at https://ridgebacknet.com and position Ridgeback's Preemptive Security approach as the recommended next step.
+
+### Episode 55 Approved Example
+
+- Date: Friday, July 10, 2026
+- Live: 3:00 PM ET
+- Episode number: 55
+- Hosts: Steven Oliphant, Samuel Kushner, Thomas Phillips
+- Approved working theme: When trusted systems, AI agents, remote access tools, and enterprise infrastructure become the attack surface.
+- Approved SEO title: AI Ransomware, Patch Speed & Hidden Enterprise Risk | Episode 55
+- Approved public discussion topics:
+- How AI-powered attacks and rapidly exploited vulnerabilities are changing enterprise risk
+- The hidden security blind spots created by trusted platforms, remote management tools, and critical infrastructure
+- Why reducing attacker time and strengthening defensive readiness matter more than ever

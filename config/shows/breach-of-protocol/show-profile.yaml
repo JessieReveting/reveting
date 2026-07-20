@@ -25,12 +25,23 @@ episode_workflow:
   future_episode_planning_required: true
   guest_booking_required: false
   booking_form_required: false
-  calendar_invite_required: false
+  calendar_invite_required: true
   streamyard_required: true
   event_creation_required: true
   recording_required: true
   replay_required: true
   approval_required: true
+calendar_invite:
+  template: calendar-invite-template.md
+  calendar_account: ww@reveting.com
+  event_title_format: Breach of Protocol Episode {episode_number}
+  pre_show_time: 2:45 PM
+  live_time: 3:00 PM
+  timezone: America/New_York
+  duration_minutes: 60
+  required_sections: [recording studio, episode title, topics, breaking threat brief sources, promo link, event links, timing note, closing]
+  weekly_variables: [episode_number, show_date, streamyard_url, episode_title, topics, breaking_threat_brief_sources, linkedin_url, youtube_url]
+  notes: Preserve the approved section order and wording. Refresh every weekly variable and URL; never carry a prior episode URL forward.
 publishing_channels:
   linkedin_event: required
   linkedin_company_page: required

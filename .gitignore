@@ -6,4 +6,5 @@ docs/sops/source-text/
 secrets/
 data/
 output/
+config/knowledge/streamyard_broadcasts.json
 .DS_Store

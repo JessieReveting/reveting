@@ -38,6 +38,8 @@ DEFAULT_KNOWLEDGE_DIR = REPO_ROOT / "config" / "knowledge"
 DEFAULT_GOOGLE_OAUTH_CLIENT_PATH = REPO_ROOT / "secrets" / "google-calendar-oauth-client.json"
 DEFAULT_GOOGLE_CALENDAR_WRITE_TOKEN_PATH = REPO_ROOT / "secrets" / "google-calendar-write-token.json"
 DEFAULT_GMAIL_DRAFT_TOKEN_PATH = REPO_ROOT / "secrets" / "gmail-draft-token.json"
+DEFAULT_GMAIL_AUDIT_TOKEN_PATH = REPO_ROOT / "secrets" / "gmail-audit-token.json"
+DEFAULT_GMAIL_SENT_EVIDENCE_PATH = DEFAULT_OUTPUT_DIR / "gmail_sent_evidence.json"
 DEFAULT_CALENDAR_ID = "ww@reveting.com"
 DEFAULT_PRESHOW_MINUTES = 15
 DEFAULT_TIME_TOLERANCE_MINUTES = 10
@@ -71,6 +73,8 @@ RAW_URL_RE = re.compile(r"https?://[^\s<>\")\]]+", re.IGNORECASE)
 LOCAL_TIMEZONE = ZoneInfo("America/New_York")
 DAILY_BRIEF_NEXT_DAYS = 7
 DAILY_BRIEF_REPLACEMENT_DAYS = 30
+DEFAULT_APPROVAL_QUEUE_WINDOW_DAYS = 14
+POST_PRODUCTION_EMAIL_AUDIT_DAYS = 30
 
 FALLBACK_REQUIRED_FIELD_KEYWORDS = {
     "guest email": ("email",),
@@ -159,6 +163,8 @@ COMPLETED_TASKS_DEFAULT = {
     "tasks": [],
 }
 COMPLETION_STATUSES = (
+    "Completed / Human Verified",
+    "Completed by Human - Verification Pending",
     "Completed and verified",
     "Completed but not verified",
     "Still open",
@@ -470,13 +476,74 @@ def unique_guest_key(guest):
     email = normalize_email(guest.get("email"))
     if email:
         return f"email:{email}"
-    name = normalize_text(guest.get("name"))
+    name = normalize_text(
+        guest.get("represented_guest_name")
+        or guest.get("contact_name")
+        or guest.get("name")
+    )
+    if name:
+        return f"name:{name}"
+    linkedin_urls = guest.get("linkedin_urls") or []
+    if linkedin_urls:
+        normalized_url = normalize_text(str(linkedin_urls[0]).rstrip("/"))
+        if normalized_url:
+            return f"linkedin:{normalized_url}"
     appointment_id = guest.get("appointment_id") or ""
-    return f"name:{name}:appointment:{appointment_id}"
+    return f"appointment:{appointment_id}"
 
 
 def unique_guest_count(guests):
     return len({unique_guest_key(guest) for guest in guests})
+
+
+def expected_distinct_guest_count(show_key, rules):
+    config = show_rule(rules, show_key)
+    value = config.get("expected_distinct_guest_count")
+    if value is not None:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+    value = config.get("expected_guest_count")
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def distinct_guests_required_for_readiness(show_key, rules):
+    config = show_rule(rules, show_key)
+    if config.get("require_distinct_guests_for_readiness") is not None:
+        return bool(config.get("require_distinct_guests_for_readiness"))
+    return expected_distinct_guest_count(show_key, rules) > 1
+
+
+def episode_has_solo_guest_override(episode, rules):
+    if not episode:
+        return False
+    pairing = episode.get("pairing") or {}
+    if pairing.get("solo_guest_override_approved"):
+        return True
+    override = episode.get("episode_override_record") or {}
+    return bool(override.get("solo_guest_override_approved"))
+
+
+def open_guest_slot_issue(show_key, show_name, episode_time, unique_count, expected_count, active_ids=None):
+    return issue(
+        severity="Warning",
+        code="open_guest_slot_needs_second_guest",
+        show_key=show_key,
+        show_name=show_name,
+        episode_time=episode_time,
+        appointment_ids=active_ids or [],
+        message="WinsDay needs a second distinct confirmed guest before the episode is production-ready.",
+        recommended_action="Find a second confirmed guest or record Jessie-approved solo-guest override before creating final LinkedIn, calendar, or Hannah email drafts.",
+        details={
+            "distinct_confirmed_guest_count": unique_count,
+            "expected_distinct_guest_count": expected_count,
+            "status": "Open Guest Slot / Needs Second Guest",
+        },
+    )
 
 
 def guest_names(guests):
@@ -1332,6 +1399,61 @@ def active_episode_guests(show_key, episode, appointments_by_id, submissions_by_
     return active, inactive
 
 
+def canceled_guest_filters_for_episode(knowledge, show_key, episode_date):
+    names = set()
+    emails = set()
+    for record in known_exceptions_from_knowledge(knowledge or {}):
+        if not isinstance(record, dict):
+            continue
+        if record.get("show_key") != show_key:
+            continue
+        if date_key(record.get("episode_date") or record.get("episode_time")) != episode_date:
+            continue
+        for value in record.get("canceled_guest_names") or []:
+            normalized = normalize_text(value)
+            if normalized:
+                names.add(normalized)
+        for value in record.get("canceled_guest_emails") or []:
+            normalized = normalize_email(value)
+            if normalized:
+                emails.add(normalized)
+        if normalize_text(record.get("status_category")) == "canceled_rescheduled":
+            guest_label = str(record.get("guest_name") or "")
+            for part in re.split(r"/|,| and ", guest_label):
+                normalized = normalize_text(part)
+                if normalized:
+                    names.add(normalized)
+            guest_email = normalize_email(record.get("guest_email"))
+            if guest_email:
+                emails.add(guest_email)
+    return names, emails
+
+
+def guest_matches_canceled_filters(guest, canceled_names, canceled_emails):
+    candidate_names = [
+        guest.get("name"),
+        guest.get("contact_name"),
+        guest.get("represented_guest_name"),
+    ]
+    for value in candidate_names:
+        normalized = normalize_text(value)
+        if normalized and normalized in canceled_names:
+            return True
+    candidate_emails = [
+        guest.get("email"),
+        guest.get("contact_email"),
+        guest.get("represented_guest_email"),
+    ]
+    candidate_emails.extend(guest.get("pr_emails") or [])
+    candidate_emails.extend(guest.get("assistant_emails") or [])
+    candidate_emails.extend(guest.get("alternate_invite_emails") or [])
+    for value in candidate_emails:
+        normalized = normalize_email(value)
+        if normalized and normalized in canceled_emails:
+            return True
+    return False
+
+
 def score_event_for_episode(event, episode, guests, expected_calendar_start, live_start, tolerance_minutes):
     if not event.get("start"):
         return 0
@@ -1375,7 +1497,9 @@ def find_calendar_match(events, episode, guests, expected_calendar_start, live_s
 
 
 def episode_pairing_summary(show_key, episode, guests, event, rules):
-    expected_guest_count = show_rule(rules, show_key).get("expected_guest_count")
+    config = show_rule(rules, show_key)
+    expected_guest_count = config.get("expected_guest_count")
+    expected_distinct_count = expected_distinct_guest_count(show_key, rules)
     title_text = normalize_text(event.get("title", "")) if event else ""
     full_text = event_full_text(event) if event else ""
     attendees = attendee_email_set(event) if event else set()
@@ -1395,14 +1519,23 @@ def episode_pairing_summary(show_key, episode, guests, event, rules):
             invited_guests.append(label)
         elif guest_email:
             missing_invites.append(label)
-    is_expected_pair = bool(expected_guest_count and unique_count >= int(expected_guest_count))
+    solo_guest_override = bool((episode.get("episode_override_record") or {}).get("solo_guest_override_approved"))
+    is_expected_pair = bool(expected_distinct_count and unique_count >= int(expected_distinct_count))
     recognized_pair = bool(is_expected_pair and unique_count >= 2 and (len(title_guests) >= 2 or len(detail_guests) >= 2))
     return {
         "expected_guest_count": expected_guest_count,
+        "expected_distinct_guest_count": expected_distinct_count,
         "active_guest_count": len(guests),
         "unique_active_guest_count": unique_count,
         "is_expected_two_guest_episode": bool(is_expected_pair),
         "recognized_two_guest_pair": recognized_pair,
+        "solo_guest_override_approved": solo_guest_override,
+        "needs_additional_distinct_guest": bool(
+            distinct_guests_required_for_readiness(show_key, rules)
+            and expected_distinct_count
+            and unique_count < expected_distinct_count
+            and not solo_guest_override
+        ),
         "title_guest_names_found": title_guests,
         "calendar_detail_guest_names_found": detail_guests,
         "invited_guest_names_found": invited_guests,
@@ -1412,6 +1545,7 @@ def episode_pairing_summary(show_key, episode, guests, event, rules):
 
 
 def highlevel_guest_summary(guest):
+    submitter_rep = bool(guest.get("contact_is_submitter_rep"))
     return {
         "name": display_guest_name(guest),
         "email": display_guest_email(guest),
@@ -1420,10 +1554,11 @@ def highlevel_guest_summary(guest):
         "appointment_id": guest.get("appointment_id"),
         "contact_id": guest.get("contact_id"),
         "status": guest.get("status"),
-        "represented_guest_name": guest.get("represented_guest_name"),
-        "represented_guest_email": guest.get("represented_guest_email"),
-        "represented_guest_confidence": guest.get("represented_guest_confidence"),
-        "represented_guest_evidence": guest.get("represented_guest_evidence") or [],
+        "contact_is_submitter_rep": submitter_rep,
+        "represented_guest_name": guest.get("represented_guest_name") if submitter_rep else None,
+        "represented_guest_email": guest.get("represented_guest_email") if submitter_rep else None,
+        "represented_guest_confidence": guest.get("represented_guest_confidence") if submitter_rep else None,
+        "represented_guest_evidence": (guest.get("represented_guest_evidence") or []) if submitter_rep else [],
         "form_submission_ids": guest.get("form_submission_ids") or [],
         "possible_form_submissions": guest.get("possible_form_submissions") or [],
         "pr_emails": guest.get("pr_emails") or [],
@@ -2000,6 +2135,10 @@ def difference_for_issue(item):
         highlevel_status = details.get("highlevel_status") or "Unknown HighLevel status"
         calendar_status = details.get("calendar_status") or "Unknown calendar status"
         return f"The upcoming show does not have a confirmed active guest. Guest status: {guest_status}. HighLevel: {highlevel_status}. Calendar: {calendar_status}."
+    if code == "open_guest_slot_needs_second_guest":
+        distinct_count = details.get("distinct_confirmed_guest_count") or 0
+        expected_count = details.get("expected_distinct_guest_count") or 2
+        return f"WinsDay currently has {distinct_count} distinct confirmed guest(s) but needs {expected_count} before final production work should proceed."
     if code == "needs_human_follow_up":
         guest_status = details.get("guest_status") or "Guest status needs human follow-up"
         highlevel_status = details.get("highlevel_status") or "Unknown HighLevel status"
@@ -2894,8 +3033,47 @@ def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, cust
         return None
 
     guests, inactive_guests = active_episode_guests(show_key, episode, appointments_by_id, submissions_by_id, rules, custom_field_map_by_id)
+    canceled_names, canceled_emails = canceled_guest_filters_for_episode(
+        options.get("knowledge") or {},
+        show_key,
+        date_key(episode.get("episode_date_time")),
+    )
+    if canceled_names or canceled_emails:
+        filtered_guests = []
+        filtered_inactive = list(inactive_guests)
+        for guest in guests:
+            if guest_matches_canceled_filters(guest, canceled_names, canceled_emails):
+                filtered_inactive.append({**guest, "status": guest.get("status") or "canceled_rescheduled_known_exception"})
+                continue
+            filtered_guests.append(guest)
+        guests = filtered_guests
+        inactive_guests = filtered_inactive
+    display_inactive_guests = [
+        guest
+        for guest in inactive_guests
+        if not guest_matches_canceled_filters(guest, canceled_names, canceled_emails)
+    ]
     if not guests:
         return None
+
+    unique_count = unique_guest_count(guests)
+    expected_distinct_count = expected_distinct_guest_count(show_key, rules)
+    if (
+        distinct_guests_required_for_readiness(show_key, rules)
+        and expected_distinct_count
+        and unique_count < expected_distinct_count
+        and not episode_has_solo_guest_override(episode, rules)
+    ):
+        issues.append(
+            open_guest_slot_issue(
+                show_key,
+                episode.get("show_name") or show_key,
+                episode.get("episode_date_time"),
+                unique_count,
+                expected_distinct_count,
+                active_appointment_ids(episode, guests),
+            )
+        )
 
     expected_calendar_start = live_start - timedelta(minutes=preshow_minutes)
     expected_end = expected_episode_end(guests, live_start, duration_minutes)
@@ -2992,7 +3170,7 @@ def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, cust
         show_key,
         episode,
         guests,
-        inactive_guests,
+        display_inactive_guests,
         matched_event,
         duplicate_events,
         expected_calendar_start,
@@ -3026,6 +3204,7 @@ def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, cust
                 "contact_email": guest.get("contact_email") or guest.get("email"),
                 "appointment_id": guest.get("appointment_id"),
                 "status": guest.get("status"),
+                "contact_is_submitter_rep": bool(guest.get("contact_is_submitter_rep")),
                 "represented_guest_name": guest.get("represented_guest_name"),
                 "represented_guest_email": guest.get("represented_guest_email"),
                 "represented_guest_confidence": guest.get("represented_guest_confidence"),
@@ -3045,7 +3224,7 @@ def audit_episode(show_key, episode, appointments_by_id, submissions_by_id, cust
                 "appointment_id": guest.get("appointment_id"),
                 "status": guest.get("status"),
             }
-            for guest in inactive_guests
+            for guest in display_inactive_guests
         ],
         "calendar_event_found": matched_event is not None,
         "calendar_event_id": matched_event.get("id") if matched_event else None,
@@ -3351,6 +3530,10 @@ def severity_class(severity):
         "Warning": "warning",
         "Informational": "info",
         "Ready": "ready",
+        "Verified Sent": "ready",
+        "Not Sent / Not Found": "attention",
+        "Needs Review": "attention",
+        "Not Required": "muted-badge",
     }.get(severity, "info")
 
 
@@ -3404,7 +3587,9 @@ def render_episode_rows(episodes):
         health = episode.get("production_health", {})
         score = health.get("score")
         pairing_label = "Two guests" if pairing.get("is_expected_two_guest_episode") else "Single guest"
-        if pairing.get("recognized_two_guest_pair"):
+        if pairing.get("needs_additional_distinct_guest"):
+            pairing_label = "Open guest slot"
+        elif pairing.get("recognized_two_guest_pair"):
             pairing_label = "Two guests recognized"
         elif pairing.get("needs_pairing_review"):
             pairing_label = "Two guests need review"
@@ -3576,16 +3761,31 @@ def production_stage_context(episode_or_time, timeline_rules, now):
             "days_until_show": None,
             "reason": "Episode time is unavailable.",
         }
-    hours_until = (parsed - now).total_seconds() / 3600
+    expected_end = None
+    if isinstance(episode_or_time, dict):
+        expected_end = parse_datetime(
+            episode_or_time.get("episode_end_time")
+            or episode_or_time.get("expected_calendar_end")
+        )
+    expected_end = expected_end or parsed + timedelta(hours=1)
+    if parsed <= now < expected_end:
+        # The livestream is still active. Post-show work must not begin until
+        # the scheduled live window has actually closed.
+        stage_hours_until = 0
+    elif now >= expected_end:
+        stage_hours_until = (expected_end - now).total_seconds() / 3600
+    else:
+        stage_hours_until = (parsed - now).total_seconds() / 3600
     for stage in configured_stages(timeline_rules):
-        if match_stage(stage, hours_until):
+        if match_stage(stage, stage_hours_until):
             key = stage.get("key") or "unknown"
             return {
                 "key": key,
                 "label": stage.get("label") or key,
                 "index": stage_index(key, timeline_rules),
-                "hours_until_show": round(hours_until, 2),
-                "days_until_show": round(hours_until / 24, 2),
+                "hours_until_show": round((parsed - now).total_seconds() / 3600, 2),
+                "days_until_show": round((parsed - now).total_seconds() / 86400, 2),
+                "episode_end_time": expected_end.isoformat(),
                 "reason": stage.get("operator_focus") or stage.get("description") or "",
             }
     fallback = configured_stages(timeline_rules)[0]
@@ -3594,8 +3794,9 @@ def production_stage_context(episode_or_time, timeline_rules, now):
         "key": key,
         "label": fallback.get("label") or key,
         "index": stage_index(key, timeline_rules),
-        "hours_until_show": round(hours_until, 2),
-        "days_until_show": round(hours_until / 24, 2),
+        "hours_until_show": round((parsed - now).total_seconds() / 3600, 2),
+        "days_until_show": round((parsed - now).total_seconds() / 86400, 2),
+        "episode_end_time": expected_end.isoformat(),
         "reason": fallback.get("operator_focus") or fallback.get("description") or "",
     }
 
@@ -3828,12 +4029,21 @@ def checklist_status(item, episode, now, stage_context=None):
 
 def build_episode_checklist(episode, rules, timeline_rules, stage_context, now):
     results = []
+    expected_end = parse_datetime(episode.get("expected_calendar_end"))
+    episode_time = parse_datetime(episode.get("episode_time"))
+    expected_end = expected_end or (episode_time + timedelta(hours=1) if episode_time else None)
+    live_window_complete = bool(expected_end and now >= expected_end)
     for item in checklist_items(rules, timeline_rules):
         if not isinstance(item, dict):
             continue
+        due_stage_key = earliest_required_stage_for_item(item, timeline_rules)
+        if live_window_complete and due_stage_key not in {"post_show", "post_production"}:
+            # Once the episode has ended, unfinished booking, editorial, and
+            # production-setup checks are historical and must not inflate the
+            # active dashboard's due/overdue counts.
+            continue
         result = checklist_status(item, episode, now, stage_context)
         due_state = checklist_due_state(item, stage_context, timeline_rules, result["status"])
-        due_stage_key = earliest_required_stage_for_item(item, timeline_rules)
         due_stage = stage_by_key(due_stage_key, timeline_rules) if due_stage_key else {}
         results.append(
             {
@@ -4101,17 +4311,24 @@ def build_manager_episode(episode, rules, timeline_rules, now):
     issues = episode.get("issues") or []
     effective_counts = effective_issue_counts(issues)
     production_status = manager_production_status(effective_counts, checklist_summary)
+    active_guest_names = guest_names(episode.get("active_guests"))
+    title_guest_names = display_guests_from_title(episode.get("calendar_event_title") or "")
+    if title_guest_names and len(title_guest_names) >= len(active_guest_names):
+        display_guest_names = unique_text_list(title_guest_names)
+    else:
+        display_guest_names = active_guest_names or unique_text_list(title_guest_names)
     return {
         "show_key": episode.get("show_key"),
         "show_name": episode.get("show_name"),
         "episode_time": episode.get("episode_time"),
+        "expected_calendar_end": episode.get("expected_calendar_end"),
         "episode_time_display": short_date(episode.get("episode_time")),
         "production_stage": stage_context,
         "production_status": production_status,
         "production_health": episode.get("production_health"),
         "readiness_percentage": checklist_summary["percentage"],
         "checklist_completion": checklist_summary,
-        "guest_names": guest_names(episode.get("active_guests")),
+        "guest_names": display_guest_names,
         "represented_guest_matches": [
             {
                 "highlevel_submitter_contact": guest.get("contact_name"),
@@ -4122,7 +4339,7 @@ def build_manager_episode(episode, rules, timeline_rules, now):
                 "evidence": guest.get("represented_guest_evidence") or [],
             }
             for guest in episode.get("active_guests") or []
-            if guest.get("represented_guest_name")
+            if guest.get("contact_is_submitter_rep") and guest.get("represented_guest_name")
         ],
         "calendar_event_title": episode.get("calendar_event_title"),
         "calendar_event_url": episode.get("calendar_event_url"),
@@ -4285,7 +4502,193 @@ def grouped_manager_items_by_show(show_keys, rules, episodes, issues, show_diagn
     return groups
 
 
-def build_operations_manager_dashboard(report, rules, timeline_rules, now, completion_tracking=None):
+def split_guest_names(value):
+    if not value:
+        return []
+    return [item.strip() for item in str(value).split(",") if item.strip()]
+
+
+def workflow_card_summary(item):
+    workflow = item.get("workflow") or {}
+    return {
+        "show_key": item.get("show_key"),
+        "show_name": item.get("show_name"),
+        "episode_time": item.get("date_time") or item.get("episode_time"),
+        "episode_title": item.get("episode_title") or item.get("calendar_event_title") or "Untitled episode",
+        "guest_names": item.get("guest_names") or [],
+        "current_phase": workflow.get("current_phase") or "Not Started",
+        "next_best_action": workflow.get("next_best_action") or item.get("next_human_action"),
+        "blocker": workflow.get("blocker"),
+        "owner": workflow.get("owner") or "Jessie",
+        "codex_can_draft": workflow.get("codex_can_draft", False),
+        "codex_draft_type": workflow.get("codex_draft_type"),
+        "human_approval_required": workflow.get("human_approval_required", False),
+        "calendar_event_url": item.get("calendar_event_url"),
+        "current_production_status": item.get("current_production_status"),
+        "unfinished_post_production_deliverables": workflow.get("unfinished_post_production_deliverables")
+        or item.get("unfinished_post_production_deliverables")
+        or [],
+        "post_production_email_verification": item.get("post_production_email_verification") or {},
+    }
+
+
+def reference_live_window_complete(item, now_local, rules):
+    if not now_local:
+        return False
+    start = parse_datetime(item.get("episode") or item.get("episode_time"))
+    if not start:
+        return False
+    show_key = normalize_text(item.get("show_key") or item.get("show"))
+    duration_minutes = show_int_option(rules or {}, show_key, "episode_duration_minutes", 60)
+    return now_local >= (start + timedelta(minutes=duration_minutes)).astimezone(LOCAL_TIMEZONE)
+
+
+def ready_to_approve_items_from_actions(now_local=None, rules=None):
+    pending_actions = load_pending_actions(DEFAULT_PENDING_ACTIONS_PATH)
+    ready = []
+    for action in pending_actions.get("actions") or []:
+        if normalize_text(action.get("approval_status")) != "pending":
+            continue
+        if reference_live_window_complete(action, now_local, rules):
+            # Pending pre-production drafts for an episode whose live window
+            # has ended are stale. The post-production workflow now owns the
+            # episode's active state.
+            continue
+        ready.append(
+            {
+                "action_id": action.get("action_id"),
+                "type": action.get("type"),
+                "show_key": normalize_text(action.get("show")),
+                "show_name": action.get("show"),
+                "episode_time": action.get("episode"),
+                "guest_names": split_guest_names(action.get("guest")),
+                "current_phase": "Production Setup" if action.get("type") in {"calendar_update", "email_draft"} else "Guest Sourcing",
+                "next_best_action": "Review the generated draft and approve it if the current reality still matches.",
+                "blocker": "Jessie approval is required before any write action can proceed.",
+                "owner": "Jessie",
+                "codex_can_draft": False,
+                "codex_draft_type": action.get("type"),
+                "human_approval_required": True,
+                "risk_level": action.get("risk_level"),
+                "approval_status": action.get("approval_status"),
+            }
+        )
+    ready.sort(key=lambda item: (item.get("episode_time") or "", item.get("show_name") or "", item.get("type") or ""))
+    return ready
+
+
+def workflow_card_from_focus_summary_item(item):
+    show_name = item.get("show") or "Unknown show"
+    guest_names = split_guest_names(item.get("guest"))
+    reason = item.get("reason") or "Needs review."
+    phase = "Blocked"
+    owner = "Jessie"
+    codex_can_draft = False
+    codex_draft_type = None
+    if normalize_text(show_name) == "breach of protocol":
+        phase = "Editorial Research"
+        owner = "Jessie"
+        codex_can_draft = True
+        codex_draft_type = "research brief / story candidates"
+    elif "second distinct" in normalize_text(reason) or "second guest" in normalize_text(reason):
+        phase = "Guest Sourcing"
+        owner = "Jessie"
+        codex_can_draft = True
+        codex_draft_type = "PR pitch / outreach"
+    elif "calendar" in normalize_text(reason) or "reconciliation" in normalize_text(reason):
+        phase = "Production Setup"
+        owner = "Jessie"
+    return {
+        "show_key": normalize_text(show_name),
+        "show_name": show_name,
+        "episode_time": item.get("episode"),
+        "episode_title": show_name,
+        "guest_names": guest_names,
+        "current_phase": phase,
+        "next_best_action": codex_draft_type or "Resolve the blocking planning dependency before production setup continues.",
+        "blocker": reason,
+        "owner": owner,
+        "codex_can_draft": codex_can_draft,
+        "codex_draft_type": codex_draft_type,
+        "human_approval_required": True,
+        "calendar_event_url": None,
+        "current_production_status": "Blocked",
+    }
+
+
+def workflow_dashboard_sections(schedule_items, now_local=None, rules=None):
+    completed_tasks_payload = load_completed_tasks(DEFAULT_COMPLETED_TASKS_PATH)
+    pending_actions_payload = load_pending_actions(DEFAULT_PENDING_ACTIONS_PATH)
+    sections = {
+        "jessie_inbox": [],
+        "codex_can_draft": [],
+        "waiting_on_others": [],
+        "blocked": [],
+        "ready_to_approve": ready_to_approve_items_from_actions(now_local, rules),
+    }
+    seen = {name: set() for name in sections}
+    for item in schedule_items:
+        completed_status = completed_human_status_for_schedule_item(item, completed_tasks_payload)
+        email_status = (item.get("post_production_email_verification") or {}).get("status")
+        if (
+            completed_status
+            and completed_status.get("status") in {"Completed / Human Verified", "Completed by Human - Verification Pending"}
+            and email_status not in POST_PRODUCTION_EMAIL_MISSING_STATUSES
+        ):
+            continue
+        summary = workflow_card_summary(item)
+        if summary.get("current_phase") == "Complete":
+            continue
+        key = task_key(summary.get("show_name"), summary.get("episode_time"), ",".join(summary.get("guest_names") or []), summary.get("current_phase"))
+        owner = summary.get("owner")
+        blocker = summary.get("blocker")
+        if owner == "Jessie":
+            seen["jessie_inbox"].add(key)
+            sections["jessie_inbox"].append(summary)
+        if summary.get("codex_can_draft"):
+            seen["codex_can_draft"].add(key)
+            sections["codex_can_draft"].append(summary)
+        if owner in {"guest", "client", "internal team"} and blocker:
+            seen["waiting_on_others"].add(key)
+            sections["waiting_on_others"].append(summary)
+        if blocker:
+            seen["blocked"].add(key)
+            sections["blocked"].append(summary)
+    focus_summary = (pending_actions_payload or {}).get("focus_window_summary") or {}
+    for bucket_name, section_name in (
+        ("ready_for_approval", "ready_to_approve"),
+        ("needs_jessie_input", "jessie_inbox"),
+        ("blocked", "blocked"),
+    ):
+        for item in focus_summary.get(bucket_name) or []:
+            if reference_live_window_complete(item, now_local, rules):
+                # Do not reintroduce a stale Guest Sourcing, Editorial
+                # Research, or Production Setup card after the episode ends.
+                continue
+            summary = workflow_card_from_focus_summary_item(item)
+            key = task_key(summary.get("show_name"), summary.get("episode_time"), ",".join(summary.get("guest_names") or []), summary.get("current_phase"))
+            if key not in seen.get(section_name, set()):
+                sections[section_name].append(summary)
+                seen[section_name].add(key)
+            if summary.get("owner") == "Jessie" and key not in seen["jessie_inbox"]:
+                sections["jessie_inbox"].append(summary)
+                seen["jessie_inbox"].add(key)
+            if summary.get("codex_can_draft") and key not in seen["codex_can_draft"]:
+                sections["codex_can_draft"].append(summary)
+                seen["codex_can_draft"].add(key)
+    for name in sections:
+        sections[name] = sorted(
+            sections[name],
+            key=lambda item: (
+                item.get("episode_time") or "",
+                item.get("show_name") or "",
+                item.get("current_phase") or "",
+            ),
+        )
+    return sections
+
+
+def build_operations_manager_dashboard(report, rules, timeline_rules, now, calendar_events=None, completion_tracking=None, gmail_evidence=None):
     manager = operations_manager_rules(rules)
     upcoming_days = int(manager.get("upcoming_days", 30))
     completed_days = int(manager.get("recently_completed_days", 14))
@@ -4337,6 +4740,39 @@ def build_operations_manager_dashboard(report, rules, timeline_rules, now, compl
     future_safe_action_findings = [
         item for item in trust_findings if item.get("future_automation_candidate") == "yes"
     ]
+    schedule_context = {
+        "all_episodes": episodes,
+        "represented_guest_findings": trust_buckets.get("PR Representative Booking / Guest Represented", []),
+        "human_confirmed_active_findings": trust_buckets.get("Human Confirmed Active", []),
+        "known_exception_findings": trust_buckets.get("Known Exceptions", []),
+    }
+    phase_schedule_items = build_daily_schedule(
+        report,
+        schedule_context,
+        calendar_events or [],
+        rules,
+        now.astimezone(LOCAL_TIMEZONE),
+        window_days=upcoming_days,
+        past_window_days=max(completed_days, POST_PRODUCTION_EMAIL_AUDIT_DAYS),
+    )
+    post_production_email_reconciliation = reconcile_recent_post_production_emails(
+        phase_schedule_items,
+        gmail_evidence or {},
+        show_aliases_for_daily_brief(report, rules),
+        rules,
+        now.astimezone(LOCAL_TIMEZONE),
+    )
+    workflow_by_key = {
+        (item.get("show_key"), date_key(item.get("date_time") or item.get("episode_time"))): item.get("workflow") or {}
+        for item in phase_schedule_items
+    }
+    for episode in episodes:
+        episode["workflow"] = workflow_by_key.get((episode.get("show_key"), date_key(episode.get("episode_time"))), {})
+    workflow_sections = workflow_dashboard_sections(
+        phase_schedule_items,
+        now.astimezone(LOCAL_TIMEZONE),
+        rules,
+    )
     show_groups = grouped_manager_items_by_show(configured_keys, rules, episodes, report.get("issues") or [], report.get("show_configuration_diagnostics") or [])
     for show_key, group in show_groups.items():
         show_item = health_by_show.setdefault(
@@ -4425,6 +4861,19 @@ def build_operations_manager_dashboard(report, rules, timeline_rules, now, compl
         "ready_episodes": sorted(ready, key=lambda item: item.get("episode_time") or ""),
         "recently_completed_episodes": sorted(completed, key=lambda item: item.get("episode_time") or "", reverse=True),
         "all_episodes": sorted(episodes, key=lambda item: item.get("episode_time") or ""),
+        "phase_schedule_items": phase_schedule_items,
+        "phase_workflow_sections": workflow_sections,
+        "post_production_email_reconciliation": post_production_email_reconciliation,
+        "gmail_sent_refresh": {
+            "mailbox": (gmail_evidence or {}).get("mailbox") or "ww@reveting.com",
+            "refreshed_at": (gmail_evidence or {}).get("refreshed_at"),
+            "refresh_attempted_at": (gmail_evidence or {}).get("refresh_attempted_at"),
+            "freshness_status": (gmail_evidence or {}).get("freshness_status") or "Unavailable",
+            "source": (gmail_evidence or {}).get("source"),
+            "query": (gmail_evidence or {}).get("query"),
+            "message_count": len((gmail_evidence or {}).get("messages") or []),
+            "refresh_error": (gmail_evidence or {}).get("refresh_error"),
+        },
         "due_now_checklist_items": aggregate_checklist_bucket(episodes, "due_now_checklist"),
         "overdue_checklist_items": aggregate_checklist_bucket(episodes, "overdue_checklist"),
         "not_yet_due_checklist_items": aggregate_checklist_bucket(episodes, "not_yet_due_checklist"),
@@ -4798,8 +5247,8 @@ def render_html(report):
 def manager_status_class(status):
     return {
         "Ready": "ready",
-        "Needs Attention": "warning",
-        "Blocked": "critical",
+        "Needs Attention": "attention",
+        "Blocked": "attention",
         "Complete": "ready",
         "Incomplete": "critical",
         "Unknown": "info",
@@ -4812,9 +5261,21 @@ def manager_status_class(status):
         "Due Soon": "warning",
         "Blocked by Guest": "warning",
         "Blocked by Confirmation": "critical",
+        "Not Started": "info",
+        "Guest Sourcing": "critical",
+        "Guest Confirmed": "ready",
+        "Editorial Research": "warning",
+        "Story Approved": "info",
+        "Production Setup": "production-setup",
+        "Ready for Live": "ready",
+        "Live Complete": "info",
+        "Post Production": "post-production",
         "Ready to Create": "warning",
+        "Open Guest Slot / Needs Second Guest": "critical",
         "Needs Replacement Guest": "critical",
+        "Awaiting Second Guest": "critical",
         "Not Due Yet": "info",
+        "Informational": "info",
         "Monitor": "info",
         "No Action Needed": "ready",
         "Present": "ready",
@@ -5304,6 +5765,7 @@ def render_manager_episode_cards(episodes):
         health = episode.get("production_health") or {}
         recommendation = episode.get("operator_recommendation") or {}
         stage = episode.get("production_stage") or {}
+        workflow = episode.get("workflow") or {}
         readiness = episode.get("readiness_percentage")
         event_link = html_link(episode.get("calendar_event_url"), "Open calendar event") if episode.get("calendar_event_url") else ""
         cards.append(
@@ -5316,6 +5778,8 @@ def render_manager_episode_cards(episodes):
             f"<p><strong>{html_text(episode.get('show_name'), 120)}</strong></p>"
             f"<p>{html_text(', '.join(episode.get('guest_names') or []), 280)}</p>"
             f"<p>{badge(stage.get('label'), 'info')} <span class=\"muted\">{html_text(stage.get('reason'), 260)}</span></p>"
+            f"<p>{badge(workflow.get('current_phase'), manager_status_class(workflow.get('current_phase')))} <span class=\"muted\">Owner: {html_text(workflow.get('owner') or 'Jessie', 120)}</span></p>"
+            f"<p><strong>Next best action:</strong> {html_text(workflow.get('next_best_action'), 300)}</p>"
             f"<p><strong>Readiness:</strong> {html_escape('n/a' if readiness is None else str(readiness) + '%')} {render_progress_bar(readiness)}</p>"
             f"<p>{badge(recommendation.get('category'), manager_status_class(recommendation.get('category')))} "
             f"{html_text(recommendation.get('reason'), 300)}</p>"
@@ -5357,6 +5821,7 @@ def render_manager_episode_table(episodes):
         confidence = episode.get("confidence") or {}
         counts = episode.get("issue_counts") or {}
         stage = episode.get("production_stage") or {}
+        workflow = episode.get("workflow") or {}
         checklist_summary = episode.get("checklist_completion") or {}
         event_link = html_link(episode.get("calendar_event_url"), "Calendar") if episode.get("calendar_event_url") else ""
         rows.append(
@@ -5365,6 +5830,7 @@ def render_manager_episode_table(episodes):
             f"<td>{html_text(episode.get('episode_time_display'), 140)}</td>"
             f"<td>{html_text(episode.get('show_name'), 120)}</td>"
             f"<td>{html_text(', '.join(episode.get('guest_names') or []), 260)}</td>"
+            f"<td>{badge(workflow.get('current_phase'), manager_status_class(workflow.get('current_phase')))}<br><span class=\"muted\">{html_text(workflow.get('owner') or 'Jessie', 120)}</span></td>"
             f"<td>{badge(stage.get('label'), 'info')}<br><span class=\"muted\">{html_text(stage.get('reason'), 160)}</span></td>"
             f"<td>{html_escape(episode.get('readiness_percentage'))}%<br><span class=\"muted\">{checklist_summary.get('complete_count', 0)} of {checklist_summary.get('required_count', 0)} due items complete</span></td>"
             f"<td><span class=\"score {health_class(health.get('score'))}\">{html_escape('n/a' if health.get('score') is None else health.get('score'))}</span></td>"
@@ -5375,7 +5841,7 @@ def render_manager_episode_table(episodes):
             "</tr>"
         )
     return (
-        "<table><thead><tr><th>Status</th><th>Episode</th><th>Show</th><th>Guests</th><th>Stage</th><th>Readiness</th><th>Health</th><th>Recommendation</th><th>Confidence</th><th>Stage C/W/I</th><th>Links</th></tr></thead>"
+        "<table><thead><tr><th>Status</th><th>Episode</th><th>Show</th><th>Guests</th><th>Workflow</th><th>Stage</th><th>Readiness</th><th>Health</th><th>Recommendation</th><th>Confidence</th><th>Stage C/W/I</th><th>Links</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
     )
 
@@ -5539,6 +6005,97 @@ def render_trend_detail(trend):
     )
 
 
+def render_workflow_summary_cards(items, empty_label):
+    if not items:
+        return f'<section class="card"><p class="muted">{html_escape(empty_label)}</p></section>'
+    cards = []
+    for item in items:
+        guest_text = ", ".join(item.get("guest_names") or []) or "No guests listed"
+        blocker = item.get("blocker") or "No active blocker recorded."
+        unfinished = item.get("unfinished_post_production_deliverables") or []
+        unfinished_html = ""
+        if unfinished:
+            unfinished_html = (
+                "<p><strong>Unfinished post-production:</strong></p><ul>"
+                + "".join(f"<li>{html_text(label, 180)}</li>" for label in unfinished)
+                + "</ul>"
+            )
+        codex_line = "No" if not item.get("codex_can_draft") else f"Yes - {item.get('codex_draft_type') or 'draft support available'}"
+        approval_line = "Yes" if item.get("human_approval_required") else "No"
+        email_verification = item.get("post_production_email_verification") or {}
+        email_html = ""
+        if email_verification:
+            email_html = (
+                f"<p><strong>Post-production email:</strong> {badge(email_verification.get('status'), manager_status_class(email_verification.get('status')))}</p>"
+                f"<p><strong>Email verification reason:</strong> {html_text(email_verification.get('reason'), 420)}</p>"
+            )
+        link_html = ""
+        if item.get("calendar_event_url"):
+            link_html = f"<p>{html_link(item.get('calendar_event_url'), 'Open calendar event')}</p>"
+        cards.append(
+            '<article class="task-card">'
+            f"<div class=\"task-top\"><h3>{html_text(item.get('show_name') or 'Unknown show', 160)} - {html_text(short_date(item.get('episode_time')), 120)}</h3>{badge(item.get('current_phase'), manager_status_class(item.get('current_phase')))}</div>"
+            f"<p><strong>Guests/hosts:</strong> {html_text(guest_text, 220)}</p>"
+            f"<p><strong>Owner:</strong> {html_text(item.get('owner') or 'Jessie', 120)}</p>"
+            f"<p><strong>Next best action:</strong> {html_text(item.get('next_best_action'), 360)}</p>"
+            f"{unfinished_html}"
+            f"<p><strong>Blocker:</strong> {html_text(blocker, 320)}</p>"
+            f"<p><strong>Codex can draft:</strong> {html_text(codex_line, 220)}</p>"
+            f"<p><strong>Human approval required:</strong> {html_text(approval_line, 60)}</p>"
+            f"{email_html}"
+            f"{link_html}"
+            "</article>"
+        )
+    return '<div class="task-grid">' + "".join(cards) + "</div>"
+
+
+def render_post_production_email_reconciliation(items, refresh):
+    freshness = refresh.get("freshness_status") or "Unavailable"
+    refresh_class = "ready" if freshness == "Fresh" else "attention"
+    refresh_error_html = (
+        f'<p class="muted">{html_text(refresh.get("refresh_error"), 420)}</p>'
+        if refresh.get("refresh_error")
+        else ""
+    )
+    header = (
+        '<section class="card">'
+        f"<p><strong>Mailbox:</strong> {html_text(refresh.get('mailbox') or 'ww@reveting.com', 120)} "
+        f"<strong>Gmail evidence:</strong> {badge(freshness, refresh_class)} "
+        f"<strong>Refreshed:</strong> {html_text(short_date(refresh.get('refreshed_at')), 140)}</p>"
+        f"{refresh_error_html}"
+        "</section>"
+    )
+    if not items:
+        return header + '<section class="card"><p class="muted">No completed episodes ended within the previous 30 calendar days.</p></section>'
+    rows = []
+    for item in items:
+        status = item.get("status") or "Needs Review"
+        status_class = "ready" if status == "Verified Sent" else "muted-badge" if status == "Not Required" else "attention"
+        subject = item.get("matching_email_subject") or "—"
+        sent_at = short_date(item.get("matching_email_sent_at")) if item.get("matching_email_sent_at") else "—"
+        recipient = item.get("recipient") or ", ".join(item.get("guest_names") or []) or "External recipient not identified"
+        episode_label = item.get("episode_title") or item.get("show_name") or "Unknown episode"
+        if item.get("episode_number") and str(item.get("episode_number")) not in episode_label:
+            episode_label += f" — Episode {item.get('episode_number')}"
+        rows.append(
+            "<tr>"
+            f"<td><strong>{html_text(item.get('show_name'), 140)}</strong><br>{html_text(episode_label, 220)}</td>"
+            f"<td>{html_text(item.get('episode_date'), 80)}</td>"
+            f"<td>{html_text(recipient, 220)}</td>"
+            f"<td>{html_text(item.get('required_email_type'), 180)}</td>"
+            f"<td>{badge(status, status_class)}</td>"
+            f'<td>{html_text(subject, 260)}<br><span class="muted">{html_text(sent_at, 140)}</span></td>'
+            f"<td>{html_text(item.get('reason'), 420)}</td>"
+            "</tr>"
+        )
+    return (
+        header
+        + "<table><thead><tr><th>Show / Episode</th><th>Episode Date</th><th>Guest / Client Recipient</th>"
+        "<th>Required Email</th><th>Gmail Status</th><th>Matching Email</th><th>Reason</th></tr></thead>"
+        f"<tbody>{''.join(rows)}</tbody></table>"
+    )
+
+
 def render_operations_manager_dashboard_html(dashboard):
     health = dashboard.get("overall_production_health") or {}
     counts = dashboard.get("issue_counts") or {}
@@ -5548,6 +6105,9 @@ def render_operations_manager_dashboard_html(dashboard):
     completion_tracking = dashboard.get("completion_tracking") or {}
     completion_summary = completion_tracking.get("summary") or {}
     completion_counts = completion_summary.get("counts_by_status") or {}
+    workflow_sections = dashboard.get("phase_workflow_sections") or {}
+    email_reconciliation = dashboard.get("post_production_email_reconciliation") or []
+    gmail_refresh = dashboard.get("gmail_sent_refresh") or {}
     score = health.get("score")
     ready_badge = dashboard.get("overall_production_status") or operational_status_from_counts(counts)
     return f"""<!doctype html>
@@ -5557,29 +6117,62 @@ def render_operations_manager_dashboard_html(dashboard):
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Reveting Operations Manager</title>
   <style>
+    @font-face {{
+      font-family: "America";
+      src: url("https://cdn.prod.website-files.com/6690d67ad7b81f8986c7ab28/6690d67ad7b81f8986c7ab20_GTAmerica-Regular.otf") format("opentype");
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }}
+    @font-face {{
+      font-family: "America";
+      src: url("https://cdn.prod.website-files.com/6690d67ad7b81f8986c7ab28/6690d67ad7b81f8986c7ab14_GTAmerica-Medium.otf") format("opentype");
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }}
+    @font-face {{
+      font-family: "America Condensed";
+      src: url("https://cdn.prod.website-files.com/6690d67ad7b81f8986c7ab28/6690d67ad7b81f8986c7ac20_GTAmericaCondensed-Bold.otf") format("opentype");
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }}
+    @font-face {{
+      font-family: "America Mono";
+      src: url("https://cdn.prod.website-files.com/6690d67ad7b81f8986c7ab28/6690d67ad7b81f8986c7abe6_GTAmericaMono-Medium.otf") format("opentype");
+      font-weight: 500;
+      font-style: normal;
+      font-display: swap;
+    }}
     :root {{
-      --bg: #f4f1ea;
-      --panel: #fffdf8;
-      --ink: #18212f;
-      --muted: #687083;
-      --line: #ded8ca;
+      --brand-black: #000000;
+      --brand-neon-green: #57e400;
+      --brand-hot-pink: #FC0FC0;
+      --brand-neutral: #fafafa;
+      --bg: #fafafa;
+      --panel: #ffffff;
+      --ink: #000000;
+      --muted: #222222;
+      --line: #e0e0e0;
       --critical: #b42318;
       --critical-bg: #fff1f0;
       --warning: #946200;
       --warning-bg: #fff7d6;
-      --info: #175cd3;
-      --info-bg: #edf4ff;
-      --ready: #067647;
-      --ready-bg: #ecfdf3;
-      --shadow: 0 18px 40px rgba(24, 33, 47, 0.09);
+      --info: #000000;
+      --info-bg: #fafafa;
+      --ready: #57e400;
+      --ready-bg: #000000;
+      --shadow: 0 18px 40px rgba(0, 0, 0, 0.09);
     }}
     * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background: radial-gradient(circle at 12% 0%, #dcecff 0, transparent 34rem), var(--bg); color: var(--ink); font: 15px/1.5 "Avenir Next", "Helvetica Neue", Arial, sans-serif; }}
+    body {{ margin: 0; background: radial-gradient(circle at 12% 0%, rgba(87, 228, 0, 0.20) 0, transparent 34rem), var(--bg); color: var(--ink); font: 15px/1.5 "America", Arial, sans-serif; }}
     main {{ max-width: 1280px; margin: 0 auto; padding: 36px 22px 64px; }}
-    header {{ background: linear-gradient(135deg, #14213d 0%, #245078 58%, #376f64 100%); color: white; border-radius: 30px; padding: 34px; box-shadow: var(--shadow); }}
-    h1 {{ margin: 0; font-size: clamp(34px, 5vw, 58px); letter-spacing: -0.045em; }}
-    h2 {{ margin: 34px 0 14px; font-size: 24px; }}
-    h3 {{ margin: 12px 0 6px; }}
+    header {{ background: linear-gradient(135deg, var(--brand-black) 0%, #1f1f1f 100%); color: white; border-radius: 30px; padding: 34px; box-shadow: var(--shadow); border-top: 4px solid var(--brand-neon-green); }}
+    h1, h2 {{ font-family: "America Condensed", "Arial Narrow", sans-serif; font-weight: 700; text-transform: uppercase; }}
+    h1 {{ margin: 0; font-size: clamp(34px, 5vw, 58px); letter-spacing: -0.025em; }}
+    h2 {{ margin: 34px 0 14px; font-size: 24px; letter-spacing: 0.01em; }}
+    h3 {{ margin: 12px 0 6px; font-weight: 500; }}
     .subtitle {{ color: rgba(255,255,255,0.76); margin: 8px 0 0; }}
     .hero-grid, .trend-grid {{ display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin-top: 24px; }}
     .trend-detail-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }}
@@ -5589,19 +6182,22 @@ def render_operations_manager_dashboard_html(dashboard):
     .task-top h3 {{ margin-top: 0; }}
     .card, .manager-episode-card {{ background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 18px; box-shadow: var(--shadow); }}
     header .card {{ background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.18); color: white; box-shadow: none; }}
-    .metric {{ font-size: 36px; font-weight: 850; letter-spacing: -0.045em; }}
+    .metric {{ font-size: 36px; font-weight: 500; letter-spacing: -0.045em; }}
     .metric.small {{ font-size: 27px; }}
-    .label {{ color: var(--muted); font-size: 13px; }}
+    .label {{ color: var(--muted); font-family: "America Mono", monospace; font-size: 12px; }}
     header .label {{ color: rgba(255,255,255,0.7); }}
-    .badge {{ display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 800; white-space: nowrap; }}
+    .badge {{ display: inline-flex; align-items: center; border: 1px solid transparent; border-radius: 999px; padding: 4px 10px; font-family: "America Mono", monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.025em; line-height: 1.4; white-space: nowrap; }}
     .badge.critical, .score.critical {{ color: var(--critical); background: var(--critical-bg); }}
     .badge.warning, .score.warning {{ color: var(--warning); background: var(--warning-bg); }}
-    .badge.info, .score.info {{ color: var(--info); background: var(--info-bg); }}
-    .badge.ready, .score.ready {{ color: var(--ready); background: var(--ready-bg); }}
+    .badge.production-setup {{ color: var(--brand-black); background: var(--brand-neon-green); border-color: var(--brand-neon-green); }}
+    .badge.post-production {{ color: var(--brand-black); background: var(--brand-hot-pink); border-color: var(--brand-hot-pink); }}
+    .badge.attention {{ color: var(--brand-hot-pink); background: var(--brand-black); border-color: var(--brand-hot-pink); }}
+    .badge.info, .score.info {{ color: var(--info); background: var(--info-bg); border-color: var(--brand-neon-green); box-shadow: inset 3px 0 0 var(--brand-neon-green); }}
+    .badge.ready, .score.ready {{ color: var(--ready); background: var(--ready-bg); border-color: var(--brand-neon-green); }}
     .badge.muted-badge {{ color: #667085; background: #eef0f4; }}
     .score {{ display: inline-block; border-radius: 13px; padding: 6px 11px; font-weight: 850; }}
     .progress-wrap {{ height: 10px; border-radius: 999px; background: #e4e7ec; overflow: hidden; margin-top: 6px; }}
-    .progress-bar {{ height: 100%; border-radius: inherit; background: linear-gradient(90deg, #2f6f64, #7ba66a); }}
+    .progress-bar {{ height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--brand-neon-green), #61ff50); }}
     .manager-card-grid {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }}
     .show-count-grid {{ display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 12px 0; }}
     .show-groups .manager-card-grid {{ grid-template-columns: 1fr; }}
@@ -5620,8 +6216,8 @@ def render_operations_manager_dashboard_html(dashboard):
     .timeline-dot.muted-badge {{ background: #98a2b3; }}
     table {{ width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); }}
     th, td {{ text-align: left; padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; }}
-    th {{ background: #ede7db; color: #475467; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }}
-    a {{ color: var(--info); font-weight: 800; text-decoration: none; }}
+    th {{ background: var(--brand-neutral); color: var(--brand-black); font-family: "America Mono", monospace; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }}
+    a {{ color: var(--brand-black); font-weight: 800; text-decoration-color: var(--brand-neon-green); text-decoration-thickness: 3px; text-underline-offset: 3px; }}
     a:hover {{ text-decoration: underline; }}
     .muted {{ color: var(--muted); }}
     @media (max-width: 980px) {{ .hero-grid, .trend-grid, .trend-detail-grid, .manager-card-grid, .task-grid {{ grid-template-columns: 1fr 1fr; }} table {{ display: block; overflow-x: auto; }} }}
@@ -5641,6 +6237,24 @@ def render_operations_manager_dashboard_html(dashboard):
         <div class="card"><div class="metric">{dashboard.get('suppressed_issue_count', 0)}</div><div class="label">Suppressed</div></div>
       </div>
     </header>
+
+    <h2>Jessie Inbox</h2>
+    {render_workflow_summary_cards(workflow_sections.get('jessie_inbox') or [], 'No Jessie-only judgment tasks are active.')}
+
+    <h2>Post-Production Email Verification — Last 30 Days</h2>
+    {render_post_production_email_reconciliation(email_reconciliation, gmail_refresh)}
+
+    <h2>Codex Can Draft</h2>
+    {render_workflow_summary_cards(workflow_sections.get('codex_can_draft') or [], 'No episodes currently have enough trusted context for Codex draft support.')}
+
+    <h2>Waiting On Others</h2>
+    {render_workflow_summary_cards(workflow_sections.get('waiting_on_others') or [], 'No episodes are currently waiting on guests, clients, or the internal team.')}
+
+    <h2>Ready to Approve</h2>
+    {render_workflow_summary_cards(workflow_sections.get('ready_to_approve') or [], 'No approval-gated drafts are waiting for Jessie approval.')}
+
+    <h2>Blocked</h2>
+    {render_workflow_summary_cards(workflow_sections.get('blocked') or [], 'No active blockers are recorded in the workflow view.')}
 
     <h2>Fix First</h2>
     <section class="card">{render_manager_issue_list(recommendations.get('fix_first') or [], 'No Fix First issues.')}</section>
@@ -5961,6 +6575,8 @@ def render_trust_review_markdown(trust_review):
             "## Completion Verification",
             "",
             f"- Total completion claims reviewed: {completion_summary.get('total_claims', 0)}",
+            f"- Completed / Human Verified: {(completion_summary.get('counts_by_status') or {}).get('Completed / Human Verified', 0)}",
+            f"- Completed by Human - Verification Pending: {(completion_summary.get('counts_by_status') or {}).get('Completed by Human - Verification Pending', 0)}",
             f"- Completed and verified: {(completion_summary.get('counts_by_status') or {}).get('Completed and verified', 0)}",
             f"- Completed but not verified: {(completion_summary.get('counts_by_status') or {}).get('Completed but not verified', 0)}",
             f"- Still open: {(completion_summary.get('counts_by_status') or {}).get('Still open', 0)}",
@@ -6960,6 +7576,34 @@ def daily_now(now_value=None):
     return parsed.astimezone(LOCAL_TIMEZONE)
 
 
+def parse_focus_date(value):
+    if not value:
+        return None
+    return datetime.fromisoformat(f"{value}T00:00:00").date()
+
+
+def focus_window_bounds(args, default_start=None, default_end=None):
+    start = parse_focus_date(getattr(args, "focus_start_date", None)) or default_start
+    end = parse_focus_date(getattr(args, "focus_end_date", None)) or default_end
+    if start and end and end < start:
+        raise RuntimeError("Focus end date must be on or after focus start date.")
+    return start, end
+
+
+def value_in_focus_window(value, focus_start=None, focus_end=None):
+    if not value:
+        return False
+    key = date_key(value)
+    if not key:
+        return False
+    current = datetime.fromisoformat(f"{key}T00:00:00").date()
+    if focus_start and current < focus_start:
+        return False
+    if focus_end and current > focus_end:
+        return False
+    return True
+
+
 def path_from_report(value):
     if not value:
         return None
@@ -7096,6 +7740,529 @@ def has_complete_checklist_item(episode, key):
     return False
 
 
+POST_PRODUCTION_STAGE_KEYS = {"post_show", "post_production"}
+POST_PRODUCTION_CHECKLIST_KEYS = {
+    "recording_exists",
+    "episode_folder_exists",
+    "transcript_exists",
+    "ai_clips_complete",
+    "newsletter_complete",
+    "social_assets_complete",
+    "podcast_complete",
+    "podcast_uploaded",
+    "replay_email_complete",
+    "thank_you_email_complete",
+    "post_production_complete",
+}
+
+POST_PRODUCTION_EMAIL_MISSING_STATUSES = {"Not Sent / Not Found", "Needs Review"}
+POST_PRODUCTION_ASSET_PHRASES = (
+    "post show assets",
+    "post production package",
+    "episode assets are ready",
+    "assets are ready",
+    "final package",
+    "full recording",
+    "replay link",
+    "podcast links",
+    "organized folder",
+    "organized drive",
+    "transcript",
+    "clips",
+)
+POST_PRODUCTION_EMAIL_NEGATIVE_PHRASES = (
+    "assets still needed",
+    "assets are still needed",
+    "still need the assets",
+    "waiting on assets",
+    "assets not ready",
+    "missing assets",
+    "deadline",
+    "reminder",
+    "qc due",
+)
+
+
+def gmail_header_value(headers, name):
+    wanted = normalize_text(name)
+    for header in headers or []:
+        if normalize_text(header.get("name")) == wanted:
+            return header.get("value") or ""
+    return ""
+
+
+def decode_gmail_body_data(value):
+    if not value:
+        return ""
+    padded = str(value) + "=" * (-len(str(value)) % 4)
+    try:
+        return base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8", errors="replace")
+    except (ValueError, UnicodeError):
+        return ""
+
+
+def gmail_payload_text(payload):
+    if not isinstance(payload, dict):
+        return ""
+    texts = []
+    mime_type = normalize_text(payload.get("mimeType") or payload.get("mime_type"))
+    body = payload.get("body") or {}
+    decoded = decode_gmail_body_data(body.get("data"))
+    if decoded and mime_type in {"text plain", "text html"}:
+        texts.append(plain_text_from_html(decoded) if mime_type == "text html" else decoded)
+    for part in payload.get("parts") or []:
+        part_text = gmail_payload_text(part)
+        if part_text:
+            texts.append(part_text)
+    return compact(" ".join(texts), limit=40000)
+
+
+def normalize_gmail_api_message(message):
+    payload = message.get("payload") or {}
+    headers = payload.get("headers") or []
+    internal_date = message.get("internalDate") or message.get("internal_date")
+    sent_at = None
+    if internal_date:
+        try:
+            sent_at = datetime.fromtimestamp(int(internal_date) / 1000, timezone.utc).isoformat()
+        except (TypeError, ValueError, OSError):
+            sent_at = None
+    return {
+        "id": message.get("id"),
+        "thread_id": message.get("threadId") or message.get("thread_id"),
+        "from": gmail_header_value(headers, "From"),
+        "to": [gmail_header_value(headers, "To")],
+        "cc": [gmail_header_value(headers, "Cc")],
+        "bcc": [gmail_header_value(headers, "Bcc")],
+        "subject": gmail_header_value(headers, "Subject"),
+        "body": gmail_payload_text(payload),
+        "snippet": message.get("snippet") or "",
+        "labels": message.get("labelIds") or message.get("labels") or [],
+        "sent_at": sent_at,
+    }
+
+
+def gmail_service_for_audit():
+    credentials = google_oauth_credentials(
+        ["https://www.googleapis.com/auth/gmail.readonly"],
+        "GMAIL_AUDIT_OAUTH_CLIENT_JSON",
+        "GMAIL_AUDIT_OAUTH_TOKEN_JSON",
+        DEFAULT_GOOGLE_OAUTH_CLIENT_PATH,
+        DEFAULT_GMAIL_AUDIT_TOKEN_PATH,
+        allow_interactive=False,
+    )
+    try:
+        from googleapiclient.discovery import build
+    except ImportError as exc:
+        raise RuntimeError(
+            "Fresh Gmail audit reads require google-api-python-client. Install dependencies with: pip install -r requirements.txt"
+        ) from exc
+    return build("gmail", "v1", credentials=credentials, cache_discovery=False)
+
+
+def fetch_fresh_gmail_sent_evidence(now):
+    service = gmail_service_for_audit()
+    profile = service.users().getProfile(userId="me").execute()
+    mailbox = normalize_email(profile.get("emailAddress"))
+    if mailbox != "ww@reveting.com":
+        raise RuntimeError(f"The Gmail audit must run as ww@reveting.com, not {mailbox or 'an unknown mailbox'}.")
+    local_now = now.astimezone(LOCAL_TIMEZONE)
+    after_date = (local_now.date() - timedelta(days=POST_PRODUCTION_EMAIL_AUDIT_DAYS + 1)).strftime("%Y/%m/%d")
+    before_date = (local_now.date() + timedelta(days=1)).strftime("%Y/%m/%d")
+    query = f"in:sent after:{after_date} before:{before_date} -label:drafts"
+    message_ids = []
+    page_token = None
+    while True:
+        response = service.users().messages().list(
+            userId="me",
+            q=query,
+            labelIds=["SENT"],
+            maxResults=500,
+            pageToken=page_token,
+        ).execute()
+        message_ids.extend(item.get("id") for item in response.get("messages") or [] if item.get("id"))
+        page_token = response.get("nextPageToken")
+        if not page_token:
+            break
+    messages = [
+        normalize_gmail_api_message(
+            service.users().messages().get(userId="me", id=message_id, format="full").execute()
+        )
+        for message_id in message_ids
+    ]
+    return {
+        "mailbox": mailbox,
+        "refreshed_at": datetime.now(timezone.utc).isoformat(),
+        "refresh_attempted_at": datetime.now(timezone.utc).isoformat(),
+        "freshness_status": "Fresh",
+        "source": "Gmail API live Sent-mail refresh",
+        "query": query,
+        "message_count": len(messages),
+        "messages": messages,
+    }
+
+
+def gmail_evidence_is_fresh(evidence, now, max_age_minutes=15):
+    refreshed_at = parse_datetime((evidence or {}).get("refreshed_at"))
+    if not refreshed_at:
+        return False
+    return abs((now.astimezone(timezone.utc) - refreshed_at.astimezone(timezone.utc)).total_seconds()) <= max_age_minutes * 60
+
+
+def refresh_gmail_sent_evidence(path, now):
+    attempted_at = datetime.now(timezone.utc).isoformat()
+    try:
+        evidence = fetch_fresh_gmail_sent_evidence(now)
+        write_json(path, evidence)
+        return evidence
+    except Exception as exc:
+        cached = read_json(path, default={}) or {}
+        cached["refresh_attempted_at"] = attempted_at
+        cached["refresh_error"] = str(exc)
+        if gmail_evidence_is_fresh(cached, now):
+            cached["freshness_status"] = "Fresh"
+            cached.setdefault("source", "Fresh Gmail connector Sent-mail export")
+        else:
+            cached["freshness_status"] = "Stale" if cached.get("refreshed_at") else "Unavailable"
+        return cached
+
+
+def email_addresses(values):
+    addresses = set()
+    for value in values or []:
+        if isinstance(value, str):
+            addresses.update(normalize_email(address) for address in EMAIL_RE.findall(value))
+    return sorted(address for address in addresses if address)
+
+
+def message_external_recipients(message):
+    recipients = email_addresses(
+        list(message.get("to") or []) + list(message.get("cc") or []) + list(message.get("bcc") or [])
+    )
+    return [
+        address
+        for address in recipients
+        if not address.split("@")[-1].endswith("reveting.com")
+    ]
+
+
+def episode_number_for_email_match(item):
+    explicit = item.get("episode_number")
+    if explicit not in (None, ""):
+        return str(explicit)
+    text = " ".join(
+        str(value or "")
+        for value in (item.get("episode_title"), item.get("calendar_event_title"))
+    )
+    match = re.search(r"(?:episode|ep\.?|#)\s*([0-9]{1,5})\b", text, flags=re.IGNORECASE)
+    return match.group(1) if match else None
+
+
+def episode_numbers_in_message(message):
+    raw_text = f"{message.get('subject') or ''} {message.get('body') or message.get('snippet') or ''}"
+    return set(
+        re.findall(r"(?:episode|ep\.?|#)\s*([0-9]{1,5})\b", raw_text, flags=re.IGNORECASE)
+    )
+
+
+def episode_date_match_terms(item):
+    episode_end = schedule_episode_end(item)
+    if not episode_end:
+        return []
+    local_date = episode_end.astimezone(LOCAL_TIMEZONE).date()
+    return [
+        local_date.isoformat(),
+        f"{local_date.month}/{local_date.day}/{local_date.year}",
+        f"{local_date.month}/{local_date.day}",
+        local_date.strftime("%B %d %Y").replace(" 0", " "),
+        local_date.strftime("%b %d %Y").replace(" 0", " "),
+    ]
+
+
+def episode_email_identifier_matches(item, message, show_aliases):
+    subject = str(message.get("subject") or "")
+    body = str(message.get("body") or message.get("snippet") or "")
+    raw_text = f"{subject} {body}"
+    text = normalize_text(raw_text)
+    matches = []
+    alias_hits = [alias for alias in show_aliases or [] if alias and alias in text]
+    if alias_hits:
+        matches.append({"type": "show_alias", "value": alias_hits[0]})
+    episode_number = episode_number_for_email_match(item)
+    if episode_number and re.search(rf"(?:episode|ep\.?|#)\s*{re.escape(episode_number)}\b", raw_text, flags=re.IGNORECASE):
+        matches.append({"type": "episode_number", "value": episode_number})
+    title = normalize_text(item.get("episode_title") or item.get("calendar_event_title") or "")
+    title_tokens = [token for token in title.split() if len(token) >= 4 and token not in {"episode", "livestream", "podcast"}]
+    matched_title_tokens = [token for token in title_tokens if token in text]
+    if len(matched_title_tokens) >= 3 and len(matched_title_tokens) >= max(3, int(len(title_tokens) * 0.6)):
+        matches.append({"type": "episode_title", "value": " ".join(matched_title_tokens[:8])})
+    for guest_name in item.get("guest_names") or []:
+        normalized_guest = normalize_text(guest_name)
+        if normalized_guest and len(normalized_guest) >= 4 and normalized_guest in text:
+            matches.append({"type": "guest_name", "value": guest_name})
+            break
+    lowered_raw = raw_text.lower()
+    date_hits = [term for term in episode_date_match_terms(item) if term.lower() in lowered_raw]
+    if date_hits:
+        matches.append({"type": "show_date", "value": date_hits[0]})
+    return matches
+
+
+def post_production_asset_evidence(message):
+    text = normalize_text(
+        f"{message.get('subject') or ''} {message.get('body') or message.get('snippet') or ''}"
+    )
+    positive = [phrase for phrase in POST_PRODUCTION_ASSET_PHRASES if normalize_text(phrase) in text]
+    negative = [phrase for phrase in POST_PRODUCTION_EMAIL_NEGATIVE_PHRASES if normalize_text(phrase) in text]
+    return {"positive": positive, "negative": negative, "strong": bool(positive and not negative)}
+
+
+def required_post_production_email_type(rules, show_key):
+    config = show_rule(rules, show_key)
+    return config.get("post_production_asset_email_type") or "Final post-production asset email"
+
+
+def post_production_email_required(rules, show_key):
+    return show_rule(rules, show_key).get("post_production_asset_email_required") is not False
+
+
+def reconcile_post_production_email(item, messages, show_aliases, rules, freshness):
+    required_type = required_post_production_email_type(rules, item.get("show_key"))
+    if not post_production_email_required(rules, item.get("show_key")):
+        return {
+            "status": "Not Required",
+            "required_email_type": required_type,
+            "reason": "The show profile explicitly says a post-production asset email is not required.",
+            "recipient": None,
+        }
+    if freshness != "Fresh":
+        return {
+            "status": "Needs Review",
+            "required_email_type": required_type,
+            "reason": f"Gmail Sent-mail evidence is {normalize_text(freshness) or 'unavailable'}; a fresh ww@reveting.com refresh is required.",
+            "recipient": None,
+        }
+    episode_end = schedule_episode_end(item)
+    verified = []
+    ambiguous = []
+    exclusions = {"internal": 0, "before_end": 0, "non_asset": 0}
+    for message in messages or []:
+        labels = {normalize_text(label) for label in message.get("labels") or []}
+        if "draft" in labels or (labels and "sent" not in labels):
+            continue
+        sent_at = parse_datetime(message.get("sent_at") or message.get("email_ts"))
+        if not sent_at or not episode_end or sent_at <= episode_end:
+            exclusions["before_end"] += 1
+            continue
+        external_recipients = message_external_recipients(message)
+        if not external_recipients:
+            exclusions["internal"] += 1
+            continue
+        identifier_matches = episode_email_identifier_matches(item, message, show_aliases)
+        identifier_types = {match.get("type") for match in identifier_matches}
+        item_episode_number = episode_number_for_email_match(item)
+        message_episode_numbers = episode_numbers_in_message(message)
+        if item_episode_number and message_episode_numbers and item_episode_number not in message_episode_numbers:
+            continue
+        if not item_episode_number and message_episode_numbers and identifier_types == {"show_alias"}:
+            continue
+        asset_evidence = post_production_asset_evidence(message)
+        candidate = {
+            "message_id": message.get("id"),
+            "subject": message.get("subject"),
+            "sent_at": (sent_at.astimezone(LOCAL_TIMEZONE).isoformat() if sent_at else None),
+            "recipients": external_recipients,
+            "identifier_matches": identifier_matches,
+            "asset_evidence": asset_evidence,
+        }
+        if asset_evidence.get("strong") and len(identifier_types) >= 2:
+            verified.append(candidate)
+        elif (asset_evidence.get("positive") and identifier_matches) or (asset_evidence.get("strong") and len(identifier_types) == 1):
+            ambiguous.append(candidate)
+        elif identifier_matches:
+            exclusions["non_asset"] += 1
+    if verified:
+        best = sorted(
+            verified,
+            key=lambda value: (len(value.get("identifier_matches") or []), value.get("sent_at") or ""),
+            reverse=True,
+        )[0]
+        return {
+            "status": "Verified Sent",
+            "required_email_type": required_type,
+            "reason": "A qualifying external post-show asset delivery email matched at least two episode identifiers.",
+            "recipient": ", ".join(best.get("recipients") or []),
+            "matching_email_subject": best.get("subject"),
+            "matching_email_sent_at": best.get("sent_at"),
+            "matching_message_id": best.get("message_id"),
+            "identifier_matches": best.get("identifier_matches") or [],
+            "asset_evidence": best.get("asset_evidence") or {},
+        }
+    if ambiguous:
+        best = sorted(ambiguous, key=lambda value: len(value.get("identifier_matches") or []), reverse=True)[0]
+        return {
+            "status": "Needs Review",
+            "required_email_type": required_type,
+            "reason": "A possible external asset email was found, but the episode match or asset-delivery evidence is ambiguous.",
+            "recipient": ", ".join(best.get("recipients") or []),
+            "matching_email_subject": best.get("subject"),
+            "matching_email_sent_at": best.get("sent_at"),
+            "matching_message_id": best.get("message_id"),
+            "identifier_matches": best.get("identifier_matches") or [],
+            "asset_evidence": best.get("asset_evidence") or {},
+        }
+    reason = "No qualifying external post-show asset email was found in fresh ww@reveting.com Sent mail after the scheduled episode end."
+    if exclusions["internal"]:
+        reason += f" {exclusions['internal']} internal-only sent message(s) were excluded."
+    return {
+        "status": "Not Sent / Not Found",
+        "required_email_type": required_type,
+        "reason": reason,
+        "recipient": ", ".join(item.get("guest_names") or []) or "External guest/client/host recipient",
+    }
+
+
+def schedule_episode_end(item):
+    explicit_end = parse_datetime(
+        item.get("episode_end_time")
+        or item.get("expected_calendar_end")
+        or item.get("end_time")
+    )
+    if explicit_end:
+        return explicit_end
+    start = parse_datetime(item.get("date_time") or item.get("episode_time"))
+    return start + timedelta(hours=1) if start else None
+
+
+def schedule_live_window_complete(item, now_local):
+    episode_end = schedule_episode_end(item)
+    return bool(episode_end and now_local >= episode_end.astimezone(LOCAL_TIMEZONE))
+
+
+def post_production_checklist_for_schedule(item):
+    checklist = item.get("checklist_statuses") or item.get("checklist") or []
+    return [
+        checklist_item
+        for checklist_item in checklist
+        if checklist_item.get("key") in POST_PRODUCTION_CHECKLIST_KEYS
+        or checklist_item.get("due_stage") in POST_PRODUCTION_STAGE_KEYS
+    ]
+
+
+def checklist_status_by_key(item):
+    return {
+        checklist_item.get("key"): checklist_item.get("status")
+        for checklist_item in post_production_checklist_for_schedule(item)
+        if checklist_item.get("key")
+    }
+
+
+def configured_post_production_deliverables(rules, show_key):
+    configured = show_rule(rules, show_key).get("post_production_workflow") or []
+    return [str(label).strip() for label in configured if str(label).strip()]
+
+
+def configured_deliverable_tracking_keys(label):
+    normalized = normalize_text(label)
+    if "transcript" in normalized:
+        return {"transcript_exists"}
+    if "newsletter" in normalized or "recap" in normalized:
+        return {"newsletter_complete"}
+    if "clip" in normalized or "social asset" in normalized:
+        return {"ai_clips_complete", "social_assets_complete"}
+    if "podcast" in normalized:
+        return {"podcast_complete", "podcast_uploaded"}
+    if "recording" in normalized:
+        return {"recording_exists"}
+    if "replay" in normalized and "email" in normalized:
+        return {"replay_email_complete"}
+    if "thank" in normalized and "email" in normalized:
+        return {"thank_you_email_complete"}
+    if "production qa" in normalized:
+        return {"post_production_complete"}
+    return set()
+
+
+def unfinished_post_production_deliverables(item):
+    statuses = checklist_status_by_key(item)
+    unfinished = []
+    if statuses.get("post_production_complete") != "Complete":
+        configured_tracking_keys = set()
+        for label in item.get("post_production_workflow") or []:
+            tracking_keys = configured_deliverable_tracking_keys(label)
+            configured_tracking_keys.update(tracking_keys)
+            if tracking_keys and any(statuses.get(key) == "Complete" for key in tracking_keys):
+                continue
+            unfinished.append(label)
+
+        for checklist_item in post_production_checklist_for_schedule(item):
+            if checklist_item.get("key") == "post_production_complete":
+                continue
+            if checklist_item.get("key") in configured_tracking_keys:
+                continue
+            if checklist_item.get("status") in {"Complete", "Not Applicable"}:
+                continue
+            label = checklist_item.get("label") or checklist_item.get("key")
+            if label and normalize_text(label) not in {normalize_text(value) for value in unfinished}:
+                unfinished.append(label)
+    email_verification = item.get("post_production_email_verification") or {}
+    if email_verification.get("status") in POST_PRODUCTION_EMAIL_MISSING_STATUSES:
+        email_label = email_verification.get("required_email_type") or "Final post-production asset email"
+        if normalize_text(email_label) not in {normalize_text(value) for value in unfinished}:
+            unfinished.append(email_label)
+    return unfinished
+
+
+def post_production_complete_for_schedule(item):
+    statuses = checklist_status_by_key(item)
+    email_status = (item.get("post_production_email_verification") or {}).get("status")
+    if statuses.get("post_production_complete") == "Complete" and email_status not in POST_PRODUCTION_EMAIL_MISSING_STATUSES:
+        return True
+    relevant = post_production_checklist_for_schedule(item)
+    if not relevant:
+        return not (item.get("post_production_workflow") or []) and email_status not in POST_PRODUCTION_EMAIL_MISSING_STATUSES
+    return not unfinished_post_production_deliverables(item)
+
+
+def reconcile_recent_post_production_emails(schedule_items, gmail_evidence, aliases, rules, now_local):
+    messages = (gmail_evidence or {}).get("messages") or []
+    freshness = (gmail_evidence or {}).get("freshness_status") or "Unavailable"
+    cutoff_date = now_local.date() - timedelta(days=POST_PRODUCTION_EMAIL_AUDIT_DAYS)
+    reconciled = []
+    for item in schedule_items:
+        episode_end = schedule_episode_end(item)
+        if not episode_end:
+            continue
+        local_end = episode_end.astimezone(LOCAL_TIMEZONE)
+        if local_end > now_local or local_end.date() < cutoff_date:
+            continue
+        verification = reconcile_post_production_email(
+            item,
+            messages,
+            aliases.get(item.get("show_key")) or [],
+            rules,
+            freshness,
+        )
+        verification.update(
+            {
+                "show_key": item.get("show_key"),
+                "show_name": item.get("show_name"),
+                "episode_title": item.get("episode_title") or item.get("calendar_event_title") or "Untitled episode",
+                "episode_number": episode_number_for_email_match(item),
+                "episode_time": item.get("date_time") or item.get("episode_time"),
+                "episode_end_time": episode_end.isoformat(),
+                "episode_date": local_end.date().isoformat(),
+                "guest_names": item.get("guest_names") or [],
+                "gmail_refreshed_at": (gmail_evidence or {}).get("refreshed_at"),
+                "gmail_freshness_status": freshness,
+            }
+        )
+        item["post_production_email_verification"] = verification
+        finalize_schedule_item(item, now_local)
+        reconciled.append(verification)
+    return reconciled
+
+
 def brief_issue_bucket(issue):
     trust = issue.get("trust") or {}
     return trust.get("dashboard_bucket") or issue.get("trust_dashboard_bucket")
@@ -7134,6 +8301,8 @@ def guest_status_for_schedule(item):
     text = item_issue_text(item)
     if "pr_representative_booking_guest_represented" in codes:
         return "PR Representative Booking / Guest Represented"
+    if "open_guest_slot_needs_second_guest" in codes:
+        return "Open Guest Slot / Needs Second Guest"
     if "show_needs_guest_replacement" in codes:
         return "Needs Replacement Guest"
     if "guest_rsvp_acceptance_risk" in codes:
@@ -7187,6 +8356,8 @@ def linkedin_status_for_schedule(item, days_until):
         return "Exists - Calendar Needs Update"
     if item.get("linkedin_urls"):
         return "Present"
+    if item.get("guest_status") == "Open Guest Slot / Needs Second Guest":
+        return "Not Due Yet"
     if item.get("topics_status") == "Blocked by Guest":
         return "Blocked by Guest"
     if item.get("guest_status") in {"Needs Replacement Guest", "Blocked by Confirmation"}:
@@ -7201,6 +8372,8 @@ def linkedin_status_for_schedule(item, days_until):
 def streamyard_status_for_schedule(item, days_until):
     if item.get("streamyard_urls"):
         return "Present"
+    if item.get("guest_status") == "Open Guest Slot / Needs Second Guest":
+        return "Not Due Yet"
     if item.get("topics_status") == "Blocked by Guest":
         return "Blocked by Guest"
     if item.get("guest_status") in {"Needs Replacement Guest", "Blocked by Confirmation"}:
@@ -7218,6 +8391,8 @@ def streamyard_status_for_schedule(item, days_until):
 
 def production_blockers_for_schedule(item):
     blockers = []
+    if item.get("guest_status") == "Open Guest Slot / Needs Second Guest":
+        blockers.append("Blocked - Awaiting Second Guest")
     if item.get("guest_status") == "Needs Replacement Guest":
         blockers.append("Needs replacement guest")
     if item.get("guest_status") == "Blocked by Confirmation":
@@ -7245,6 +8420,8 @@ def next_human_action_for_schedule(item):
     codes = item_issue_codes(item)
     if "pr_representative_booking_guest_represented" in codes:
         return "No mismatch cleanup needed. Use the represented guest for production context and keep the submitter/contact noted in the booking record."
+    if "open_guest_slot_needs_second_guest" in codes:
+        return "Find a second confirmed WinsDay guest or record Jessie-approved solo-guest override before final production drafts."
     if item.get("linkedin_status") == "Exists - Calendar Needs Update":
         return "Add the verified LinkedIn event URL to the Google Calendar description, then send or schedule the SOP emails after review."
     if "show_needs_guest_replacement" in codes:
@@ -7265,9 +8442,193 @@ def next_human_action_for_schedule(item):
     return "Monitor; no immediate human action is required."
 
 
+WORKFLOW_PHASES = (
+    "Not Started",
+    "Guest Sourcing",
+    "Guest Confirmed",
+    "Editorial Research",
+    "Story Approved",
+    "Production Setup",
+    "Ready for Live",
+    "Live Complete",
+    "Post Production",
+    "Complete",
+    "Blocked",
+)
+
+
+def workflow_primary_blocker(item):
+    blockers = [
+        blocker
+        for blocker in (item.get("production_blockers") or [])
+        if blocker and blocker != "No active production blocker found"
+    ]
+    if item.get("show_key") == "breach-of-protocol" and not item.get("calendar_event_found"):
+        blockers.insert(0, "Story approval and episode brief are still needed before production setup.")
+    return blockers[0] if blockers else None
+
+
+def workflow_phase_for_schedule(item):
+    if item.get("live_window_complete"):
+        if post_production_complete_for_schedule(item):
+            return "Complete"
+        return "Post Production"
+    days_until = item.get("days_until")
+    guest_status = item.get("guest_status")
+    topics_status = item.get("topics_status")
+    if item.get("show_key") == "breach-of-protocol":
+        if item.get("streamyard_status") == "Present" and item.get("calendar_status") == "Present":
+            return "Ready for Live"
+        if item.get("calendar_event_found") and not item.get("streamyard_urls") and not item.get("linkedin_urls"):
+            return "Story Approved"
+        if item.get("calendar_event_found") or item.get("streamyard_urls") or item.get("linkedin_urls"):
+            return "Production Setup"
+        return "Editorial Research"
+    if guest_status in {"Open Guest Slot / Needs Second Guest", "Needs Replacement Guest"}:
+        return "Guest Sourcing"
+    if guest_status == "Blocked by Confirmation":
+        return "Blocked"
+    if not item_has_confirmed_guest(item):
+        return "Not Started"
+    if topics_status == "Blocked by Guest":
+        return "Guest Confirmed"
+    if (
+        item.get("calendar_status") in {"Missing", "Needs Verification"}
+        or item.get("linkedin_status") in {"Exists - Calendar Needs Update", "Urgent Review", "Ready to Create", "Due Soon"}
+        or item.get("streamyard_status") in {"Critical", "Urgent Review", "Ready to Create", "Due Soon"}
+    ):
+        return "Production Setup"
+    if item.get("current_production_status") == "Ready":
+        return "Ready for Live"
+    return "Guest Confirmed"
+
+
+def workflow_owner_for_schedule(item, phase):
+    if phase == "Guest Sourcing":
+        return "Jessie"
+    if phase == "Editorial Research":
+        return "Jessie"
+    if phase == "Story Approved":
+        return "Codex"
+    if phase == "Production Setup":
+        return "Codex"
+    if phase == "Ready for Live":
+        return "Jessie"
+    if phase == "Post Production":
+        email_status = (item.get("post_production_email_verification") or {}).get("status")
+        if email_status in {"Verified Sent", "Not Required"}:
+            return "internal team"
+        return "Jessie"
+    if phase in {"Live Complete", "Complete"}:
+        return "internal team"
+    if item.get("topics_status") == "Blocked by Guest" or item.get("guest_status") == "Blocked by Confirmation":
+        return "guest"
+    if item.get("highlevel_status_display") == "Needs Verification":
+        return "Jessie"
+    return "Jessie"
+
+
+def workflow_codex_draft_support(item, phase):
+    if phase == "Guest Sourcing":
+        return {
+            "can_draft": True,
+            "draft_label": "PR pitch / outreach",
+        }
+    if phase == "Editorial Research":
+        return {
+            "can_draft": True,
+            "draft_label": "research brief / story candidates",
+        }
+    if phase == "Story Approved":
+        return {
+            "can_draft": True,
+            "draft_label": "production asset skeletons",
+        }
+    if phase == "Production Setup":
+        return {
+            "can_draft": True,
+            "draft_label": "calendar updates / email drafts",
+        }
+    return {
+        "can_draft": False,
+        "draft_label": None,
+    }
+
+
+def workflow_next_best_action(item, phase):
+    draft_support = workflow_codex_draft_support(item, phase)
+    if phase == "Guest Sourcing":
+        return draft_support.get("draft_label") or item.get("next_human_action")
+    if phase == "Editorial Research":
+        return draft_support.get("draft_label") or "Prepare a research brief and candidate story set for approval."
+    if phase == "Story Approved":
+        return "Draft the approved production assets, but keep them approval-gated until Jessie reviews them."
+    if phase == "Production Setup":
+        if item.get("show_key") == "breach-of-protocol":
+            return "Draft LinkedIn, StreamYard, calendar, and producer notes from the approved editorial package."
+        return item.get("next_human_action") or "Prepare the next production draft."
+    if phase == "Ready for Live":
+        return "Monitor readiness and verify no last-minute status changes before live day."
+    if phase == "Post Production":
+        unfinished = item.get("unfinished_post_production_deliverables") or []
+        if unfinished:
+            return "Complete the remaining post-production deliverables: " + ", ".join(unfinished) + "."
+        return "Confirm the configured post-production workflow is complete and archive the episode."
+    if phase == "Complete":
+        return "Archive the completed episode."
+    if phase == "Blocked":
+        return item.get("next_human_action") or "Resolve the blocker before continuing."
+    return item.get("next_human_action") or "Monitor and review the next required step."
+
+
+def workflow_requires_human_approval(item, phase):
+    if phase in {"Guest Sourcing", "Editorial Research", "Story Approved", "Production Setup"}:
+        return True
+    return False
+
+
+def workflow_summary_for_schedule(item):
+    phase = workflow_phase_for_schedule(item)
+    owner = workflow_owner_for_schedule(item, phase)
+    draft_support = workflow_codex_draft_support(item, phase)
+    return {
+        "current_phase": phase,
+        "next_best_action": workflow_next_best_action(item, phase),
+        "blocker": workflow_primary_blocker(item),
+        "owner": owner,
+        "codex_can_draft": draft_support.get("can_draft", False),
+        "codex_draft_type": draft_support.get("draft_label"),
+        "human_approval_required": workflow_requires_human_approval(item, phase),
+        "unfinished_post_production_deliverables": item.get("unfinished_post_production_deliverables") or [],
+    }
+
+
 def finalize_schedule_item(item, now_local):
     days_until = schedule_days_until(item, now_local)
     item["days_until"] = days_until
+    item["live_window_complete"] = schedule_live_window_complete(item, now_local)
+    episode_end = schedule_episode_end(item)
+    item["episode_end_time"] = episode_end.isoformat() if episode_end else item.get("episode_end_time")
+    item["unfinished_post_production_deliverables"] = unfinished_post_production_deliverables(item) if item["live_window_complete"] else []
+    if item["live_window_complete"]:
+        item["guest_status"] = "Not Applicable"
+        item["topics_status"] = "Not Applicable"
+        item["calendar_status"] = "Present" if item.get("calendar_event_found") else "Not Applicable"
+        item["highlevel_status_display"] = "Not Applicable"
+        item["linkedin_status"] = "Not Applicable"
+        item["streamyard_status"] = "Not Applicable"
+        item["production_blockers"] = []
+        item["next_human_action"] = (
+            "Complete the remaining post-production deliverables: "
+            + ", ".join(item["unfinished_post_production_deliverables"])
+            + "."
+            if item["unfinished_post_production_deliverables"]
+            else "Archive the completed episode."
+        )
+        item["flags"] = []
+        item["current_production_status"] = "Needs Attention" if item["unfinished_post_production_deliverables"] else "Complete"
+        item["workflow"] = workflow_summary_for_schedule(item)
+        return item
     item["guest_status"] = guest_status_for_schedule(item)
     item["topics_status"] = topics_status_for_schedule(item, days_until)
     item["calendar_status"] = calendar_status_for_schedule(item)
@@ -7280,11 +8641,13 @@ def finalize_schedule_item(item, now_local):
     item["next_human_action"] = next_human_action_for_schedule(item)
     item["flags"] = brief_item_flags(item)
     item["current_production_status"] = brief_item_status(item)
+    item["workflow"] = workflow_summary_for_schedule(item)
     return item
 
 
 WORK_QUEUE_LANES = ("Today's Work", "This Week", "Blocked", "Waiting On")
 WORK_QUEUE_GROUPS = ("Guest Follow-up", "Calendar", "Production", "PR", "Marketing", "Post Production")
+WORK_QUEUE_CATEGORIES = ("Operations Queue", "Production Queue")
 
 
 def task_time_text(minutes):
@@ -7310,6 +8673,7 @@ def add_work_task(tasks, task):
     task.setdefault("group", "Production")
     task.setdefault("lane", "Today's Work")
     task.setdefault("status", "Needs Attention")
+    task.setdefault("task_category", "Production Queue")
     task.setdefault("estimated_minutes", 8)
     task.setdefault("business_impact", "Medium")
     task.setdefault("checklist", [])
@@ -7338,6 +8702,7 @@ def task_from_guest_topics(item):
         "group": "Guest Follow-up",
         "lane": "Today's Work",
         "status": "Waiting On",
+        "task_category": "Operations Queue",
         "show_key": item.get("show_key"),
         "show_name": item.get("show_name"),
         "episode_time": item.get("date_time") or item.get("episode_time"),
@@ -7369,6 +8734,7 @@ def task_from_guest_confirmation(item):
         "group": "Guest Follow-up",
         "lane": "Today's Work",
         "status": "Blocked by Confirmation",
+        "task_category": "Operations Queue",
         "show_key": item.get("show_key"),
         "show_name": item.get("show_name"),
         "episode_time": item.get("date_time") or item.get("episode_time"),
@@ -7398,6 +8764,7 @@ def task_from_calendar_mismatch(item):
         "group": "Calendar",
         "lane": "Today's Work",
         "status": "Urgent Review",
+        "task_category": "Operations Queue",
         "show_key": item.get("show_key"),
         "show_name": item.get("show_name"),
         "episode_time": item.get("date_time") or item.get("episode_time"),
@@ -7414,6 +8781,38 @@ def task_from_calendar_mismatch(item):
             "Confirm whether the calendar event is real",
             "Check HighLevel booking context",
             "Decide whether production should proceed",
+        ],
+        "calendar_event_url": item.get("calendar_event_url"),
+        "source_issue_codes": schedule_source_codes(item),
+    }
+
+
+def task_from_open_guest_slot(item):
+    guest = schedule_guest_label(item)
+    return {
+        "task_kind": "open_guest_slot",
+        "title": schedule_task_title(item, "Open Guest Slot"),
+        "group": "PR",
+        "lane": "This Week",
+        "status": "Awaiting Second Guest",
+        "task_category": "Operations Queue",
+        "show_key": item.get("show_key"),
+        "show_name": item.get("show_name"),
+        "episode_time": item.get("date_time") or item.get("episode_time"),
+        "guest": guest,
+        "why_seen": "WinsDay requires two distinct confirmed guests, and only one distinct guest is currently confirmed.",
+        "blocking": "The second WinsDay guest slot is still open, so production assets should not be generated yet.",
+        "next_action": item.get("next_human_action") or "Find a second confirmed WinsDay guest or record Jessie-approved solo-guest override before final production drafts.",
+        "estimated_minutes": 20,
+        "business_impact": "High",
+        "blocked": True,
+        "waiting_on": False,
+        "ignored_risk": "Production prep may start too early for an episode that is not guest-complete.",
+        "checklist": [
+            "Define ideal complementary guest profile",
+            "Source second guest or PR contact",
+            "Confirm booking path",
+            "Rerun read-only audit before any production draft generation",
         ],
         "calendar_event_url": item.get("calendar_event_url"),
         "source_issue_codes": schedule_source_codes(item),
@@ -7480,6 +8879,7 @@ def task_from_production_links(item):
         "group": "Production",
         "lane": "Today's Work" if item.get("current_production_status") == "Urgent Review" or (item.get("days_until") is not None and item.get("days_until") < DAILY_BRIEF_NEXT_DAYS) else "This Week",
         "status": item.get("current_production_status") or "Needs Attention",
+        "task_category": "Production Queue",
         "show_key": item.get("show_key"),
         "show_name": item.get("show_name"),
         "episode_time": item.get("date_time") or item.get("episode_time"),
@@ -7507,6 +8907,7 @@ def task_from_replacement_finding(finding):
         "group": "PR",
         "lane": "This Week",
         "status": "Needs Replacement Guest",
+        "task_category": "Operations Queue",
         "show_key": finding.get("show_key"),
         "show_name": finding.get("show"),
         "episode_time": finding.get("episode"),
@@ -7537,6 +8938,7 @@ def task_from_follow_up_finding(finding):
         "group": "Guest Follow-up",
         "lane": "This Week",
         "status": "Needs Human Follow-Up",
+        "task_category": "Operations Queue",
         "show_key": finding.get("show_key"),
         "show_name": finding.get("show"),
         "episode_time": finding.get("episode"),
@@ -7561,8 +8963,10 @@ def task_from_follow_up_finding(finding):
 
 def work_queue_sort_key(task):
     lane_order = {"Today's Work": 0, "This Week": 1, "Blocked": 2, "Waiting On": 3}
+    category_order = {"Operations Queue": 0, "Production Queue": 1}
     impact_order = {"High": 0, "Medium": 1, "Low": 2}
     return (
+        category_order.get(task.get("task_category"), 9),
         lane_order.get(task.get("lane"), 9),
         impact_order.get(task.get("business_impact"), 9),
         task.get("episode_time") or "",
@@ -7574,6 +8978,9 @@ def work_queue_sort_key(task):
 def build_work_queue(brief):
     tasks = {}
     for item in brief.get("next_7_days_schedule") or []:
+        if item.get("guest_status") == "Open Guest Slot / Needs Second Guest":
+            add_work_task(tasks, task_from_open_guest_slot(item))
+            continue
         if item.get("topics_status") == "Blocked by Guest":
             add_work_task(tasks, task_from_guest_topics(item))
             continue
@@ -7595,9 +9002,11 @@ def build_work_queue(brief):
     task_list = sorted(tasks.values(), key=work_queue_sort_key)
     by_lane = {lane: [] for lane in WORK_QUEUE_LANES}
     by_group = {group: [] for group in WORK_QUEUE_GROUPS}
+    by_category = {category: [] for category in WORK_QUEUE_CATEGORIES}
     for task in task_list:
         by_lane.setdefault(task.get("lane") or "Today's Work", []).append(task)
         by_group.setdefault(task.get("group") or "Production", []).append(task)
+        by_category.setdefault(task.get("task_category") or "Production Queue", []).append(task)
         if task.get("blocked") and task not in by_lane["Blocked"]:
             by_lane["Blocked"].append(task)
         if task.get("waiting_on") and task not in by_lane["Waiting On"]:
@@ -7606,6 +9015,7 @@ def build_work_queue(brief):
         "tasks": task_list,
         "by_lane": by_lane,
         "by_group": by_group,
+        "by_category": by_category,
         "total_estimated_minutes": sum(int(task.get("estimated_minutes") or 0) for task in task_list if task.get("lane") == "Today's Work"),
         "total_task_count": len(task_list),
     }
@@ -7701,6 +9111,81 @@ def completion_missing_for_production_links(item):
     return verified, missing, not_tracked
 
 
+def completed_claim_for_schedule_item(completed_tasks_payload, item):
+    matches = [
+        claim
+        for claim in ((completed_tasks_payload or {}).get("tasks") or [])
+        if isinstance(claim, dict) and claim_matches_schedule_item(claim, item)
+    ]
+    if not matches:
+        return None
+    matches.sort(key=lambda claim: (completion_claim_marked_at(claim) or datetime.min.replace(tzinfo=timezone.utc)).isoformat(), reverse=True)
+    return matches[0]
+
+
+def completed_claim_for_action(completed_tasks_payload, action):
+    for claim in ((completed_tasks_payload or {}).get("tasks") or []):
+        if not isinstance(claim, dict):
+            continue
+        if normalize_text(claim.get("show_key")) != normalize_text(action.get("show_key")):
+            continue
+        if completion_claim_date(claim) != date_key(action.get("episode_date") or action.get("episode")):
+            continue
+        return claim
+    return None
+
+
+def completed_human_status_for_schedule_item(item, completed_tasks_payload):
+    claim = completed_claim_for_schedule_item(completed_tasks_payload, item)
+    if not claim:
+        return None
+    verified, missing, not_tracked = completion_missing_for_production_links(item)
+    if missing:
+        return {
+            "claim": claim,
+            "status": "Still open",
+            "verified_checks": verified,
+            "still_missing": missing,
+            "not_tracked": not_tracked,
+            "reason": "Human marked this complete, but source-backed checks still show missing required production fields.",
+        }
+    if not_tracked:
+        return {
+            "claim": claim,
+            "status": "Completed by Human - Verification Pending",
+            "verified_checks": verified,
+            "still_missing": [],
+            "not_tracked": not_tracked,
+            "reason": "Human marked this complete, and source data confirms the production links, but at least one completion check is not tracked in normalized data yet.",
+        }
+    return {
+        "claim": claim,
+        "status": "Completed / Human Verified",
+        "verified_checks": verified,
+        "still_missing": [],
+        "not_tracked": [],
+        "reason": "Human marked this complete and the source-backed production checks now pass.",
+    }
+
+
+def issue_matches_schedule_item(issue, item):
+    if normalize_text(issue.get("show_key")) != normalize_text(item.get("show_key")):
+        return False
+    item_event_id = item.get("calendar_event_id")
+    issue_event_id = issue.get("calendar_event_id") or ((issue.get("relevant_raw_ids") or {}).get("google_calendar_event_id"))
+    if item_event_id and issue_event_id and item_event_id == issue_event_id:
+        return True
+    return date_key(issue.get("episode_time")) == date_key(item.get("date_time") or item.get("episode_time"))
+
+
+def issue_matches_completed_hidden_item(issue, hidden_event_ids, hidden_episode_keys):
+    issue_event_id = issue.get("calendar_event_id") or ((issue.get("relevant_raw_ids") or {}).get("google_calendar_event_id"))
+    if issue_event_id and issue_event_id in (hidden_event_ids or set()):
+        return True
+    issue_key = (issue.get("show_key"), date_key(issue.get("episode_time")))
+    return issue_key in (hidden_episode_keys or set())
+
+
 def completion_result_sort_key(item):
     marked_at = completion_claim_marked_at(item.get("claim") or {})
     return (
@@ -7759,8 +9244,12 @@ def build_completion_verification(completed_tasks_payload, schedule, work_queue,
             result["not_tracked"] = not_tracked
             result["related_work_queue_item_removed"] = not production_links_task_needed(current_schedule)
             if not missing and result["related_work_queue_item_removed"]:
-                result["verification_status"] = "Completed and verified"
-                result["explanation"] = "The fresh audit confirms the production links are present and the related work queue item is no longer open."
+                if not_tracked:
+                    result["verification_status"] = "Completed by Human - Verification Pending"
+                    result["explanation"] = "The fresh audit confirms the production links are present and the work queue item is gone, but one or more completion checks are not tracked in normalized source data yet."
+                else:
+                    result["verification_status"] = "Completed / Human Verified"
+                    result["explanation"] = "The fresh audit confirms the production links are present and the related work queue item is no longer open."
             elif current_task:
                 result["verification_status"] = "Still open"
                 result["current_task_title"] = current_task.get("title")
@@ -7795,7 +9284,7 @@ def build_completion_verification(completed_tasks_payload, schedule, work_queue,
     completed_today = [
         item
         for item in results
-        if item.get("verification_status") == "Completed and verified"
+        if item.get("verification_status") in {"Completed and verified", "Completed / Human Verified"}
         and date_key(item.get("marked_complete_at")) == today_key
     ]
     return {
@@ -7817,7 +9306,20 @@ def load_action_context(args):
         now_local = datetime.fromisoformat(f"{args.episode_date}T00:00:00").replace(tzinfo=LOCAL_TIMEZONE)
     else:
         now_local = daily_now(args.now)
-    brief = build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local, completed_tasks, completed_tasks_path)
+    window_days = int(getattr(args, "queue_window_days", DAILY_BRIEF_NEXT_DAYS) or DAILY_BRIEF_NEXT_DAYS)
+    focus_start, focus_end = focus_window_bounds(args)
+    brief = build_daily_brief_payload(
+        report,
+        manager_dashboard,
+        calendar_events,
+        rules,
+        now_local,
+        completed_tasks,
+        completed_tasks_path,
+        window_days=window_days,
+        focus_start_date=focus_start,
+        focus_end_date=focus_end,
+    )
     episodes, appointments_by_id, submissions_by_id, custom_field_map_by_id = load_show_context(args.show_key, Path(args.discovery_dir))
     return {
         "report": report,
@@ -7883,6 +9385,7 @@ def episode_override_record(knowledge, show_key, episode_date, event_id=None):
             for key in (
                 "confirmed_guest_names",
                 "confirmed_guest_emails",
+                "solo_guest_override_approved",
                 "title_override",
                 "topics_override",
                 "streamyard_url",
@@ -8619,7 +10122,7 @@ def render_pending_actions_markdown(actions_payload):
         "- Mode: approval-gated actions only. Write actions require explicit approval plus fresh re-verification.",
         "",
     ]
-    actions = (actions_payload or {}).get("actions") or []
+    actions = sorted((actions_payload or {}).get("actions") or [], key=action_sort_key)
     if not actions:
         lines.extend(["## Active Approval Queue", "", "No active pending actions.", ""])
     else:
@@ -8629,6 +10132,7 @@ def render_pending_actions_markdown(actions_payload):
                 [
                     f"## {action.get('action_id')}",
                     "",
+                    f"- Queue: {action_queue_category(action)}",
                     f"- Type: {action.get('type')}",
                     f"- Show: {action.get('show')}",
                     f"- Episode: {short_date(action.get('episode'))}",
@@ -8649,7 +10153,56 @@ def render_pending_actions_markdown(actions_payload):
                     "",
                 ]
             )
-    superseded = (actions_payload or {}).get("superseded_actions") or []
+    focus_summary = (actions_payload or {}).get("focus_window_summary") or {}
+    if focus_summary:
+        ready_items = focus_summary.get("ready_for_approval") or []
+        needs_items = focus_summary.get("needs_jessie_input") or []
+        blocked_items = focus_summary.get("blocked") or []
+        ignore_items = focus_summary.get("ignore_or_complete") or []
+        queue_groups = {
+            "Operations Queue": {
+                "ready_for_approval": [item for item in ready_items if focus_summary_item_queue(item, "ready_for_approval") == "Operations Queue"],
+                "needs_jessie_input": [item for item in needs_items if focus_summary_item_queue(item, "needs_jessie_input") == "Operations Queue"],
+                "blocked": [item for item in blocked_items if focus_summary_item_queue(item, "blocked") == "Operations Queue"],
+                "ignore_or_complete": [item for item in ignore_items if focus_summary_item_queue(item, "ignore_or_complete") == "Operations Queue"],
+            },
+            "Production Queue": {
+                "ready_for_approval": [item for item in ready_items if focus_summary_item_queue(item, "ready_for_approval") == "Production Queue"],
+                "needs_jessie_input": [item for item in needs_items if focus_summary_item_queue(item, "needs_jessie_input") == "Production Queue"],
+                "blocked": [item for item in blocked_items if focus_summary_item_queue(item, "blocked") == "Production Queue"],
+                "ignore_or_complete": [item for item in ignore_items if focus_summary_item_queue(item, "ignore_or_complete") == "Production Queue"],
+            },
+        }
+        lines.extend(
+            [
+                "## Next Week Operations Work Queue",
+                "",
+                f"- Focus window: {md_escape(focus_summary.get('focus_start_date') or 'n/a')} through {md_escape(focus_summary.get('focus_end_date') or 'n/a')}",
+                f"- Ready for approval: {len(ready_items)}",
+                f"- Needs Jessie input: {len(needs_items)}",
+                f"- Blocked: {len(blocked_items)}",
+                f"- Ignore / already complete: {len(ignore_items)}",
+                "",
+            ]
+        )
+        for queue_name in WORK_QUEUE_CATEGORIES:
+            lines.extend([f"### {queue_name}", ""])
+            queue_items = queue_groups.get(queue_name) or {}
+            for heading, key in (
+                ("#### Ready for Approval", "ready_for_approval"),
+                ("#### Needs Jessie Input", "needs_jessie_input"),
+                ("#### Blocked", "blocked"),
+                ("#### Ignore / Already Complete", "ignore_or_complete"),
+            ):
+                lines.extend([heading, ""])
+                items = queue_items.get(key) or []
+                if not items:
+                    lines.extend(["None.", ""])
+                    continue
+                for item in items:
+                    lines.append(f"- {md_escape(item.get('show') or 'Unknown')} - {md_escape(short_date(item.get('episode')))} - {md_escape(item.get('guest') or 'Unknown')}: {md_escape(item.get('reason') or item.get('risk_level') or 'Needs review')}")
+                lines.append("")
+    superseded = sorted((actions_payload or {}).get("superseded_actions") or [], key=action_sort_key)
     lines.extend(["## Superseded Actions", ""])
     if not superseded:
         lines.extend(["No actions have been superseded by guest status changes.", ""])
@@ -8659,6 +10212,7 @@ def render_pending_actions_markdown(actions_payload):
             [
                 f"## {action.get('action_id')}",
                 "",
+                f"- Queue: {action_queue_category(action)}",
                 f"- Type: {action.get('type')}",
                 f"- Show: {action.get('show')}",
                 f"- Episode: {short_date(action.get('episode'))}",
@@ -8753,6 +10307,438 @@ def create_pending_action(args, action_type):
     saved_record, payload = upsert_pending_action(pending_actions, action_record)
     json_path, md_path = write_pending_actions_outputs(payload)
     return saved_record, json_path, md_path
+
+
+def load_all_show_contexts(discovery_dir, rules):
+    contexts = {}
+    for show_key in configured_show_keys(rules):
+        episodes, appointments_by_id, submissions_by_id, custom_field_map_by_id = load_show_context(show_key, Path(discovery_dir))
+        contexts[show_key] = {
+            "episodes": episodes,
+            "appointments_by_id": appointments_by_id,
+            "submissions_by_id": submissions_by_id,
+            "custom_field_map_by_id": custom_field_map_by_id,
+        }
+    return contexts
+
+
+def approval_queue_event_posted(item):
+    return item.get("linkedin_status") in {"Present", "Exists - Calendar Needs Update"}
+
+
+def approval_queue_destinations_required(rules, show_key):
+    return unique_text_list(show_distribution_destinations(rules, show_key))
+
+
+def approval_queue_destination_links(item, rules):
+    required = approval_queue_destinations_required(rules, item.get("show_key"))
+    available = {
+        "linkedin": list(item.get("linkedin_urls") or []),
+        "streamyard": list(item.get("streamyard_urls") or []),
+    }
+    override_record = item.get("episode_override_record") or {}
+    if override_record.get("facebook_url"):
+        available["facebook"] = [override_record.get("facebook_url")]
+    if override_record.get("youtube_url"):
+        available["youtube"] = [override_record.get("youtube_url")]
+    if override_record.get("twitch_url"):
+        available["twitch"] = [override_record.get("twitch_url")]
+    status = {}
+    for destination in required:
+        key = normalize_text(destination)
+        if key == "linkedin":
+            urls = list(item.get("linkedin_urls") or [])
+        elif key == "streamyard":
+            urls = list(item.get("streamyard_urls") or [])
+        else:
+            urls = available.get(key, [])
+        status[key] = {
+            "required": True,
+            "present": bool(urls),
+            "urls": urls,
+        }
+    return status
+
+
+def schedule_item_needs_hannah_emails(item, rules):
+    cadence = show_hannah_email_cadence(rules, item.get("show_key"))
+    if not cadence:
+        return False
+    if item.get("show_key") == "breach-of-protocol":
+        return False
+    return bool(item.get("guest_names"))
+
+
+def schedule_item_block_reason_for_drafts(item, rules):
+    if not item.get("calendar_event_found"):
+        return "No Google Calendar event is available yet."
+    if item.get("guest_status") == "Open Guest Slot / Needs Second Guest":
+        return "WinsDay still needs a second distinct confirmed guest before production drafts can move forward."
+    if item.get("guest_status") == "Needs Replacement Guest":
+        return "The episode still needs a replacement guest."
+    if item.get("guest_status") == "Blocked by Confirmation":
+        return "Guest or host confirmation still needs human review."
+    if item.get("topics_status") == "Blocked by Guest":
+        return "Final topics are still missing from human-confirmed source data."
+    if item.get("calendar_status") == "Needs Verification" or item.get("highlevel_status_display") == "Needs Verification":
+        return "Google Calendar and HighLevel still need human reconciliation."
+    if item.get("show_key") == "deconstructing-data":
+        override_record = item.get("episode_override_record") or {}
+        if not override_script_url(override_record):
+            return "Deconstructing Data script URL is still needed before guest-facing draft approval."
+    return ""
+
+
+def schedule_item_should_ignore_for_queue(item):
+    return item.get("guest_status") == "Needs Replacement Guest" and item.get("highlevel_status_display") == "Known exception"
+
+
+def schedule_item_needs_calendar_draft(item):
+    if item.get("guest_status") == "Open Guest Slot / Needs Second Guest":
+        return False
+    if not item.get("calendar_event_found"):
+        return False
+    if item.get("calendar_status") == "Missing":
+        return False
+    if item.get("streamyard_status") != "Present":
+        return True
+    if item.get("linkedin_status") != "Present":
+        return True
+    if any(issue.get("code") in {"required_custom_fields_missing_from_description", "sop_required_assets_missing"} for issue in (item.get("issues") or [])):
+        return True
+    return False
+
+
+def schedule_item_needs_email_draft(item, rules):
+    if not schedule_item_needs_hannah_emails(item, rules):
+        return False
+    if item.get("guest_status") == "Open Guest Slot / Needs Second Guest":
+        return False
+    return item.get("guest_status") in {"Confirmed", "Human-confirmed active", "PR Representative Booking / Guest Represented"}
+
+
+def post_production_email_status_for_item(item):
+    episode_time = parse_datetime(item.get("date_time") or item.get("episode_time"))
+    if not episode_time:
+        return "Not applicable in current source window"
+    if episode_time > datetime.now(LOCAL_TIMEZONE):
+        return "Not due yet for upcoming episode"
+    return "Needs human review; automated post-production email drafting is not configured yet."
+
+
+def queue_summary_row(item, rules):
+    return {
+        "queue": "Operations Queue" if schedule_item_block_reason_for_drafts(item, rules) else "Production Queue",
+        "show": item.get("show_name"),
+        "show_key": item.get("show_key"),
+        "episode": item.get("date_time") or item.get("episode_time"),
+        "guest_or_hosts": item.get("guest_names") or [],
+        "event_posted": approval_queue_event_posted(item),
+        "calendar_updated_with_final_links": item.get("streamyard_status") == "Present" and item.get("linkedin_status") == "Present",
+        "streamyard_url_present": item.get("streamyard_status") == "Present",
+        "linkedin_url_present": item.get("linkedin_status") in {"Present", "Exists - Calendar Needs Update"},
+        "required_destination_links": approval_queue_destination_links(item, rules),
+        "guest_or_host_emails_needed": schedule_item_needs_hannah_emails(item, rules),
+        "post_production_email_status": post_production_email_status_for_item(item),
+        "blocked_by_missing_human_info": schedule_item_block_reason_for_drafts(item, rules) or None,
+        "next_human_action": item.get("next_human_action"),
+    }
+
+
+def action_matches_schedule_item(action, item):
+    if not action or not item:
+        return False
+    action_show = normalize_text(action.get("show_key") or action.get("show"))
+    item_show = normalize_text(item.get("show_key") or item.get("show_name"))
+    if action_show != item_show:
+        return False
+    return date_key(action.get("episode_date") or action.get("episode")) == date_key(item.get("date_time") or item.get("episode_time"))
+
+
+def action_queue_category(action):
+    action_type = normalize_text((action or {}).get("type"))
+    if action_type in {"guest sourcing brief", "guest confirmation follow up", "client approval follow up", "highlevel reconciliation"}:
+        return "Operations Queue"
+    return "Production Queue"
+
+
+def action_sort_key(action):
+    queue_order = {"Operations Queue": 0, "Production Queue": 1}
+    status_order = {"pending": 0, "approved": 1, "superseded": 2}
+    return (
+        queue_order.get(action_queue_category(action), 9),
+        status_order.get(action.get("approval_status"), 9),
+        action.get("episode") or "",
+        action.get("created_at") or "",
+        action.get("action_id") or "",
+    )
+
+
+def focus_summary_item_queue(item, bucket_key=None):
+    explicit = (item or {}).get("queue")
+    if explicit in WORK_QUEUE_CATEGORIES:
+        return explicit
+    if bucket_key == "blocked":
+        return "Operations Queue"
+    item_type = normalize_text((item or {}).get("type"))
+    if item_type in {"calendar update", "email draft"}:
+        return "Production Queue"
+    return "Operations Queue"
+
+
+def weekday_name_for_date(value):
+    return value.strftime("%A") if value else ""
+
+
+def missing_editorial_planning_items(rules, focus_start, focus_end, present_show_keys):
+    if not focus_start or not focus_end:
+        return []
+    items = []
+    current = focus_start
+    while current <= focus_end:
+        for show_key in configured_show_keys(rules):
+            config = show_rule(rules, show_key)
+            workflow_model = (config.get("workflow_model") or "").strip().lower()
+            if workflow_model not in {"editorial_research", "editorial_first"}:
+                continue
+            if normalize_text(config.get("day_of_week")) != normalize_text(weekday_name_for_date(current)):
+                continue
+            if show_key in present_show_keys:
+                continue
+            items.append(
+                {
+                    "show": config.get("show_name") or show_key,
+                    "episode": f"{current.isoformat()}T00:00:00-04:00",
+                    "guest": "Editorial planning",
+                    "reason": "No source-backed episode package exists yet. Research, story approval, episode brief, LinkedIn event, StreamYard, and calendar invite planning are still needed.",
+                    "planning_checklist": [
+                        "Research needed",
+                        "Story approval needed",
+                        "Episode brief needed",
+                        "LinkedIn event needed",
+                        "StreamYard needed",
+                        "Calendar invite needed",
+                    ],
+                }
+            )
+        current += timedelta(days=1)
+    return items
+
+
+def create_approval_queue_for_window(args):
+    report, manager_dashboard, calendar_events, rules, completed_tasks, completed_tasks_path = load_daily_brief_sources(args)
+    knowledge = load_knowledge(Path(args.knowledge_dir))
+    now_local = daily_now(args.now)
+    window_days = int(getattr(args, "queue_window_days", DEFAULT_APPROVAL_QUEUE_WINDOW_DAYS) or DEFAULT_APPROVAL_QUEUE_WINDOW_DAYS)
+    focus_start, focus_end = focus_window_bounds(args)
+    brief = build_daily_brief_payload(
+        report,
+        manager_dashboard,
+        calendar_events,
+        rules,
+        now_local,
+        completed_tasks,
+        completed_tasks_path,
+        window_days=window_days,
+        focus_start_date=focus_start,
+        focus_end_date=focus_end,
+    )
+    all_contexts = load_all_show_contexts(args.discovery_dir, rules)
+    pending_actions = load_pending_actions(DEFAULT_PENDING_ACTIONS_PATH)
+    if focus_start or focus_end:
+        retained_actions = []
+        superseded_actions = list(pending_actions.get("superseded_actions") or [])
+        rebuild_candidates = []
+        for action in pending_actions.get("actions") or []:
+            generated_from = ((action.get("selection_context") or {}).get("generated_from"))
+            in_focus = value_in_focus_window(action.get("episode_date") or action.get("episode"), focus_start, focus_end)
+            if generated_from == "approval_gated_work_queue" and not in_focus:
+                record = dict(action)
+                record["approval_status"] = "superseded"
+                record["superseded_reason"] = "Outside the focused operations window."
+                record.setdefault("superseded_at", datetime.now(timezone.utc).isoformat())
+                superseded_actions.insert(0, record)
+                continue
+            if generated_from == "approval_gated_work_queue" and in_focus:
+                rebuild_candidates.append(action)
+                continue
+            retained_actions.append(action)
+        pending_actions["actions"] = retained_actions
+        pending_actions["superseded_actions"] = superseded_actions
+        pending_actions["_rebuild_candidates"] = rebuild_candidates
+    created_actions = []
+    can_approve_now = []
+    needs_human_review = []
+    blocked = []
+    ignored = []
+    queue_rows = []
+    present_show_keys = set()
+
+    for item in brief.get("next_7_days_schedule") or []:
+        schedule_item = dict(item)
+        show_key = schedule_item.get("show_key")
+        if not show_key or show_key not in all_contexts:
+            continue
+        present_show_keys.add(show_key)
+        schedule_item["episode_override_record"] = episode_override_record(
+            knowledge,
+            show_key,
+            date_key(schedule_item.get("date_time") or schedule_item.get("episode_time")),
+            schedule_item.get("calendar_event_id"),
+        )
+        completed_status = completed_human_status_for_schedule_item(schedule_item, completed_tasks)
+        if completed_status and completed_status.get("status") in {"Completed / Human Verified", "Completed by Human - Verification Pending"}:
+            ignored.append(
+                {
+                    "queue": "Operations Queue",
+                    "show": schedule_item.get("show_name"),
+                    "episode": schedule_item.get("date_time") or schedule_item.get("episode_time"),
+                    "guest": ", ".join(schedule_item.get("guest_names") or []) or "Unknown",
+                    "reason": completed_status.get("status"),
+                }
+            )
+            continue
+        queue_rows.append(queue_summary_row(schedule_item, rules))
+        if schedule_item_should_ignore_for_queue(schedule_item):
+            ignored.append(
+                {
+                    "queue": "Operations Queue",
+                    "show": schedule_item.get("show_name"),
+                    "episode": schedule_item.get("date_time") or schedule_item.get("episode_time"),
+                    "guest": ", ".join(schedule_item.get("guest_names") or []) or "Unknown",
+                    "reason": "Known canceled or superseded booking.",
+                }
+            )
+            continue
+        block_reason = schedule_item_block_reason_for_drafts(schedule_item, rules)
+        if block_reason:
+            blocked.append(
+                {
+                    "queue": "Operations Queue",
+                    "show": schedule_item.get("show_name"),
+                    "episode": schedule_item.get("date_time") or schedule_item.get("episode_time"),
+                    "guest": ", ".join(schedule_item.get("guest_names") or []) or "Unknown",
+                    "reason": block_reason,
+                }
+            )
+            continue
+        context = {
+            "report": report,
+            "manager_dashboard": manager_dashboard,
+            "calendar_events": calendar_events,
+            "rules": rules,
+            "knowledge": knowledge,
+            "brief": brief,
+            "now_local": now_local,
+            **all_contexts[show_key],
+        }
+        destination_status = approval_queue_destination_links(schedule_item, rules)
+        required_missing = [
+            name
+            for name, detail in destination_status.items()
+            if detail.get("required") and not detail.get("present")
+        ]
+        if required_missing:
+            needs_human_review.append(
+                {
+                    "queue": "Production Queue",
+                    "show": schedule_item.get("show_name"),
+                    "episode": schedule_item.get("date_time") or schedule_item.get("episode_time"),
+                    "guest": ", ".join(schedule_item.get("guest_names") or []) or "Unknown",
+                    "reason": f"Required destination link(s) still missing from source data: {', '.join(required_missing)}.",
+                }
+            )
+        if schedule_item_needs_calendar_draft(schedule_item):
+            action_record = build_calendar_update_action(context, schedule_item)
+            action_record["selection_context"] = {
+                "selected_calendar_event_id": schedule_item.get("calendar_event_id"),
+                "queue_window_days": window_days,
+                "generated_from": "approval_gated_work_queue",
+            }
+            saved_record, pending_actions = upsert_pending_action(pending_actions, action_record)
+            created_actions.append(saved_record)
+            can_approve_now.append(
+                {
+                    "queue": "Production Queue",
+                    "type": "calendar_update",
+                    "show": saved_record.get("show"),
+                    "episode": saved_record.get("episode"),
+                    "guest": saved_record.get("guest"),
+                    "risk_level": saved_record.get("risk_level"),
+                }
+            )
+        if schedule_item_needs_email_draft(schedule_item, rules):
+            action_record = build_hannah_email_action(context, schedule_item)
+            recipients = ((action_record.get("proposed_output") or {}).get("recipient_list") or [])
+            if not recipients:
+                needs_human_review.append(
+                    {
+                        "queue": "Production Queue",
+                        "show": schedule_item.get("show_name"),
+                        "episode": schedule_item.get("date_time") or schedule_item.get("episode_time"),
+                        "guest": ", ".join(schedule_item.get("guest_names") or []) or "Unknown",
+                        "reason": "No safe recipient list could be inferred from current source data.",
+                    }
+                )
+            else:
+                action_record["selection_context"] = {
+                    "selected_calendar_event_id": schedule_item.get("calendar_event_id"),
+                    "queue_window_days": window_days,
+                    "generated_from": "approval_gated_work_queue",
+                }
+                saved_record, pending_actions = upsert_pending_action(pending_actions, action_record)
+                created_actions.append(saved_record)
+                can_approve_now.append(
+                    {
+                        "queue": "Production Queue",
+                        "type": "email_draft",
+                        "show": saved_record.get("show"),
+                        "episode": saved_record.get("episode"),
+                        "guest": saved_record.get("guest"),
+                        "risk_level": saved_record.get("risk_level"),
+                    }
+                )
+
+    for planning_item in missing_editorial_planning_items(rules, focus_start, focus_end, present_show_keys):
+        planning_item["queue"] = "Operations Queue"
+        blocked.append(planning_item)
+    rebuild_candidates = pending_actions.pop("_rebuild_candidates", [])
+    created_action_ids = {item.get("action_id") for item in created_actions if item.get("action_id")}
+    superseded_actions = list(pending_actions.get("superseded_actions") or [])
+    for action in rebuild_candidates:
+        if action.get("action_id") in created_action_ids:
+            continue
+        record = dict(action)
+        record["approval_status"] = "superseded"
+        record["superseded_reason"] = "Superseded by latest read-only queue generation."
+        record.setdefault("superseded_at", datetime.now(timezone.utc).isoformat())
+        superseded_actions.insert(0, record)
+    pending_actions["superseded_actions"] = superseded_actions
+
+    pending_actions["focus_window_summary"] = {
+        "focus_start_date": focus_start.isoformat() if focus_start else None,
+        "focus_end_date": focus_end.isoformat() if focus_end else None,
+        "ready_for_approval": can_approve_now,
+        "needs_jessie_input": needs_human_review,
+        "blocked": blocked,
+        "ignore_or_complete": ignored,
+        "schedule_summary": queue_rows,
+    }
+    json_path, md_path = write_pending_actions_outputs(pending_actions)
+    return {
+        "window_days": window_days,
+        "focus_start_date": focus_start.isoformat() if focus_start else None,
+        "focus_end_date": focus_end.isoformat() if focus_end else None,
+        "schedule_items_reviewed": len(brief.get("next_7_days_schedule") or []),
+        "schedule_summary": queue_rows,
+        "created_actions": created_actions,
+        "can_approve_now": can_approve_now,
+        "needs_human_review": needs_human_review,
+        "blocked": blocked,
+        "ignored": ignored,
+        "pending_actions_json": str(json_path),
+        "pending_actions_markdown": str(md_path),
+    }
 
 
 def recent_human_notes_for_action(notes_payload, action):
@@ -8872,10 +10858,60 @@ def verify_pending_action_before_write(action, report, manager_dashboard, calend
 def supersede_pending_action(action, verification, superseded_at):
     record = dict(action)
     record["approval_status"] = "superseded"
-    record["superseded_reason"] = "Superseded by Guest Status Change."
+    record["superseded_reason"] = verification.get("reason") or "Superseded by Guest Status Change."
     record["superseded_at"] = superseded_at
     record["final_read_only_verification"] = verification
     return record
+
+
+def completed_human_verification_for_action(action, report, manager_dashboard, calendar_events, rules, completed_tasks_payload):
+    claim = completed_claim_for_action(completed_tasks_payload, action)
+    if not claim:
+        return None
+    now_local = daily_now(None)
+    schedule_all = build_daily_schedule(
+        report,
+        manager_dashboard,
+        calendar_events,
+        rules,
+        now_local,
+        window_days=max(DAILY_BRIEF_NEXT_DAYS, DEFAULT_APPROVAL_QUEUE_WINDOW_DAYS),
+    )
+    matching_item = None
+    for item in schedule_all:
+        if normalize_text(item.get("show_key")) != normalize_text(action.get("show_key")):
+            continue
+        if date_key(item.get("date_time") or item.get("episode_time")) != date_key(action.get("episode_date") or action.get("episode")):
+            continue
+        matching_item = item
+        break
+    if not matching_item:
+        return {
+            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "required_before_any_write_action": True,
+            "outcome": "Completed by Human - Verification Pending",
+            "reason": "Human marked this episode complete, but the current brief window could not fully rematch the source-backed episode record.",
+            "checks": {
+                "completed_task_claim": claim,
+            },
+            "current_operational_statuses": [],
+        }
+    completed_status = completed_human_status_for_schedule_item(matching_item, completed_tasks_payload)
+    if not completed_status or completed_status.get("status") == "Still open":
+        return None
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "required_before_any_write_action": True,
+        "outcome": completed_status.get("status"),
+        "reason": completed_status.get("reason"),
+        "checks": {
+            "completed_task_claim": claim,
+            "verified_checks": completed_status.get("verified_checks") or [],
+            "still_missing": completed_status.get("still_missing") or [],
+            "not_tracked": completed_status.get("not_tracked") or [],
+        },
+        "current_operational_statuses": [matching_item.get("current_production_status")] if matching_item.get("current_production_status") else [],
+    }
 
 
 def reconcile_pending_actions(args):
@@ -8885,9 +10921,28 @@ def reconcile_pending_actions(args):
     now_iso = datetime.now(timezone.utc).isoformat()
     active_actions = []
     superseded_actions = list(pending_actions.get("superseded_actions") or [])
+    refreshed_superseded = []
+    for action in superseded_actions:
+        completed_verification = completed_human_verification_for_action(action, report, manager_dashboard, calendar_events, rules, completed_tasks)
+        if completed_verification and completed_verification.get("outcome") in {"Completed / Human Verified", "Completed by Human - Verification Pending"}:
+            refreshed = dict(action)
+            refreshed["approval_status"] = "superseded"
+            refreshed["superseded_reason"] = completed_verification.get("reason")
+            refreshed["final_read_only_verification"] = completed_verification
+            refreshed.setdefault("superseded_at", now_iso)
+            refreshed_superseded.append(refreshed)
+        else:
+            refreshed_superseded.append(action)
+    superseded_actions = refreshed_superseded
     superseded_by_id = {item.get("action_id"): item for item in superseded_actions if item.get("action_id")}
     superseded_now = []
     for action in pending_actions.get("actions") or []:
+        completed_verification = completed_human_verification_for_action(action, report, manager_dashboard, calendar_events, rules, completed_tasks)
+        if completed_verification and completed_verification.get("outcome") in {"Completed / Human Verified", "Completed by Human - Verification Pending"}:
+            record = supersede_pending_action(action, completed_verification, now_iso)
+            superseded_by_id[record.get("action_id")] = record
+            superseded_now.append(record)
+            continue
         verification = verify_pending_action_before_write(action, report, manager_dashboard, calendar_events, recent_human_notes)
         if verification.get("outcome") == "Superseded by Guest Status Change":
             record = supersede_pending_action(action, verification, now_iso)
@@ -8906,6 +10961,7 @@ def reconcile_pending_actions(args):
         "active_actions": payload.get("actions") or [],
         "superseded_actions": payload.get("superseded_actions") or [],
         "superseded_now": superseded_now,
+        "focused_queue_summary": payload.get("focus_window_summary") or {},
         "pending_actions_path": str(json_path),
         "pending_actions_markdown_path": str(md_path),
         "recent_human_notes_path": str(DEFAULT_RECENT_HUMAN_NOTES_PATH),
@@ -8955,7 +11011,7 @@ def load_project_env():
     load_dotenv(dotenv_path=REPO_ROOT / ".env", override=False)
 
 
-def google_oauth_credentials(scopes, client_env_var, token_env_var, default_client_path, default_token_path):
+def google_oauth_credentials(scopes, client_env_var, token_env_var, default_client_path, default_token_path, allow_interactive=True):
     load_project_env()
     client_path = resolve_repo_path(os.environ.get(client_env_var), default=default_client_path)
     token_path = resolve_repo_path(os.environ.get(token_env_var), default=default_token_path)
@@ -8982,6 +11038,10 @@ def google_oauth_credentials(scopes, client_env_var, token_env_var, default_clie
         except Exception:
             credentials = None
     if not credentials or not credentials.valid:
+        if not allow_interactive:
+            raise RuntimeError(
+                f"A valid non-interactive Gmail audit OAuth token was not found at {token_path}."
+            )
         if not client_path or not client_path.exists():
             raise RuntimeError(
                 f"Google OAuth client JSON was not found: {client_path}. "
@@ -9264,7 +11324,7 @@ def brief_item_flags(item):
         flags.append("Calendar status unclear")
     if item.get("highlevel_status_display") == "Needs Verification":
         flags.append("HighLevel/calendar mismatch")
-    if item.get("guest_status") in {"Needs Replacement Guest", "Blocked by Confirmation", "Urgent Review"}:
+    if item.get("guest_status") in {"Open Guest Slot / Needs Second Guest", "Needs Replacement Guest", "Blocked by Confirmation", "Urgent Review"}:
         flags.append(item["guest_status"])
     if item.get("topics_status") == "Blocked by Guest":
         flags.append("Blocked by Guest")
@@ -9280,7 +11340,7 @@ def brief_item_status(item):
     if any(effective_issue_severity(issue) == "Critical" for issue in issues):
         return "Blocked"
     flags = set(item.get("flags") or [])
-    if {"Needs Replacement Guest", "StreamYard Critical"} & flags:
+    if {"Open Guest Slot / Needs Second Guest", "Needs Replacement Guest", "StreamYard Critical"} & flags:
         return "Blocked"
     if any("Urgent Review" in flag for flag in flags):
         return "Urgent Review"
@@ -9343,7 +11403,7 @@ def daily_issue_needs_action_today(issue, now_local):
         days_until = (issue_time.astimezone(LOCAL_TIMEZONE) - now_local).total_seconds() / 86400
     near_term = days_until is not None and -1 <= days_until <= DAILY_BRIEF_NEXT_DAYS
     replacement_window = days_until is not None and -1 <= days_until <= DAILY_BRIEF_REPLACEMENT_DAYS
-    if code == "show_needs_guest_replacement":
+    if code in {"show_needs_guest_replacement", "open_guest_slot_needs_second_guest"}:
         return replacement_window
     if code in {"guest_topics_pending", "guest_rsvp_acceptance_risk", "needs_human_follow_up"}:
         return near_term or replacement_window
@@ -9366,7 +11426,15 @@ def dedupe_issues(issues):
     return deduped
 
 
-def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_local):
+def build_daily_schedule(
+    report,
+    manager_dashboard,
+    calendar_events,
+    rules,
+    now_local,
+    window_days=DAILY_BRIEF_NEXT_DAYS,
+    past_window_days=None,
+):
     aliases = show_aliases_for_daily_brief(report, rules)
     events_by_id = {event.get("id"): event for event in calendar_events if event.get("id")}
     issues_by_event = issue_list_by_event_id(report)
@@ -9374,7 +11442,8 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
     represented_guest_event_ids = finding_event_ids(manager_dashboard, "represented_guest_findings")
     human_confirmed_event_ids = finding_event_ids(manager_dashboard, "human_confirmed_active_findings")
     known_exception_event_ids = finding_event_ids(manager_dashboard, "known_exception_findings")
-    window_end = now_local + timedelta(days=DAILY_BRIEF_NEXT_DAYS)
+    window_end = now_local + timedelta(days=window_days)
+    window_start = now_local - timedelta(days=past_window_days if past_window_days is not None else window_days)
     schedule = []
     included_event_ids = set()
 
@@ -9383,7 +11452,7 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
         if not episode_time:
             continue
         local_time = episode_time.astimezone(LOCAL_TIMEZONE)
-        if local_time < now_local or local_time > window_end:
+        if local_time < window_start or local_time > window_end:
             continue
         event_id = episode.get("calendar_event_id")
         event = events_by_id.get(event_id)
@@ -9402,6 +11471,11 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
             "episode_title": episode.get("calendar_event_title") or "Untitled episode",
             "episode_time": episode.get("episode_time"),
             "date_time": (event.get("start") if event else episode_time).isoformat() if (event or episode_time) else None,
+            "episode_end_time": (
+                event.get("end").isoformat()
+                if event and event.get("end")
+                else episode.get("expected_calendar_end")
+            ),
             "guest_names": episode.get("guest_names") or [],
             "calendar_event_found": bool(event_id),
             "calendar_event_title": episode.get("calendar_event_title"),
@@ -9416,8 +11490,9 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
             "production_status": episode.get("production_status"),
             "readiness_percentage": episode.get("readiness_percentage"),
             "issues": issue_candidates,
-            "checklist_statuses": episode.get("checklist_statuses") or [],
+            "checklist_statuses": episode.get("checklist") or episode.get("checklist_statuses") or [],
             "timeline": episode.get("timeline") or [],
+            "post_production_workflow": configured_post_production_deliverables(rules, episode.get("show_key")),
             "linkedin_urls": extract_linkedin_urls(event_text),
             "calendar_linkedin_urls": extract_linkedin_urls(event_text),
             "streamyard_urls": extract_streamyard_urls(event_text),
@@ -9437,7 +11512,7 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
         if not event_start:
             continue
         local_time = event_start.astimezone(LOCAL_TIMEZONE)
-        if local_time < now_local or local_time > window_end:
+        if local_time < window_start or local_time > window_end:
             continue
         if event.get("id") in included_event_ids:
             continue
@@ -9453,6 +11528,7 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
             "episode_title": event.get("title") or "Untitled episode",
             "episode_time": event_start.isoformat(),
             "date_time": event_start.isoformat(),
+            "episode_end_time": event.get("end").isoformat() if event.get("end") else None,
             "guest_names": display_guests_from_title(event.get("title"), aliases.get(show_key)),
             "calendar_event_found": True,
             "calendar_event_title": event.get("title"),
@@ -9471,6 +11547,7 @@ def build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_
             "issues": issues,
             "checklist_statuses": [],
             "timeline": [],
+            "post_production_workflow": configured_post_production_deliverables(rules, show_key),
             "linkedin_urls": extract_linkedin_urls(event_text),
             "calendar_linkedin_urls": extract_linkedin_urls(event_text),
             "streamyard_urls": extract_streamyard_urls(event_text),
@@ -9516,7 +11593,18 @@ def md_brief(value, limit=900):
     return compact(value, limit=limit).replace("|", "\\|").replace("\n", " ")
 
 
-def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local, completed_tasks_payload=None, completed_tasks_path=None):
+def build_daily_brief_payload(
+    report,
+    manager_dashboard,
+    calendar_events,
+    rules,
+    now_local,
+    completed_tasks_payload=None,
+    completed_tasks_path=None,
+    window_days=DAILY_BRIEF_NEXT_DAYS,
+    focus_start_date=None,
+    focus_end_date=None,
+):
     health = manager_dashboard.get("overall_production_health") or report.get("overall_production_health") or {}
     issue_counts = manager_dashboard.get("issue_counts") or report.get("severity_counts") or {}
     trust_summary = manager_dashboard.get("trust_summary") or {}
@@ -9527,7 +11615,31 @@ def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules,
         for key, value in health_by_show.items()
         if key != "unknown" and (value.get("operational_status") == "Needs Attention" or (value.get("warning") or 0) > 0 or (value.get("critical") or 0) > 0)
     ]
-    schedule = build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_local)
+    schedule_all = build_daily_schedule(report, manager_dashboard, calendar_events, rules, now_local, window_days=window_days)
+    hidden_completed_items = []
+    schedule = []
+    hidden_event_ids = set()
+    hidden_episode_keys = set()
+    for item in schedule_all:
+        if focus_start_date or focus_end_date:
+            if not value_in_focus_window(item.get("date_time") or item.get("episode_time"), focus_start_date, focus_end_date):
+                continue
+        completed_status = completed_human_status_for_schedule_item(item, completed_tasks_payload or COMPLETED_TASKS_DEFAULT)
+        if completed_status and completed_status.get("status") in {"Completed / Human Verified", "Completed by Human - Verification Pending"}:
+            hidden_completed_items.append(
+                {
+                    "show": item.get("show_name"),
+                    "episode": item.get("date_time") or item.get("episode_time"),
+                    "guest": ", ".join(item.get("guest_names") or []) or "Unknown",
+                    "status": completed_status.get("status"),
+                    "reason": completed_status.get("reason"),
+                }
+            )
+            if item.get("calendar_event_id"):
+                hidden_event_ids.add(item.get("calendar_event_id"))
+            hidden_episode_keys.add((item.get("show_key"), date_key(item.get("date_time") or item.get("episode_time"))))
+            continue
+        schedule.append(item)
     waiting_on = {
         "guest": brief_findings(manager_dashboard, "waiting_on_guest_findings") + brief_findings(manager_dashboard, "waiting_on_guest_topics_findings"),
         "client": brief_findings(manager_dashboard, "waiting_on_client_findings"),
@@ -9552,11 +11664,19 @@ def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules,
             issue
             for issue in report.get("issues") or []
             if (issue.get("operator_recommendation") or {}).get("category") == "Urgent Review"
+            and not issue_matches_completed_hidden_item(issue, hidden_event_ids, hidden_episode_keys)
+            and (not focus_start_date and not focus_end_date or value_in_focus_window(issue.get("episode_time"), focus_start_date, focus_end_date))
         ],
         key=brief_issue_sort_key,
     )
     fix_today = sorted(
-        dedupe_issues(issue for issue in report.get("issues") or [] if daily_issue_needs_action_today(issue, now_local)),
+        dedupe_issues(
+            issue
+            for issue in report.get("issues") or []
+            if daily_issue_needs_action_today(issue, now_local)
+            and not issue_matches_completed_hidden_item(issue, hidden_event_ids, hidden_episode_keys)
+            and (not focus_start_date and not focus_end_date or value_in_focus_window(issue.get("episode_time"), focus_start_date, focus_end_date))
+        ),
         key=brief_issue_sort_key,
     )
     safe_to_ignore = {
@@ -9605,6 +11725,11 @@ def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules,
         "safe_to_ignore_today": safe_to_ignore,
         "trust_bucket_counts": bucket_counts,
         "next_7_days_schedule": schedule,
+        "completed_human_items_hidden_from_active_ops": hidden_completed_items,
+        "focus_window": {
+            "start_date": focus_start_date.isoformat() if focus_start_date else None,
+            "end_date": focus_end_date.isoformat() if focus_end_date else None,
+        },
         "represented_guest_matches": represented_guest_matches,
         "linkedin_event_manual_evidence": [
             item for item in schedule if (item.get("linkedin_event_summary") or {}).get("linkedin_event_url")
@@ -9625,9 +11750,15 @@ def build_daily_brief_payload(report, manager_dashboard, calendar_events, rules,
         "linkedin_status_watch": linkedin_watch,
         "streamyard_status_watch": streamyard_watch,
         "critical_issues": manager_dashboard.get("critical_issues") or [],
+        "phase_workflow_sections": workflow_dashboard_sections(schedule, now_local, rules),
     }
     payload["work_queue"] = build_work_queue(payload)
-    payload["completion_tracking"] = build_completion_verification(completed_tasks_payload or COMPLETED_TASKS_DEFAULT, payload.get("next_7_days_schedule") or [], payload["work_queue"], now_local)
+    payload["completion_tracking"] = build_completion_verification(
+        completed_tasks_payload or COMPLETED_TASKS_DEFAULT,
+        schedule_all,
+        payload["work_queue"],
+        now_local,
+    )
     if completed_tasks_path:
         payload["completion_tracking"]["completed_tasks_path"] = str(completed_tasks_path)
     return payload
@@ -9656,6 +11787,55 @@ def render_pending_action_review_markdown(review):
                 f"{md_escape((item.get('final_read_only_verification') or {}).get('reason') or item.get('superseded_reason'))}"
             )
         lines.append("")
+    focus_summary = review.get("focused_queue_summary") or {}
+    if focus_summary:
+        ready_items = focus_summary.get("ready_for_approval") or []
+        needs_items = focus_summary.get("needs_jessie_input") or []
+        blocked_items = focus_summary.get("blocked") or []
+        ignore_items = focus_summary.get("ignore_or_complete") or []
+        queue_groups = {
+            "Operations Queue": {
+                "ready_for_approval": [item for item in ready_items if focus_summary_item_queue(item, "ready_for_approval") == "Operations Queue"],
+                "needs_jessie_input": [item for item in needs_items if focus_summary_item_queue(item, "needs_jessie_input") == "Operations Queue"],
+                "blocked": [item for item in blocked_items if focus_summary_item_queue(item, "blocked") == "Operations Queue"],
+                "ignore_or_complete": [item for item in ignore_items if focus_summary_item_queue(item, "ignore_or_complete") == "Operations Queue"],
+            },
+            "Production Queue": {
+                "ready_for_approval": [item for item in ready_items if focus_summary_item_queue(item, "ready_for_approval") == "Production Queue"],
+                "needs_jessie_input": [item for item in needs_items if focus_summary_item_queue(item, "needs_jessie_input") == "Production Queue"],
+                "blocked": [item for item in blocked_items if focus_summary_item_queue(item, "blocked") == "Production Queue"],
+                "ignore_or_complete": [item for item in ignore_items if focus_summary_item_queue(item, "ignore_or_complete") == "Production Queue"],
+            },
+        }
+        lines.extend(
+            [
+                "## Next Week Operations Work Queue",
+                "",
+                f"- Focus window: {md_escape(focus_summary.get('focus_start_date') or 'n/a')} through {md_escape(focus_summary.get('focus_end_date') or 'n/a')}",
+                f"- Ready for approval: {len(ready_items)}",
+                f"- Needs Jessie input: {len(needs_items)}",
+                f"- Blocked: {len(blocked_items)}",
+                f"- Ignore / already complete: {len(ignore_items)}",
+                "",
+            ]
+        )
+        for queue_name in WORK_QUEUE_CATEGORIES:
+            lines.extend([f"### {queue_name}", ""])
+            queue_items = queue_groups.get(queue_name) or {}
+            for heading, key in (
+                ("#### Ready for Approval", "ready_for_approval"),
+                ("#### Needs Jessie Input", "needs_jessie_input"),
+                ("#### Blocked", "blocked"),
+                ("#### Ignore / Already Complete", "ignore_or_complete"),
+            ):
+                lines.extend([heading, ""])
+                items = queue_items.get(key) or []
+                if not items:
+                    lines.extend(["None.", ""])
+                    continue
+                for item in items:
+                    lines.append(f"- {md_escape(item.get('show') or 'Unknown')} - {md_escape(short_date(item.get('episode')))} - {md_escape(item.get('guest') or 'Unknown')}: {md_escape(item.get('reason') or item.get('risk_level') or 'Needs review')}")
+                lines.append("")
     return lines
 
 
@@ -9675,6 +11855,7 @@ def render_work_task_markdown(task):
     lines = [
         f"### {md_brief(task.get('title'), 180)}",
         "",
+        f"- Queue: {md_brief(task.get('task_category') or 'Production Queue')}",
         f"- Group: {md_brief(task.get('group'))}",
         f"- Status: {md_brief(task.get('status'))}",
         f"- Show: {md_brief(task.get('show_name'))}",
@@ -9756,6 +11937,15 @@ def render_work_queue_markdown(queue):
         "- Mode: read-only recommendations only; no automation will run.",
         "",
     ]
+    by_category = queue.get("by_category") or {}
+    for category in WORK_QUEUE_CATEGORIES:
+        tasks = by_category.get(category) or []
+        lines.extend([f"## {category}", ""])
+        if not tasks:
+            lines.extend([f"No tasks in the {category.lower()}.", ""])
+            continue
+        for task in tasks:
+            lines.extend(render_work_task_markdown(task))
     by_lane = queue.get("by_lane") or {}
     for lane in WORK_QUEUE_LANES:
         tasks = by_lane.get(lane) or []
@@ -9775,6 +11965,34 @@ def render_work_queue_markdown(queue):
             labels = "; ".join(task.get("title") for task in tasks)
             lines.append(f"- {group}: {len(tasks)} task(s) - {md_brief(labels, 700)}")
     lines.append("")
+    return lines
+
+
+def render_workflow_summary_markdown(title, items, empty_label):
+    lines = [title, ""]
+    if not items:
+        return lines + [empty_label, ""]
+    for item in items:
+        guest_text = ", ".join(item.get("guest_names") or []) or "No guests listed"
+        blocker = item.get("blocker") or "No active blocker recorded."
+        codex_line = "No" if not item.get("codex_can_draft") else f"Yes - {item.get('codex_draft_type') or 'draft support available'}"
+        approval_line = "Yes" if item.get("human_approval_required") else "No"
+        unfinished = item.get("unfinished_post_production_deliverables") or []
+        lines.extend(
+            [
+                f"### {md_brief(item.get('show_name') or 'Unknown show', 140)} - {md_brief(short_date(item.get('episode_time')), 120)}",
+                "",
+                f"- Phase: {md_brief(item.get('current_phase'))}",
+                f"- Guests/hosts: {md_brief(guest_text, 240)}",
+                f"- Owner: {md_brief(item.get('owner') or 'Jessie')}",
+                f"- Next best action: {md_brief(item.get('next_best_action'), 360)}",
+                f"- Unfinished post-production: {md_brief(', '.join(unfinished) or 'None', 480)}",
+                f"- Blocker: {md_brief(blocker, 320)}",
+                f"- Codex can draft: {md_brief(codex_line)}",
+                f"- Human approval required: {approval_line}",
+                "",
+            ]
+        )
     return lines
 
 
@@ -9801,12 +12019,20 @@ def render_daily_brief_markdown(brief):
         "",
     ]
     lines.extend(render_work_queue_markdown(work_queue))
+    workflow_sections = brief.get("phase_workflow_sections") or {}
+    lines.extend(render_workflow_summary_markdown("## Jessie Inbox", workflow_sections.get("jessie_inbox") or [], "No Jessie-only judgment tasks are active."))
+    lines.extend(render_workflow_summary_markdown("## Codex Can Draft", workflow_sections.get("codex_can_draft") or [], "No episodes currently have enough trusted context for Codex draft support."))
+    lines.extend(render_workflow_summary_markdown("## Waiting On Others", workflow_sections.get("waiting_on_others") or [], "No episodes are currently waiting on guests, clients, or the internal team."))
+    lines.extend(render_workflow_summary_markdown("## Ready to Approve", workflow_sections.get("ready_to_approve") or [], "No approval-gated drafts are waiting for Jessie approval."))
+    lines.extend(render_workflow_summary_markdown("## Blocked", workflow_sections.get("blocked") or [], "No active blockers are recorded in the workflow view."))
     lines.extend(render_pending_action_review_markdown(brief.get("pending_action_review") or {}))
     lines.extend(
         [
             "## Completion Verification",
             "",
             f"- Total completion claims reviewed: {completion_summary.get('total_claims', 0)}",
+            f"- Completed / Human Verified: {(completion_summary.get('counts_by_status') or {}).get('Completed / Human Verified', 0)}",
+            f"- Completed by Human - Verification Pending: {(completion_summary.get('counts_by_status') or {}).get('Completed by Human - Verification Pending', 0)}",
             f"- Completed and verified: {(completion_summary.get('counts_by_status') or {}).get('Completed and verified', 0)}",
             f"- Completed but not verified: {(completion_summary.get('counts_by_status') or {}).get('Completed but not verified', 0)}",
             f"- Still open: {(completion_summary.get('counts_by_status') or {}).get('Still open', 0)}",
@@ -9836,11 +12062,12 @@ def render_daily_brief_markdown(brief):
     else:
         lines.extend(
             [
-                "| Date/Time | Show | Guest(s) | Guest Status | Topics Status | LinkedIn URL Status | StreamYard URL Status | Calendar Status | HighLevel Status | Blocking Production | Next Human Action |",
-                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+                "| Date/Time | Show | Guest(s) | Phase | Owner | Codex Draft | Approval | Guest Status | Topics Status | LinkedIn URL Status | StreamYard URL Status | Calendar Status | HighLevel Status | Blocking Production | Next Human Action |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
             ]
         )
         for item in schedule:
+            workflow = item.get("workflow") or {}
             calendar_label = item.get("calendar_status") or "Unknown"
             if item.get("calendar_event_url"):
                 calendar_label = f"{calendar_label}: [{item.get('calendar_event_title') or 'Open event'}]({item.get('calendar_event_url')})"
@@ -9857,6 +12084,10 @@ def render_daily_brief_markdown(brief):
             lines.append(
                 f"| {md_escape(short_date(item.get('date_time')))} | {md_escape(item.get('show_name'))} | "
                 f"{md_escape(', '.join(item.get('guest_names') or []) or 'Unknown')} | "
+                f"{md_escape(workflow.get('current_phase') or 'Not Started')} | "
+                f"{md_escape(workflow.get('owner') or 'Jessie')} | "
+                f"{md_escape('Yes' if workflow.get('codex_can_draft') else 'No')} | "
+                f"{md_escape('Yes' if workflow.get('human_approval_required') else 'No')} | "
                 f"{md_escape(item.get('guest_status'))} | {md_escape(item.get('topics_status'))} | "
                 f"{md_escape(linkedin_label)} | {md_escape(streamyard_label)} | {calendar_label} | "
                 f"{md_escape(item.get('highlevel_status_display') or item.get('highlevel_status'))} | "
@@ -9943,6 +12174,7 @@ def render_work_task_html(task):
     return (
         '<article class="task-card">'
         f"<div class=\"task-top\"><h3>{html_text(task.get('title'), 180)}</h3>{badge(task.get('status'), manager_status_class(task.get('status')))}</div>"
+        f"<p><strong>Queue:</strong> {html_text(task.get('task_category') or 'Production Queue', 80)}</p>"
         f"<p><strong>Group:</strong> {html_text(task.get('group'), 80)} <strong>Show:</strong> {html_text(task.get('show_name'), 120)}</p>"
         f"<p><strong>Episode:</strong> {html_text(short_date(task.get('episode_time')), 120)}</p>"
         f"<p><strong>Why am I seeing this?</strong> {html_text(task.get('why_seen'), 420)}</p>"
@@ -9956,6 +12188,12 @@ def render_work_task_html(task):
 
 
 def render_work_queue_html(queue):
+    by_category = queue.get("by_category") or {}
+    category_sections = []
+    for category in WORK_QUEUE_CATEGORIES:
+        tasks = by_category.get(category) or []
+        body = '<p class="muted">No tasks in this queue.</p>' if not tasks else '<div class="task-grid">' + "".join(render_work_task_html(task) for task in tasks) + "</div>"
+        category_sections.append(f"<h3>{html_text(category, 80)}</h3>{body}")
     by_lane = queue.get("by_lane") or {}
     lane_sections = []
     for lane in WORK_QUEUE_LANES:
@@ -9979,6 +12217,7 @@ def render_work_queue_html(queue):
         f"<strong>Estimated today's work:</strong> {html_text(task_time_text(queue.get('total_estimated_minutes', 0)), 80)}</p>"
         "<p class=\"muted\">Read-only recommendations only. No automation will run.</p>"
         "</section>"
+        + "".join(category_sections)
         + "".join(lane_sections)
         + "<h3>Work By Group</h3>"
         + "<table><thead><tr><th>Group</th><th>Tasks</th><th>Work</th></tr></thead>"
@@ -9986,11 +12225,16 @@ def render_work_queue_html(queue):
     )
 
 
+def render_workflow_summary_html(title, items, empty_label):
+    return f"<h2>{html_text(title, 80)}</h2>" + render_workflow_summary_cards(items, empty_label)
+
+
 def render_daily_schedule_html(schedule):
     if not schedule:
         return '<p class="muted">No configured show episodes are scheduled in the next 7 days.</p>'
     rows = []
     for item in schedule:
+        workflow = item.get("workflow") or {}
         calendar = badge(item.get("calendar_status"), manager_status_class(item.get("calendar_status")))
         if item.get("calendar_event_url"):
             calendar += f"<br>{html_link(item.get('calendar_event_url'), item.get('calendar_event_title') or 'Open event')}"
@@ -10007,6 +12251,10 @@ def render_daily_schedule_html(schedule):
             f"<td>{html_text(short_date(item.get('date_time')), 90)}</td>"
             f"<td>{html_text(item.get('show_name'), 120)}</td>"
             f"<td>{html_text(', '.join(item.get('guest_names') or []) or 'Unknown', 180)}</td>"
+            f"<td>{badge(workflow.get('current_phase'), manager_status_class(workflow.get('current_phase')))}</td>"
+            f"<td>{html_text(workflow.get('owner') or 'Jessie', 90)}</td>"
+            f"<td>{html_text('Yes' if workflow.get('codex_can_draft') else 'No', 40)}</td>"
+            f"<td>{html_text('Yes' if workflow.get('human_approval_required') else 'No', 40)}</td>"
             f"<td>{badge(item.get('guest_status'), manager_status_class(item.get('guest_status')))}</td>"
             f"<td>{badge(item.get('topics_status'), manager_status_class(item.get('topics_status')))}</td>"
             f"<td>{linkedin}</td>"
@@ -10019,7 +12267,7 @@ def render_daily_schedule_html(schedule):
             "</tr>"
         )
     return (
-        "<table><thead><tr><th>Date/Time</th><th>Show</th><th>Guest(s)</th><th>Guest Status</th>"
+        "<table><thead><tr><th>Date/Time</th><th>Show</th><th>Guest(s)</th><th>Phase</th><th>Owner</th><th>Codex Draft</th><th>Approval</th><th>Guest Status</th>"
         "<th>Topics Status</th><th>LinkedIn URL Status</th><th>StreamYard URL Status</th><th>Calendar Status</th>"
         "<th>HighLevel Status</th><th>Production Status</th><th>Blocking Production</th><th>Next Human Action</th></tr></thead>"
         f"<tbody>{''.join(rows)}</tbody></table>"
@@ -10036,6 +12284,7 @@ def render_daily_operations_brief_html(brief):
     completion_counts = completion_summary.get("counts_by_status") or {}
     pending_review = brief.get("pending_action_review") or {}
     superseded_now = pending_review.get("superseded_now") or []
+    workflow_sections = brief.get("phase_workflow_sections") or {}
     pending_review_html = (
         "<section class=\"card\">"
         f"<p><strong>Active approval-queue actions:</strong> {len(pending_review.get('active_actions') or [])} "
@@ -10128,6 +12377,16 @@ def render_daily_operations_brief_html(brief):
     <h2>Operations Copilot Work Queue</h2>
     {render_work_queue_html(brief.get('work_queue') or {})}
 
+    {render_workflow_summary_html("Jessie Inbox", workflow_sections.get('jessie_inbox') or [], 'No Jessie-only judgment tasks are active.')}
+
+    {render_workflow_summary_html("Codex Can Draft", workflow_sections.get('codex_can_draft') or [], 'No episodes currently have enough trusted context for Codex draft support.')}
+
+    {render_workflow_summary_html("Waiting On Others", workflow_sections.get('waiting_on_others') or [], 'No episodes are currently waiting on guests, clients, or the internal team.')}
+
+    {render_workflow_summary_html("Ready to Approve", workflow_sections.get('ready_to_approve') or [], 'No approval-gated drafts are waiting for Jessie approval.')}
+
+    {render_workflow_summary_html("Blocked", workflow_sections.get('blocked') or [], 'No active blockers are recorded in the workflow view.')}
+
     <h2>Approval-Gated Action Review</h2>
     {pending_review_html}
 
@@ -10195,7 +12454,22 @@ def generate_daily_brief(args):
     output_dir = Path(args.output_dir)
     report, manager_dashboard, calendar_events, rules, completed_tasks, completed_tasks_path = load_daily_brief_sources(args)
     now_local = daily_now(args.now)
-    brief = build_daily_brief_payload(report, manager_dashboard, calendar_events, rules, now_local, completed_tasks, completed_tasks_path)
+    focus_start, focus_end = focus_window_bounds(args)
+    window_days = DAILY_BRIEF_NEXT_DAYS
+    if focus_start and focus_end:
+        window_days = max(window_days, (focus_end - now_local.date()).days + 1)
+    brief = build_daily_brief_payload(
+        report,
+        manager_dashboard,
+        calendar_events,
+        rules,
+        now_local,
+        completed_tasks,
+        completed_tasks_path,
+        window_days=window_days,
+        focus_start_date=focus_start,
+        focus_end_date=focus_end,
+    )
     brief["pending_action_review"] = reconcile_pending_actions(args)
     md_path = output_dir / "daily_operations_brief.md"
     html_path = output_dir / "daily_operations_brief.html"
@@ -10524,6 +12798,8 @@ def run_audit(args):
     now = parse_datetime(args.now) if args.now else datetime.now(timezone.utc)
     if not now:
         raise RuntimeError(f"Could not parse --now value: {args.now}")
+    gmail_sent_evidence_path = Path(args.gmail_sent_evidence)
+    gmail_sent_evidence = refresh_gmail_sent_evidence(gmail_sent_evidence_path, now)
     options = {
         "now": now,
         "preshow_minutes": args.preshow_minutes,
@@ -10631,6 +12907,17 @@ def run_audit(args):
         "issues": all_issues,
         "suppressed_issues": all_suppressed_issues,
         "read_only": True,
+        "gmail_sent_refresh": {
+            "evidence_path": str(gmail_sent_evidence_path),
+            "mailbox": gmail_sent_evidence.get("mailbox") or "ww@reveting.com",
+            "refreshed_at": gmail_sent_evidence.get("refreshed_at"),
+            "refresh_attempted_at": gmail_sent_evidence.get("refresh_attempted_at"),
+            "freshness_status": gmail_sent_evidence.get("freshness_status") or "Unavailable",
+            "source": gmail_sent_evidence.get("source"),
+            "query": gmail_sent_evidence.get("query"),
+            "message_count": len(gmail_sent_evidence.get("messages") or []),
+            "refresh_error": gmail_sent_evidence.get("refresh_error"),
+        },
     }
     dashboard = build_dashboard(report, previous_report, rules)
     report["overall_production_health"] = dashboard["overall_production_health"]
@@ -10647,7 +12934,14 @@ def run_audit(args):
     report["rule_approval_queue"] = build_rule_approval_queue(report["learning_report"])
     report["rule_approval_queue"]["json_path"] = str(rule_queue_json_path)
     report["rule_approval_queue"]["markdown_path"] = str(rule_queue_md_path)
-    manager_dashboard = build_operations_manager_dashboard(report, rules, timeline_rules, now)
+    manager_dashboard = build_operations_manager_dashboard(
+        report,
+        rules,
+        timeline_rules,
+        now,
+        calendar_events,
+        gmail_evidence=gmail_sent_evidence,
+    )
     completion_preview = build_daily_brief_payload(
         report,
         manager_dashboard,
@@ -10659,7 +12953,15 @@ def run_audit(args):
     ).get("completion_tracking") or {}
     report["trust_review"] = build_trust_review(report, rules, completion_preview)
     report["trust_review"]["path"] = str(trust_review_path)
-    manager_dashboard = build_operations_manager_dashboard(report, rules, timeline_rules, now, completion_preview)
+    manager_dashboard = build_operations_manager_dashboard(
+        report,
+        rules,
+        timeline_rules,
+        now,
+        calendar_events,
+        completion_preview,
+        gmail_sent_evidence,
+    )
     critical_review = manager_dashboard.get("critical_review") or []
     report["critical_review"] = {
         "path": str(critical_review_path),
@@ -10697,6 +12999,7 @@ def main():
     parser.add_argument("--rules", default=str(DEFAULT_RULES_PATH), help="Path to configurable operations audit rules JSON")
     parser.add_argument("--production-timeline-rules", default=str(DEFAULT_PRODUCTION_TIMELINE_RULES_PATH), help="Path to configurable production timeline/readiness rules JSON")
     parser.add_argument("--knowledge-dir", default=str(DEFAULT_KNOWLEDGE_DIR), help="Path to read-only knowledge files used for learning reports")
+    parser.add_argument("--gmail-sent-evidence", default=str(DEFAULT_GMAIL_SENT_EVIDENCE_PATH), help="Path for fresh ww@reveting.com Sent-mail evidence and clearly labeled stale fallback data.")
     parser.add_argument("--show-key", choices=configured_show_keys(initial_rules) + ["all"], help="Limit audit to one show, or use `all` for every configured show")
     parser.add_argument("--preshow-minutes", type=int, default=int(initial_rules.get("preshow_offset_minutes", DEFAULT_PRESHOW_MINUTES)), help="Minutes before HighLevel start that Google Calendar should reserve")
     parser.add_argument("--time-tolerance-minutes", type=int, default=int(initial_rules.get("time_tolerance_minutes", DEFAULT_TIME_TOLERANCE_MINUTES)), help="Allowed clock drift before a mismatch is reported")
@@ -10704,9 +13007,13 @@ def main():
     parser.add_argument("--include-past", action="store_true", help="Include past episodes/events in the audit")
     parser.add_argument("--now", help="Override current time with an ISO timestamp for repeatable audits")
     parser.add_argument("--daily-brief", action="store_true", help="Generate the Daily Operations Brief from existing local audit outputs only.")
+    parser.add_argument("--focus-start-date", help="Optional focus window start date in YYYY-MM-DD format.")
+    parser.add_argument("--focus-end-date", help="Optional focus window end date in YYYY-MM-DD format.")
     parser.add_argument("--episode-date", help="Episode date in YYYY-MM-DD format for draft action generation.")
     parser.add_argument("--draft-calendar-update", action="store_true", help="Prepare an approval-gated Google Calendar update draft for a single show episode.")
     parser.add_argument("--draft-hannah-emails", action="store_true", help="Prepare approval-gated Hannah SOP email drafts for a single show episode.")
+    parser.add_argument("--generate-approval-work-queue", action="store_true", help="Generate approval-gated pending actions for all shows inside the configured queue window.")
+    parser.add_argument("--queue-window-days", type=int, default=DEFAULT_APPROVAL_QUEUE_WINDOW_DAYS, help="Window size used for approval-gated action generation.")
     parser.add_argument("--approve-action", metavar="ACTION_ID", help="Mark a local pending action as approved so it becomes eligible for an explicit write command.")
     parser.add_argument("--create-approved-gmail-draft", metavar="ACTION_ID", help="Create Gmail drafts for an approved email_draft action after fresh re-verification.")
     parser.add_argument("--apply-approved-calendar-update", metavar="ACTION_ID", help="Apply an approved calendar_update action to the matched Google Calendar event after fresh re-verification.")
@@ -10723,6 +13030,25 @@ def main():
     if args.send_approved_email:
         print("Email sending is not enabled. Use --create-approved-gmail-draft for draft creation only.", file=sys.stderr)
         sys.exit(1)
+
+    if args.generate_approval_work_queue:
+        try:
+            result = create_approval_queue_for_window(args)
+        except RuntimeError as exc:
+            print(f"Approval-gated work queue generation failed safely: {exc}", file=sys.stderr)
+            sys.exit(1)
+        print("Approval-gated work queue generated.")
+        print(f"  Window days: {result.get('window_days')}")
+        print(f"  Schedule items reviewed: {result.get('schedule_items_reviewed')}")
+        print(f"  Draft actions prepared: {len(result.get('created_actions') or [])}")
+        print(f"  Can approve now: {len(result.get('can_approve_now') or [])}")
+        print(f"  Needs human review: {len(result.get('needs_human_review') or [])}")
+        print(f"  Blocked: {len(result.get('blocked') or [])}")
+        print(f"  Ignored as canceled/superseded: {len(result.get('ignored') or [])}")
+        print(f"  Pending actions JSON: {result.get('pending_actions_json')}")
+        print(f"  Pending actions Markdown: {result.get('pending_actions_markdown')}")
+        print("  Mode: approval-gated local draft generation only; no external systems were modified.")
+        return
 
     if args.approve_action:
         try:

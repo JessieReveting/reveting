@@ -4,6 +4,37 @@ This playbook captures the approved local workflow models that the Reveting Oper
 
 ## Workflow Families
 
+## Operations Tasks vs Production Tasks
+
+- Operations Tasks unblock production.
+- Production Tasks create or update production assets.
+- Operations Tasks should always surface before Production Tasks in Operations Copilot queues because they unlock downstream work.
+
+### Operations Tasks
+
+- guest sourcing
+- waiting for guest confirmation
+- waiting for client approval
+- waiting for payment
+- waiting for script
+- waiting for artwork
+- waiting for StreamYard destination
+- waiting for HighLevel reconciliation
+
+### Production Tasks
+
+- calendar update
+- Hannah email
+- LinkedIn event
+- StreamYard setup
+- YouTube description
+- newsletter
+- post-production emails
+
+### Queue Rule
+
+- Do not generate Production Tasks until prerequisite Operations Tasks are complete or explicitly cleared by Jessie.
+
 ### Guest-Booking Shows
 
 These shows begin with bookings, forms, and scheduling context.
@@ -19,6 +50,16 @@ Examples:
 - Deconstructing Data
 - Apparel with Purpose
 - The David Daily Show
+
+### WinsDay Guest Readiness
+
+- WinsDay is currently the only multi-guest guest-booking show.
+- WinsDay normally requires two distinct confirmed guests per episode.
+- Duplicate HighLevel submissions from the same person do not fill both slots.
+- Deduplicate WinsDay guest slots by email first, then normalized full name, then LinkedIn URL.
+- If only one distinct guest remains, classify the episode as `Open Guest Slot / Needs Second Guest`.
+- Treat that state as `Blocked - Awaiting Second Guest`.
+- Do not generate final LinkedIn event copy, final calendar updates, or Hannah emails until the second distinct guest is confirmed, unless Jessie explicitly approves a solo-guest episode.
 
 ### Editorial-First Shows
 
@@ -183,6 +224,27 @@ Generate a checklist for:
 - Every story should answer what security leaders should do differently.
 - Every story should answer what organizations can apply immediately.
 - The show should always emphasize engineering insight over headlines.
+- Use weekly cybersecurity news as evidence, but make the public discussion topics thematic, strategic, and repeatable in structure.
+- Do not use article headlines, raw story titles, or CVE names as the final public-facing topics.
+- The three public discussion topics should usually map to:
+- What changed in the threat landscape this week?
+- What defensive blind spot does this reveal?
+- What should security leaders do differently now?
+- Keep the episode strategic rather than reactive.
+- Keep Ridgeback's Preemptive Security point of view present without turning the discussion into a product pitch.
+
+## Episode 55 Approved Example
+
+- Date: Friday, July 10, 2026
+- Live: 3:00 PM ET
+- Episode number: 55
+- Hosts: Steven Oliphant, Samuel Kushner, Thomas Phillips
+- Approved working theme: When trusted systems, AI agents, remote access tools, and enterprise infrastructure become the attack surface.
+- Approved SEO title: AI Ransomware, Patch Speed & Hidden Enterprise Risk | Episode 55
+- Approved public discussion topics:
+- How AI-powered attacks and rapidly exploited vulnerabilities are changing enterprise risk
+- The hidden security blind spots created by trusted platforms, remote management tools, and critical infrastructure
+- Why reducing attacker time and strengthening defensive readiness matter more than ever
 
 ## Default CTA
 

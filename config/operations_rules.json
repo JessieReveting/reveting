@@ -330,6 +330,9 @@
     "guest_topics_pending": {
       "confidence": "high"
     },
+    "open_guest_slot_needs_second_guest": {
+      "confidence": "high"
+    },
     "calendar_event_needs_confirmation": {
       "confidence": "medium"
     },
@@ -363,6 +366,7 @@
     "linkedin_event_exists_calendar_needs_update": "The LinkedIn event already exists, but operators may miss it until the Google Calendar event is updated with the URL and downstream SOP steps are completed.",
     "pr_representative_booking_guest_represented": "A PR representative, assistant, or submitter appears to have booked on behalf of the actual guest, and the guest is represented by other booking/calendar evidence.",
     "guest_topics_pending": "The episode cannot move into final LinkedIn, calendar-description, or email prep until guest topics are received.",
+    "open_guest_slot_needs_second_guest": "WinsDay requires two distinct confirmed guests unless Jessie explicitly approves a solo-guest episode, so final production work should stay blocked until the second guest is confirmed.",
     "guest_confirmation_pitch_follow_up": "The guest or booking status needs human confirmation before the episode can be treated as production-ready.",
     "guest_rsvp_acceptance_risk": "Guest-side attendees may not have accepted the calendar invite, creating confirmation risk before production.",
     "duplicate_calendar_event": "Duplicate calendar events can split attendee lists and cause operators or guests to follow the wrong invite.",
@@ -439,6 +443,10 @@
         "classification": "Never autofix",
         "reason": "The system cannot invent guest topics or safely send production emails before topics are received."
       },
+      "open_guest_slot_needs_second_guest": {
+        "classification": "Never autofix",
+        "reason": "The system cannot invent a second guest or assume a solo-guest exception without Jessie approval."
+      },
       "guest_confirmation_pitch_follow_up": {
         "classification": "Never autofix",
         "reason": "Guest confirmation and pitch follow-up require human outreach and judgment."
@@ -468,14 +476,14 @@
       {
         "show_key": "winsday",
         "episode_date": "2026-07-08",
-        "guest_name": "Daniel Burrus / Jennifer Burrus",
-        "context": "Canceled and rescheduled to fall."
+        "guest_name": "Superseded canceled booking",
+        "context": "A canceled July 8 booking was rescheduled to fall and should not drive active guest, invite, or draft logic."
       },
       {
         "show_key": "winsday",
         "episode_date": "2026-07-08",
         "guest_name": "Jeff Chen",
-        "context": "Replacement guest for Daniel Burrus on the July 8 WinsDay episode."
+        "context": "Manual replacement guest for the July 8 WinsDay episode."
       },
       {
         "show_key": "david-daily",
@@ -560,6 +568,14 @@
         "future_automation_candidate": "no",
         "automation_risk_level": "medium",
         "approval_required_before_action": "Guest topics and human approval before LinkedIn, calendar, or email updates."
+      },
+      "open_guest_slot_needs_second_guest": {
+        "category": "Waiting on Someone",
+        "dashboard_bucket": "Waiting on Guest",
+        "what_jessie_should_verify": "Confirm whether a second distinct WinsDay guest exists or whether Jessie has explicitly approved a solo-guest episode.",
+        "future_automation_candidate": "no",
+        "automation_risk_level": "high",
+        "approval_required_before_action": "Human confirmation of the second guest or Jessie-approved solo-guest override before drafting final production assets."
       },
       "guest_email_not_invited": {
         "category": "Confirmed Issue",
@@ -677,6 +693,7 @@
       "linkedin_event_exists_calendar_needs_update": 4,
       "pr_representative_booking_guest_represented": 0,
       "guest_topics_pending": 8,
+      "open_guest_slot_needs_second_guest": 12,
       "guest_confirmation_pitch_follow_up": 10,
       "guest_rsvp_acceptance_risk": 8,
       "calendar_event_missing_start": 25,
@@ -786,6 +803,9 @@
       "preshow_offset_minutes": 15,
       "episode_duration_minutes": 60,
       "expected_guest_count": 2,
+      "expected_distinct_guest_count": 2,
+      "require_distinct_guests_for_readiness": true,
+      "allow_solo_guest_only_with_override": true,
       "workflow_gate": "linkedin_first",
       "calendar_location_policy": "streamyard",
       "distribution_destinations": ["LinkedIn", "Facebook", "YouTube"],
@@ -856,6 +876,19 @@
         "Optional Third Story",
         "Backup Story"
       ],
+      "public_topic_framework": [
+        "What changed in the threat landscape this week?",
+        "What defensive blind spot does this reveal?",
+        "What should security leaders do differently now?"
+      ],
+      "public_topic_guidance": [
+        "Use weekly cybersecurity news as evidence, but keep the public-facing topics thematic, strategic, and repeatable in structure.",
+        "Do not use raw article headlines, CVE names, or story titles as the public discussion topics.",
+        "Keep the episode strategic rather than reactive.",
+        "Make the discussion valuable to CISOs, CIOs, IT leaders, security engineers, MSPs, and business leaders.",
+        "Emphasize engineering insight, defensive strategy, and practical next steps.",
+        "Keep Ridgeback's Preemptive Security point of view present without turning the show into a product pitch."
+      ],
       "production_asset_groups": [
         "LinkedIn Event",
         "LinkedIn Company Post",
@@ -908,7 +941,9 @@
         "Every story must explain what defenders are missing.",
         "Every story must explain what security leaders should do differently.",
         "Every story must explain what organizations can apply immediately.",
-        "Emphasize engineering insight over headlines."
+        "Emphasize engineering insight over headlines.",
+        "Use news stories as evidence, but convert them into strategic, repeatable public discussion topics.",
+        "Do not use article headlines or CVE names as the final public-facing discussion topics."
       ],
       "approval_gates": [
         "Do not auto-select stories.",
@@ -921,7 +956,26 @@
       "required_attendee_emails": [],
       "required_field_keywords": {},
       "calendar_description_sections": [],
-      "sop_assets": []
+      "sop_assets": [],
+      "approved_episode_examples": [
+        {
+          "episode_number": 55,
+          "episode_date": "2026-07-10",
+          "live_time_et": "3:00 PM",
+          "hosts": [
+            "Steven Oliphant",
+            "Samuel Kushner",
+            "Thomas Phillips"
+          ],
+          "approved_working_theme": "When trusted systems, AI agents, remote access tools, and enterprise infrastructure become the attack surface.",
+          "approved_seo_title": "AI Ransomware, Patch Speed & Hidden Enterprise Risk | Episode 55",
+          "approved_public_discussion_topics": [
+            "How AI-powered attacks and rapidly exploited vulnerabilities are changing enterprise risk",
+            "The hidden security blind spots created by trusted platforms, remote management tools, and critical infrastructure",
+            "Why reducing attacker time and strengthening defensive readiness matter more than ever"
+          ]
+        }
+      ]
     }
   }
 }

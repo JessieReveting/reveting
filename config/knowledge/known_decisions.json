@@ -136,6 +136,37 @@
       "confirmation_count": 1,
       "recurrence_key": "calendar-confirmed-highlevel-canceled-follow-up",
       "suggested_rule_update": "Add Needs Human Follow-Up state when Google Calendar and HighLevel disagree but the guest may still be valid."
+    },
+    {
+      "id": "breach-of-protocol-episode-55-approved-editorial-package-2026-07-10",
+      "show_key": "breach-of-protocol",
+      "show_name": "Breach of Protocol",
+      "episode_date": "2026-07-10",
+      "decision_outcome": "new SOP discovered",
+      "decision_summary": "Episode 55 confirmed that Breach of Protocol should convert weekly cybersecurity developments into strategic, repeatable public discussion topics rather than using article headlines or CVE names directly.",
+      "source_of_truth": "Human-approved Episode 55 planning package.",
+      "operator_guidance": "Use news stories as evidence, but keep public discussion topics thematic, strategic, and useful to CISOs, CIOs, IT leaders, security engineers, MSPs, and business leaders. Keep Ridgeback's Preemptive Security perspective present without turning the show into a product pitch.",
+      "details": {
+        "episode_number": 55,
+        "live_time_et": "3:00 PM",
+        "hosts": [
+          "Steven Oliphant",
+          "Samuel Kushner",
+          "Thomas Phillips"
+        ],
+        "approved_working_theme": "When trusted systems, AI agents, remote access tools, and enterprise infrastructure become the attack surface.",
+        "approved_seo_title": "AI Ransomware, Patch Speed & Hidden Enterprise Risk | Episode 55",
+        "approved_public_discussion_topics": [
+          "How AI-powered attacks and rapidly exploited vulnerabilities are changing enterprise risk",
+          "The hidden security blind spots created by trusted platforms, remote management tools, and critical infrastructure",
+          "Why reducing attacker time and strengthening defensive readiness matter more than ever"
+        ]
+      },
+      "created_at": "2026-07-08",
+      "last_confirmed_at": "2026-07-08",
+      "confirmation_count": 1,
+      "recurrence_key": "breach-of-protocol-strategic-topic-framework",
+      "suggested_rule_update": "For Breach of Protocol, map the three public discussion topics to threat change, defensive blind spot, and what leaders should do differently now."
     }
   ]
 }

@@ -27,7 +27,7 @@
 - PPTX generator not created yet
 - No Canva integration
 - No StreamYard API integration
-- GHL token: `[REDACTED_SECRET]`
+- GHL token: load `HIGHLEVEL_TOKEN_WINSDAY` from the local `.env`; never paste the token into tracked files.
 - GHL Location ID: `fcO3237HZyeXNe9O8`
 
 ### Input Data (appointment record example)
@@ -140,7 +140,7 @@ test -f presentations/Reveting-Show-Flow.pptx && echo "PPTX created OK"
       "stream_time_et": "11:00 AM",
       "preshow_time_et": "10:45 AM",
       "duration_min": 60,
-      "producer_email": "ea@reveting.com",
+      "producer_email": "${PRODUCER_EMAIL}",
       "signature_block": "—\nDavid Goecke\nFounder, Go Technology Solutions\ngotech.ai",
       "primary_color": "#0D1B3E",
       "accent_color": "#F5A623",
@@ -182,7 +182,7 @@ test -f presentations/Reveting-Show-Flow.pptx && echo "PPTX created OK"
 2. **Step 1 — Pull guest data from GHL:**
    - Use GHL API to pull contact details + custom fields
    - Get LinkedIn profile photo URL (if available in GHL custom fields)
-   - Use the token: `Authorization: Bearer [REDACTED_SECRET]`
+   - Use the token at runtime: `Authorization: Bearer ${HIGHLEVEL_TOKEN_WINSDAY}`
 
 3. **Step 2 — Create Canva banner:**
    - Upload guest LinkedIn photo to Canva as asset

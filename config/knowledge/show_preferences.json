@@ -69,6 +69,16 @@
           "confidence": "high",
           "rule_recommendation_threshold": 2,
           "suggested_rule_update": "Label WinsDay email drafts as night-before final details and day-of reminder."
+        },
+        {
+          "id": "winsday-two-distinct-guests-required",
+          "preference_type": "guest_readiness",
+          "decision_outcome": "new SOP discovered",
+          "summary": "WinsDay normally requires two distinct confirmed guests. Duplicate HighLevel submissions from the same person do not fill both slots; deduplicate by email first, then normalized full name, then LinkedIn URL.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "If only one distinct WinsDay guest remains after deduplication, classify the episode as Open Guest Slot / Needs Second Guest and block final production drafts unless Jessie explicitly approves a solo-guest episode."
         }
       ]
     },
@@ -179,6 +189,36 @@
           "confidence": "high",
           "rule_recommendation_threshold": 2,
           "suggested_rule_update": "Allow editorial research queues and asset skeletons, but keep final LinkedIn, StreamYard, email, and calendar actions blocked until story approval."
+        },
+        {
+          "id": "public-topics-must-be-thematic-not-headlines",
+          "preference_type": "editorial_topic_strategy",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Breach of Protocol should use weekly cybersecurity news as evidence, but the public discussion topics should be thematic, strategic, and repeatable in structure rather than mirroring article headlines or CVE names.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Frame the three public discussion topics around threat landscape change, defensive blind spots, and what security leaders should do differently now."
+        },
+        {
+          "id": "episode-55-approved-editorial-shape",
+          "preference_type": "approved_episode_example",
+          "decision_outcome": "new SOP discovered",
+          "summary": "Episode 55 confirmed the editorial shape for Breach of Protocol: a strategic SEO title plus three public topics that translate current cybersecurity developments into enterprise risk, hidden blind spots, and urgent defensive action.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 2,
+          "suggested_rule_update": "Use Episode 55 as a model for future public-facing titles and topic framing while keeping story selection human-approved."
+        },
+        {
+          "id": "weekly-calendar-invite-format",
+          "preference_type": "calendar_description",
+          "decision_outcome": "human-confirmed SOP",
+          "summary": "Every Breach of Protocol calendar invite follows the Episode 56 layout: episode heading; Friday date; 2:45 PM EST pre-show; 3:00 PM EST livestream; StreamYard login; episode title with episode number; public topics; Breaking Threat Brief sources; LinkedIn promo link; LinkedIn and YouTube event links; the standard 15-minute pre-show and one-hour reservation note; and the Reveting Team closing.",
+          "confirmation_count": 1,
+          "confidence": "high",
+          "rule_recommendation_threshold": 1,
+          "suggested_rule_update": "Use config/shows/breach-of-protocol/calendar-invite-template.md for every weekly invite. Replace the episode number, date, StreamYard URL, episode title, topics, source list, LinkedIn URL, and YouTube URL each week; never reuse prior-week URLs."
         }
       ]
     }

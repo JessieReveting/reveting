@@ -39,6 +39,18 @@
       "suggested_rule_update": "When guests are confirmed, draft the WinsDay production sequence in this order: LinkedIn, StreamYard, Google Calendar, Hannah night-before email, Hannah day-of reminder, completion verification."
     },
     {
+      "id": "winsday-distinct-two-guest-readiness",
+      "show_key": "winsday",
+      "pattern_type": "guest_readiness",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "WinsDay is the only current multi-guest show and normally requires two distinct confirmed guests. Duplicate bookings from the same person should collapse to one guest, leaving the episode blocked until a second distinct guest is confirmed or Jessie approves a solo-guest exception.",
+      "observed_issue_codes": ["open_guest_slot_needs_second_guest"],
+      "confirmation_count": 1,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Deduplicate WinsDay guest slots by email first, then normalized full name, then LinkedIn URL. If only one distinct guest remains, classify the episode as Open Guest Slot / Needs Second Guest and suppress final drafts."
+    },
+    {
       "id": "draft-generation-does-not-imply-approval",
       "show_key": "*",
       "pattern_type": "approval_workflow",
@@ -121,6 +133,18 @@
       "confirmation_count": 1,
       "minimum_confirmations_for_rule_recommendation": 2,
       "suggested_rule_update": "Add read-only show_needs_guest_replacement alerts with calendar status, HighLevel status, guest status, outreach-needed flag, and recommended human action."
+    },
+    {
+      "id": "breach-of-protocol-strategic-topic-framework",
+      "show_key": "breach-of-protocol",
+      "pattern_type": "editorial_topic_framework",
+      "status": "candidate_sop",
+      "decision_outcome": "new SOP discovered",
+      "summary": "Breach of Protocol should use weekly cybersecurity news as evidence, but the three public discussion topics should stay thematic, strategic, and repeatable. They should generally map to: what changed in the threat landscape, what defensive blind spot it reveals, and what security leaders should do differently now.",
+      "observed_issue_codes": [],
+      "confirmation_count": 1,
+      "minimum_confirmations_for_rule_recommendation": 2,
+      "suggested_rule_update": "Do not use article headlines, raw story titles, or CVE names as the final public-facing topics for Breach of Protocol. Translate the news into repeatable strategic discussion frames."
     }
   ]
 }
